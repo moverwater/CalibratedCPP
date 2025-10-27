@@ -1,0 +1,38 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- inherit pom in lphybeast-root -->
+    <parent>
+        <groupId>io.github.linguaphylo</groupId>
+        <artifactId>lphybeast-root</artifactId>
+        <!--  lphybeast version here    -->
+        <version>1.3.0</version>
+    </parent>
+
+    <artifactId>calibratedcpp-root</artifactId>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+
+    <name>calibratedcpp-root</name>
+    <url>https://github.com/moverwater/CalibratedCPP</url>
+
+    <properties>
+        <lphy.vision>1.7.0</lphy.vision>
+        <lphybeast.vision>1.3.0</lphybeast.vision>
+        <revision>0.0.1</revision>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <modules>
+        <!-- this already has linguaPhylo, importing again will cause duplication err -->
+        <module>../LPhyBeast/</module>
+        <module>calibratedcpp-beast</module>
+        <module>calibratedcpp-lphy</module>
+        <!--<module>calibratedcpp-lphy-studio</module> -->
+        <module>calibratedcpp-lphybeast</module>
+    </modules>
+
+</project>

@@ -44,4 +44,4 @@ bin/
 validation.Rproj
 
 ### trees ###
-/validation/trees/*
+/calibartedcpp-beast/validation/trees/*

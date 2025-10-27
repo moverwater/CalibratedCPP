@@ -169,18 +169,18 @@
     </target>
 
     <target name="install-dependencies" depends="build-beast">
-<!--        <mkdir dir="deps"/>-->
-<!--        <java fork="true" classname="beast.pkgmgmt.PackageManager">-->
-<!--            <jvmarg line="-Dbeast.user.package.dir=./deps"/>-->
-<!--            <arg line="-add BEASTLabs"/>-->
-<!--            <classpath>-->
-<!--                <pathelement path="${build-beast}"/>-->
-<!--            </classpath>-->
-<!--        </java>-->
+        <!--        <mkdir dir="deps"/>-->
+        <!--        <java fork="true" classname="beast.pkgmgmt.PackageManager">-->
+        <!--            <jvmarg line="-Dbeast.user.package.dir=./deps"/>-->
+        <!--            <arg line="-add BEASTLabs"/>-->
+        <!--            <classpath>-->
+        <!--                <pathelement path="${build-beast}"/>-->
+        <!--            </classpath>-->
+        <!--        </java>-->
     </target>
 
     <!-- Compile -->
-<!--    <target name="compile" depends="build-beast,build-beastfx,install-dependencies">-->
+    <!--    <target name="compile" depends="build-beast,build-beastfx,install-dependencies">-->
     <target name="compile" depends="build-beast,install-dependencies">
         <javac release="${releaseVersion}"
                srcdir="${src}" destdir="${build}"
@@ -192,11 +192,11 @@
                 <fileset dir="${lib}" includes="**/*.jar" erroronmissingdir="false"/>
                 <fileset dir="${beast-source-root}/lib" includes="**/*.jar"/>
                 <pathelement path="${build-beast}"/>
-<!--                <fileset dir="${beastfx-source-root}/locallib" includes="**/*.jar"/>-->
-<!--                <pathelement path="${build-beastfx}"/>-->
-<!--                <fileset dir="${env.JAVA_FX_HOME}" includes="**/*.jar"/>-->
-<!--                <fileset dir="deps/SA" includes="**/*.jar"/>-->
-<!--                <fileset dir="deps/BEASTLabs" includes="**/*.jar"/>-->
+                <!--                <fileset dir="${beastfx-source-root}/locallib" includes="**/*.jar"/>-->
+                <!--                <pathelement path="${build-beastfx}"/>-->
+                <!--                <fileset dir="${env.JAVA_FX_HOME}" includes="**/*.jar"/>-->
+                <!--                <fileset dir="deps/SA" includes="**/*.jar"/>-->
+                <!--                <fileset dir="deps/BEASTLabs" includes="**/*.jar"/>-->
             </classpath>
         </javac>
     </target>
@@ -227,8 +227,8 @@
                 <fileset dir="${lib}" includes="**/*.jar" erroronmissingdir="false"/>
                 <fileset dir="${beast-source-root}/lib" includes="**/*.jar"/>
                 <pathelement path="${build-beast}"/>
-<!--                <fileset dir="deps/SA" includes="**/*.jar"/>-->
-<!--                <fileset dir="deps/BEASTLabs" includes="**/*.jar"/>-->
+                <!--                <fileset dir="deps/SA" includes="**/*.jar"/>-->
+                <!--                <fileset dir="deps/BEASTLabs" includes="**/*.jar"/>-->
             </classpath>
         </javac>
     </target>
@@ -246,8 +246,8 @@
                 <fileset dir="${beast-source-root}/lib" includes="**/*.jar"/>
                 <pathelement path="${build-beast}" />
                 <pathelement path="${build-beastfx}" />
-<!--                <fileset dir="deps/SA" includes="**/*.jar"/>-->
-<!--                <fileset dir="deps/BEASTLabs" includes="**/*.jar"/>-->
+                <!--                <fileset dir="deps/SA" includes="**/*.jar"/>-->
+                <!--                <fileset dir="deps/BEASTLabs" includes="**/*.jar"/>-->
             </classpath>
             <batchtest fork="true" todir="${test-reports}">
                 <fileset dir="${test}">

@@ -1,0 +1,15 @@
+<package name='calibratedcpp.lphybeast' version='0.0.1'>
+    <!-- lphybeast -->
+    <depends on='calibratedcpp' atleast='0.0.1'/>
+    <depends on='lphybeast' atleast='1.3.0'/>
+
+    <!-- add BEAST2 service below  -->
+<!--    <service type="beast.base.core.BEASTInterface">-->
+<!--        &lt;!&ndash; any ? &ndash;&gt;-->
+<!--    </service>-->
+
+    <!-- add lphybeast ext below  -->
+    <service type="lphybeast.spi.LPhyBEASTExt">
+        <provider classname="calibratedcpp.lphybeast.spi.CalibratedCPPImpl"/>
+    </service>
+</package>

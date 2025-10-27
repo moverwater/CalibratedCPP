@@ -1,0 +1,21 @@
+data{
+    n = 40;
+    L = 100;
+}
+model{
+    lambda ~ LogNormal(meanlog = -3.02, sdlog = 0.15);
+
+    rootAge ~ LogNormal(meanlog = 4.21, sdlog = 0.15);
+    cladeAge ~ LogNormal(meanlog = 1.84, sdlog = 0.12);
+
+    cladeTaxa = ["leaf_1", "leaf_2", "leaf_3"];
+
+    tree ~ CalibratedCPP(lambda=lambda, mu=0, rho=1, n=n, cladeTaxa = [cladeTaxa], cladeAge=[cladeAge], rootAge=rootAge);
+
+    // GTR
+    π ~ Dirichlet(conc=[3.0,3.0,3.0,3.0]);
+    rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
+    Q = gtr(freq=π, rates=rates); // construct the GTR instantaneous rate matrix
+
+    A ~ PhyloCTMC(L=L, Q=Q, tree=tree);
+}

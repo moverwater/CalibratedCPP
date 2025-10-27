@@ -17,12 +17,28 @@ $$Q(t) = \frac{\rho\lambda(1-e^{-(\lambda-\mu)t})}{\rho\lambda+(\lambda(1-\rho)-
 
 The Calibrated CPP is a calibrated tree prior using the CPP. Calibrated tree priors are used for molecular clock dating by conditioning on the existence and ages of the most recent common ancestors of monophyletic clades.
 
-## Structure
+## Project structure
+CalibratedCPP contains 3 subproject:
+
+### calibratedcpp-beast
 
 The implementation has the following structure:
 - The abstract class CoalescentPointProcessModel has abstract methods for the density and CDF of the node age.
 - BirthDeathModel extends CoalescentPointProcessModel with node age density and CDF for the constant rate birth-death process.
 - CalibratedCoalescentPointProcess extends SpeciesTreeDistribution and takes a CoalescentPointProcessModel, a list of calibrations, and the origin age OR conditionOnRoot as inputs.
+
+### calibratedcpp-lphy
+
+The Lphy simulator is currently implemented within LinguaPhylo as a generative method called `CalibratedCPP`:
+- The simulator takes birth rate, death rate, sampling probability for the birth-death process.
+- Number of taxa, clade calibration tip names, corresponding clade calibration ages are taken for constructing calibrations, other leaf names are optional to pass in.
+- Root age can be passed in for root conditioned, stem age can also be passed in. Both of them are optional.
+
+### calibratedcpp-lphybeast
+
+This subproject is converting Lphy simulators to XMLs for BEAST2 running:
+- Construct calibrationPoints with clade calibration taxa and age, only take distribution for age sampling.
+- The simulator does not take conditionOnCalibrations, users should modify in the output XML.
 
 ## License
 

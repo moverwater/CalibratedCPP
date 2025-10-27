@@ -7,4 +7,4 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: docker build -t tests .
-      - run: docker run tests
+      - run: docker run -w /app/calibratedcpp-beast tests ant build
