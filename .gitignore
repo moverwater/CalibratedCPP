@@ -3,7 +3,7 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .idea
-META-INF/
+calibratedcpp-beast/META-INF/
 *.iml
 
 ### Eclipse ###
