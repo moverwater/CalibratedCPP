@@ -23,9 +23,7 @@ public class CalibrationPrior extends Distribution {
    public Input<List<CalibrationClade>> cladesInput =
            new Input<>("clade", "List of calibration clades", Input.Validate.REQUIRED);
 
-   private final List<CalibrationNode> calibrationForest = new ArrayList<>();
-
-   private final List<CalibrationNode> roots = new ArrayList<>();
+    private List<CalibrationNode> calibrationNodes;
 
    List<CalibrationClade> clades;
 
@@ -36,56 +34,20 @@ public class CalibrationPrior extends Distribution {
       if (tree == null) throw new IllegalArgumentException("Tree is null");
       if (clades.isEmpty()) throw new IllegalArgumentException("No clades provided");
 
-      // === Step 1: map clades to nodes ===
-
-
       // === Step 2: build inclusion hierarchy ===
-      buildInclusionForest();
+      CalibrationForest calibrationForest = CalibrationForest.buildFromClades(tree, clades);
+      calibrationNodes = calibrationForest.getAllNodes();
 
       // === Step 3: compute log-moments ===
-      for (CalibrationNode n : calibrationForest) computeLogTargets(n);
+      for (CalibrationNode n : calibrationNodes) computeLogTargets(n);
 
       // === Step 4: partition into overlap components and fit ===
-      List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationForest);
+      List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationNodes);
       for (CalibrationComponent comp : comps) fitComponent(comp);
       // done
    }
 
    // ------------------------------------------------------------------
-   // 1. Inclusion forest
-   private void buildInclusionForest() {
-      for (CalibrationClade c : clades) {
-         calibrationForest.add(new CalibrationNode(treeInput.get(), c));
-      }
-      for (CalibrationNode child : calibrationForest) {
-         CalibrationNode bestParent = null;
-         for (CalibrationNode cand : calibrationForest) {
-            if (cand == child) continue;
-            if (isAncestor(cand.mrca, child.mrca)) {
-               // choose the closest ancestor, not the highest
-               if (bestParent == null || isAncestor(bestParent.mrca, cand.mrca)) {
-                  bestParent = cand;
-               }
-            }
-         }
-         child.parent = bestParent;
-         if (bestParent != null) {
-            bestParent.children.add(child);
-            child.isRoot = false;
-         } else {
-            child.isRoot = true;
-         }
-      }
-
-      roots.clear();
-      for (CalibrationNode n : calibrationForest) {
-         n.isRoot = (n.parent == null);
-         if (n.isRoot) roots.add(n);
-         n.isOverlapEdge = (n.parent != null && n.parent.getLower() < n.getUpper());
-      }
-   }
-
-   // -----------------------------------------------------------------
    // 2. Decompose forest into subtrees of clades that have intervals overlapping with their parents
    public static class CalibrationComponent {
       private final List<CalibrationNode> members = new ArrayList<>();
@@ -271,14 +233,6 @@ public class CalibrationPrior extends Distribution {
       return new double[]{a, b};
    }
 
-   private boolean isAncestor(Node anc, Node node) {
-      while (node != null) {
-         if (node == anc) return true;
-         node = node.getParent();
-      }
-      return false;
-   }
-
    private void collectLeafTaxa(Node node, Set<String> leafIDs) {
       if (node.isLeaf()) {
          leafIDs.add(node.getID());
@@ -294,7 +248,7 @@ public class CalibrationPrior extends Distribution {
    @Override
    public double calculateLogP() {
       double logP = 0;
-      for (CalibrationNode n : calibrationForest) {
+      for (CalibrationNode n : calibrationNodes) {
 
          // Check for monophyly
          Set<String> leafIDs = new HashSet<>();
@@ -357,7 +311,6 @@ public class CalibrationPrior extends Distribution {
    @Override
    protected boolean requiresRecalculation() {
       // Do any updates
-      buildInclusionForest();
       return true;
    }
 }

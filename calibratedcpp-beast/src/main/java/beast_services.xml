@@ -11,5 +11,6 @@
         <provider classname="calibrationprior.CalibrationPrior"/>
         <provider classname="calibrationprior.CalibrationClade"/>
         <provider classname="calibrationprior.CalibrationNode"/>
+        <provider classname="calibrationprior.CalibrationForest"/>
     </service>
 </package>
