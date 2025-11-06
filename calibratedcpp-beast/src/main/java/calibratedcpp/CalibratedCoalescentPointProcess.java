@@ -96,7 +96,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         return logP;
     }
 
-    private double computeCalibrationDensity(TreeInterface tree, CalibrationNode calibration) {
+    protected double computeCalibrationDensity(TreeInterface tree, CalibrationNode calibration) {
         updateModel(tree);
 
         // Sort children descending by height
@@ -218,9 +218,12 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         logP = 0.0;
         for (CalibrationNode c : calibrationForest) {
-            Node mrca = c.mrca;
-            if (!mrca.getAllLeafNodes().equals(c.taxa)) {
-                return Double.NEGATIVE_INFINITY; // Calibration clade is not monophyletic
+            Set<String> leafIDs = new HashSet<>();
+            Node beastNode = c.mrca;
+
+            collectLeafTaxa(beastNode, leafIDs);
+            if (!leafIDs.equals(c.taxa.getTaxaNames())){
+                return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
             }
         }
         logP += calculateUnConditionedTreeLogLikelihood(tree);
@@ -347,52 +350,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     }
 
     // tree methods
-    private Node getMRCA(TreeInterface tree, TaxonSet taxonSet) {
-        List<String> taxonIDs = taxonSet.asStringList();
-        // Get leaf nodes for the given taxa
-        List<Node> nodes = new ArrayList<>();
-        for (String id : taxonIDs) {
-            int index = tree.getTaxonset().getTaxonIndex(id);
-            nodes.add(tree.getNode(index));
-        }
-
-        return findMRCA(nodes);
-    }
-
-    private Node findMRCA(List<Node> nodes) {
-        if (nodes == null || nodes.isEmpty()) return null;
-        if (nodes.size() == 1) return nodes.get(0);
-
-        Node mrca = nodes.get(0);
-
-        for (int i = 1; i < nodes.size(); i++) {
-            mrca = findMRCA(mrca, nodes.get(i));
-        }
-
-        return mrca;
-    }
-
-    private Node findMRCA(Node a, Node b) {
-        // Collect ancestors of a
-        List<Node> ancestorsA = new ArrayList<>();
-        while (a != null) {
-            ancestorsA.add(a);
-            a = a.getParent();
-        }
-
-        // Walk b's ancestry and return first shared node
-        while (b != null) {
-            for (Node ancestor : ancestorsA) {
-                if (b == ancestor) { // use reference equality!
-                    return b;
-                }
-            }
-            b = b.getParent();
-        }
-
-        return null; // Should never happen if both are in same tree
-    }
-
     private boolean isDescendant(Node node, Node ancestor) {
         while (node != null) {
             if (node == ancestor) return true;
@@ -401,12 +358,21 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         return false;
     }
 
+    private void collectLeafTaxa(Node node, Set<String> leafIDs) {
+        if (node.isLeaf()) {
+            leafIDs.add(node.getID());
+        } else {
+            for (int i = 0; i < node.getChildCount(); i++) {
+                collectLeafTaxa(node.getChild(i), leafIDs);
+            }
+        }
+    }
+
     // build calibration forest
     protected List<CalibrationNode> buildCalibrationForest(TreeInterface tree, List<TaxonSet> calibrations){
         List<CalibrationNode> calibrationNodes = new ArrayList<>();
         for (TaxonSet calibration : calibrations) {
-            Node mrca = getMRCA(tree, calibration);
-            CalibrationNode calibrationNode = new CalibrationNode(mrca, calibration);
+            CalibrationNode calibrationNode = new CalibrationNode(tree, calibration);
             calibrationNodes.add(calibrationNode);
         }
 
@@ -448,7 +414,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
     @Override
     public boolean requiresRecalculation() {
-        super.requiresRecalculation();
+        buildCalibrationForest(treeInput.get(), calibrations);
         return true;
     }
 

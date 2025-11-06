@@ -78,7 +78,6 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
 
     @Override
     public double calculateLogDensity(double time) {
-        updateParameters();
         double logDensity;
         double rt = diversificationRate * time;
 
@@ -99,7 +98,6 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
 
     @Override
     public double calculateLogCDF(double time) {
-        updateParameters();
         double logCDF;
 
         if (isCritical) {
@@ -170,7 +168,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
 
     @Override
     protected boolean requiresRecalculation() {
-        super.requiresRecalculation();
+        updateParameters();
         return true;
     }
 
