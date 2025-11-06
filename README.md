@@ -9,7 +9,7 @@ The CPP is a model of ultrametric trees where node ages are i.i.d. random variab
 
 [Lambert and Stadler (2012)](https://doi.org/10.1016/j.tpb.2013.10.002) show that these models give a uniform distribution over ranked labelled (or oriented) tree topologies, and that the node ages are i.i.d. random variables. The node age density where $\lambda=\lambda(t)$ and $\mu=\mu(x,t)$ and each individual is sampled with probability $\rho$ is,
 
-$$q(t) = \frac{\rho\lambda (\lambda-\mu)e^{-(\lambda-\mu)}}{\rho\lambda+(\lambda(1-\rho)-\mu)e^{-(\lambda-\mu)t}}$$
+$$q(t) = \frac{\rho\lambda (\lambda-\mu)e^{-(\lambda-\mu)t}}{\rho\lambda+(\lambda(1-\rho)-\mu)e^{-(\lambda-\mu)t}}$$
 
 the cumulative distribution function is,
 
@@ -44,6 +44,7 @@ This subproject is converting Lphy simulators to XMLs for BEAST2 running:
 
 CalibratedCPP is free software.  It is distributed under the terms of version 3 of the GNU General Public License.  A copy of this license should be found in the file [COPYING](./COPYING) located in the root directory of this repository. If this file is absent for some reason, it can also be retrieved from
 https://www.gnu.org/licenses.
+
 
 
 
