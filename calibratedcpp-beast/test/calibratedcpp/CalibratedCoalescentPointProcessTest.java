@@ -12,8 +12,6 @@ import beast.base.inference.parameter.RealParameter;
 import calibrationprior.CalibrationNode;
 import org.junit.Test;
 
-import java.util.*;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CalibratedCoalescentPointProcessTest {

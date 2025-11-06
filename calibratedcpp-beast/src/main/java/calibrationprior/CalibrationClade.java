@@ -25,7 +25,7 @@ public class CalibrationClade extends BEASTObject {
     @Override
     public void initAndValidate() {
         double p = pCoverageInput.get().getValue();
-        if ((p < 0.0) || (p >= 1.0)){
+        if ((p < 0.0) || (p > 1.0)){
             throw new IllegalArgumentException("confidenceLevel (" + p + ") should be between 0.0 and 1.0");
         }
 

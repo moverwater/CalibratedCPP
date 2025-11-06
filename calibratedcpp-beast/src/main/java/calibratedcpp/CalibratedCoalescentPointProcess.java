@@ -217,18 +217,19 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         }
 
         logP = 0.0;
-        for (CalibrationNode c : calibrationForest) {
-            Set<String> leafIDs = new HashSet<>();
-            Node beastNode = c.mrca;
 
-            collectLeafTaxa(beastNode, leafIDs);
-            if (!leafIDs.equals(c.taxa.getTaxaNames())){
-                return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
-            }
-        }
         logP += calculateUnConditionedTreeLogLikelihood(tree);
 
         if (conditionOnCalibrations) {
+            for (CalibrationNode c : calibrationForest) {
+                Set<String> leafIDs = new HashSet<>();
+                Node beastNode = c.mrca;
+
+                collectLeafTaxa(beastNode, leafIDs);
+                if (!leafIDs.equals(c.taxa.getTaxaNames())) {
+                    return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
+                }
+            }
             logP -= calculateLogMarginalDensityOfCalibrations(tree, calibrationForest);
         }
 
@@ -424,7 +425,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 "adjustTipHeights", false,
                 "IsLabelledNewick", true);
 
-        calibratedcpp.model.BirthDeathModel birthDeath = new BirthDeathModel();
+        BirthDeathModel birthDeath = new BirthDeathModel();
 
         birthDeath.initByName("birthRate", new RealParameter("3.0"),
                 "deathRate", new RealParameter("2.0"),

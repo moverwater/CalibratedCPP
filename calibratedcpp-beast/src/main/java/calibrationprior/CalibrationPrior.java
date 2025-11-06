@@ -18,10 +18,10 @@ import java.util.*;
 public class CalibrationPrior extends Distribution {
 
    public Input<TreeInterface> treeInput =
-           new Input<>("tree", "Tree to calibrate");
+           new Input<>("tree", "Tree to calibrate", Input.Validate.REQUIRED);
 
    public Input<List<CalibrationClade>> cladesInput =
-           new Input<>("clade", "List of calibration clades");
+           new Input<>("clade", "List of calibration clades", Input.Validate.REQUIRED);
 
    private final List<CalibrationNode> calibrationForest = new ArrayList<>();
 
