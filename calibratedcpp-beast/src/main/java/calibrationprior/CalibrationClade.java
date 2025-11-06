@@ -43,6 +43,7 @@ public class CalibrationClade extends BEASTObject {
     public TaxonSet getTaxa() {
         return taxa.get();
     }
+
     public double getUpperAge() {
         return upperAgeInput.get().getValue();
     }

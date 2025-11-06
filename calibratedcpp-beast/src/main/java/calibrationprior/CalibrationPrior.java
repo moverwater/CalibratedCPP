@@ -1,8 +1,6 @@
 package calibrationprior;
 
 import beast.base.core.*;
-import beast.base.evolution.alignment.Taxon;
-import beast.base.evolution.alignment.TaxonSet;
 import beast.base.inference.*;
 import beast.base.evolution.tree.*;
 
@@ -25,31 +23,30 @@ public class CalibrationPrior extends Distribution {
    public Input<List<CalibrationClade>> cladesInput =
            new Input<>("clade", "List of calibration clades");
 
-   private final List<CalibrationNode> calibrationNodes = new ArrayList<>();
+   private final List<CalibrationNode> calibrationForest = new ArrayList<>();
 
    private final List<CalibrationNode> roots = new ArrayList<>();
+
+   List<CalibrationClade> clades;
 
    @Override
    public void initAndValidate() {
       TreeInterface tree = treeInput.get();
-      List<CalibrationClade> clades = cladesInput.get();
+      clades = cladesInput.get();
       if (tree == null) throw new IllegalArgumentException("Tree is null");
       if (clades.isEmpty()) throw new IllegalArgumentException("No clades provided");
 
       // === Step 1: map clades to nodes ===
-      for (CalibrationClade c : clades) {
-         Node n = getCommonAncestor(tree, c.getTaxa());
-         calibrationNodes.add(new CalibrationNode(n, c));
-      }
+
 
       // === Step 2: build inclusion hierarchy ===
       buildInclusionForest();
 
       // === Step 3: compute log-moments ===
-      for (CalibrationNode n : calibrationNodes) computeLogTargets(n);
+      for (CalibrationNode n : calibrationForest) computeLogTargets(n);
 
       // === Step 4: partition into overlap components and fit ===
-      List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationNodes);
+      List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationForest);
       for (CalibrationComponent comp : comps) fitComponent(comp);
       // done
    }
@@ -57,9 +54,12 @@ public class CalibrationPrior extends Distribution {
    // ------------------------------------------------------------------
    // 1. Inclusion forest
    private void buildInclusionForest() {
-      for (CalibrationNode child : calibrationNodes) {
+      for (CalibrationClade c : clades) {
+         calibrationForest.add(new CalibrationNode(treeInput.get(), c));
+      }
+      for (CalibrationNode child : calibrationForest) {
          CalibrationNode bestParent = null;
-         for (CalibrationNode cand : calibrationNodes) {
+         for (CalibrationNode cand : calibrationForest) {
             if (cand == child) continue;
             if (isAncestor(cand.mrca, child.mrca)) {
                // choose the closest ancestor, not the highest
@@ -78,7 +78,7 @@ public class CalibrationPrior extends Distribution {
       }
 
       roots.clear();
-      for (CalibrationNode n : calibrationNodes) {
+      for (CalibrationNode n : calibrationForest) {
          n.isRoot = (n.parent == null);
          if (n.isRoot) roots.add(n);
          n.isOverlapEdge = (n.parent != null && n.parent.getLower() < n.getUpper());
@@ -279,28 +279,6 @@ public class CalibrationPrior extends Distribution {
       return false;
    }
 
-   private Node getCommonAncestor(TreeInterface tree, TaxonSet taxa) {
-      List<Node> nodes = new ArrayList<>();
-      for (Taxon t : taxa.getTaxonSet()) {
-         int idx = tree.getTaxonset().getTaxonIndex(t.toString());
-         nodes.add(tree.getNode(idx));
-      }
-      if (nodes.isEmpty()) return null;
-      Node a = nodes.get(0);
-      for (int i = 1; i < nodes.size(); i++) a = getCommonAncestor(a, nodes.get(i));
-      return a;
-   }
-
-   private Node getCommonAncestor(Node a, Node b) {
-      Set<Node> ancA = new HashSet<>();
-      while (a != null) { ancA.add(a); a = a.getParent(); }
-      while (b != null) {
-         if (ancA.contains(b)) return b;
-         b = b.getParent();
-      }
-      return null;
-   }
-
    private void collectLeafTaxa(Node node, Set<String> leafIDs) {
       if (node.isLeaf()) {
          leafIDs.add(node.getID());
@@ -316,18 +294,17 @@ public class CalibrationPrior extends Distribution {
    @Override
    public double calculateLogP() {
       double logP = 0;
-      for (CalibrationNode n : calibrationNodes) {
+      for (CalibrationNode n : calibrationForest) {
 
          // Check for monophyly
          Set<String> leafIDs = new HashSet<>();
-         Node beastNode = n.mrca;
-
-         collectLeafTaxa(beastNode, leafIDs);
+         Node treeNode = n.mrca;
+         collectLeafTaxa(treeNode, leafIDs);
          if (!leafIDs.equals(n.clade.getTaxa().getTaxaNames())){
             return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
          }
 
-         double t = beastNode.getHeight();
+         double t = treeNode.getHeight();
          if (n.parent == null) {
             // root lognormal
             double lp = logNormalLogPdf(t, n.mu, Math.sqrt(n.sigma2));
@@ -376,4 +353,11 @@ public class CalibrationPrior extends Distribution {
    public List<String> getConditions() { return List.of(); }
    @Override
    public void sample(State state, Random random) { }
+
+   @Override
+   protected boolean requiresRecalculation() {
+      // Do any updates
+      buildInclusionForest();
+      return true;
+   }
 }
