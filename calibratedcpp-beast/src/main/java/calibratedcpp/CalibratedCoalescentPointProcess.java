@@ -11,6 +11,7 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.parameter.RealParameter;
 import calibratedcpp.model.BirthDeathModel;
 import calibratedcpp.model.CoalescentPointProcessModel;
+import calibrationprior.CalibrationForest;
 import calibrationprior.CalibrationNode;
 
 import java.util.*;
@@ -41,7 +42,8 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
     protected CoalescentPointProcessModel model;
     protected List<TaxonSet> calibrations;
-    protected List<CalibrationNode> calibrationForest;
+    protected CalibrationForest calibrationForest;
+    protected List<CalibrationNode> calibrationNodes;
     protected boolean conditionOnCalibrations;
 
     protected Double origin;
@@ -68,7 +70,8 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
 
         if (conditionOnCalibrations) {
-            calibrationForest = buildCalibrationForest(tree, calibrations);
+            calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+            calibrationNodes = calibrationForest.getAllNodes();
         }
 
         rootAge = tree.getRoot().getHeight();
@@ -97,13 +100,11 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     }
 
     protected double computeCalibrationDensity(TreeInterface tree, CalibrationNode calibration) {
-        updateModel(tree);
-
         // Sort children descending by height
         List<CalibrationNode> children = calibration.children;
-        children.sort(Comparator.comparingDouble(c -> -c.mrca.getHeight()));
+        children.sort(Comparator.comparingDouble(c -> -c.getCommonAncestor(tree).getHeight()));
 
-        Node mrca = calibration.mrca;
+        Node mrca = calibration.getCommonAncestor(tree);
         double cladeHeight = mrca.getHeight();
         int cladeSize = calibration.taxa.getTaxonSet().size();
 
@@ -126,7 +127,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
             CalibrationNode child = children.get(i);
             logChildDensities[i] = computeCalibrationDensity(tree, child);
             childCladeSizes[i] = child.taxa.getTaxonSet().size();
-            childCDFs[i] = model.calculateLogCDF(child.mrca.getHeight());
+            childCDFs[i] = model.calculateLogCDF(child.getCommonAncestor(tree).getHeight());
         }
 
         double[] logDiff = new double[numChildren];
@@ -158,10 +159,11 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
     public double calculateLogMarginalDensityOfCalibrations(
             TreeInterface tree,
-            List<CalibrationNode> calibrations) {
+            CalibrationForest calibrationForest) {
+
+        List<CalibrationNode> calibrations = calibrationForest.getAllNodes();
 
         // Step 1: Update model and get base quantities
-        updateModel(tree);
         double logQt = model.calculateLogCDF(maxTime);
         double marginalDensity = Math.log1p(-Math.exp(logQt)); // terminating node age > maxTime
 
@@ -170,7 +172,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         // Step 2: Collect and sort root calibrations by clade height (descending)
         List<CalibrationNode> roots = calibrations.stream()
                 .filter(c -> c.isRoot)
-                .sorted(Comparator.comparingDouble(c -> -c.mrca.getHeight()))
+                .sorted(Comparator.comparingDouble(c -> -c.getCommonAncestor(tree).getHeight()))
                 .toList();
 
         // Step 3: Compute density for each root recursively
@@ -185,7 +187,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
             double logDensity = computeCalibrationDensity(tree, root);
             marginalDensity += logDensity;
 
-            double height = root.mrca.getHeight();
+            double height = root.getCommonAncestor(tree).getHeight();
             logQti[i] = model.calculateLogCDF(height);
             logDiff[i] = logDiffExp(logQt, logQti[i]);
 
@@ -221,9 +223,9 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         logP += calculateUnConditionedTreeLogLikelihood(tree);
 
         if (conditionOnCalibrations) {
-            for (CalibrationNode c : calibrationForest) {
+            for (CalibrationNode c : calibrationNodes) {
                 Set<String> leafIDs = new HashSet<>();
-                Node beastNode = c.mrca;
+                Node beastNode = c.getCommonAncestor(tree);
 
                 collectLeafTaxa(beastNode, leafIDs);
                 if (!leafIDs.equals(c.taxa.getTaxaNames())) {
@@ -351,14 +353,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     }
 
     // tree methods
-    private boolean isDescendant(Node node, Node ancestor) {
-        while (node != null) {
-            if (node == ancestor) return true;
-            node = node.getParent();
-        }
-        return false;
-    }
-
     private void collectLeafTaxa(Node node, Set<String> leafIDs) {
         if (node.isLeaf()) {
             leafIDs.add(node.getID());
@@ -369,36 +363,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         }
     }
 
-    // build calibration forest
-    protected List<CalibrationNode> buildCalibrationForest(TreeInterface tree, List<TaxonSet> calibrations){
-        List<CalibrationNode> calibrationNodes = new ArrayList<>();
-        for (TaxonSet calibration : calibrations) {
-            CalibrationNode calibrationNode = new CalibrationNode(tree, calibration);
-            calibrationNodes.add(calibrationNode);
-        }
-
-        for (CalibrationNode child : calibrationNodes) {
-            CalibrationNode bestParent = null;
-            for (CalibrationNode cand : calibrationNodes) {
-                if (cand == child) continue;
-                if (isDescendant(child.mrca, cand.mrca)) {
-                    // choose the closest ancestor, not the highest
-                    if (bestParent == null || isDescendant(cand.mrca, bestParent.mrca)) {
-                        bestParent = cand;
-                    }
-                }
-            }
-            child.parent = bestParent;
-            if (bestParent != null) {
-                bestParent.children.add(child);
-                child.isRoot = false;
-            } else {
-                child.isRoot = true;
-            }
-        }
-        return calibrationNodes;
-    }
-
     public void updateModel(TreeInterface tree) {
         model = cppModelInput.get();
         origin = (originInput.get() != null) ? originInput.get().getValue() : null;
@@ -407,15 +371,10 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         calibrations = new ArrayList<>(calibrationsInput.get());
         conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
-
-        if (conditionOnCalibrations) {
-            calibrationForest = buildCalibrationForest(tree, calibrations);
-        }
     }
 
     @Override
     public boolean requiresRecalculation() {
-        buildCalibrationForest(treeInput.get(), calibrations);
         return true;
     }
 

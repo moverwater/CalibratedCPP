@@ -2,8 +2,8 @@ package calibrationprior;
 
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
+import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
-import beast.base.evolution.tree.TreeInterface;
 
 import java.util.*;
 
@@ -21,20 +21,20 @@ public class CalibrationForest extends BEASTObject {
     private CalibrationForest() {}
 
     // --- Static factory for clade-based forest ---
-    public static CalibrationForest buildFromClades(TreeInterface tree, List<CalibrationClade> clades) {
+    public static CalibrationForest buildFromClades(List<CalibrationClade> clades) {
         CalibrationForest forest = new CalibrationForest();
         for (CalibrationClade clade : clades) {
-            forest.allNodes.add(new CalibrationNode(tree, clade));
+            forest.allNodes.add(new CalibrationNode(clade));
         }
         forest.buildInclusionForest();
         return forest;
     }
 
     // --- Static factory for taxa-based forest (no bounds) ---
-    public static CalibrationForest buildFromTaxonSets(TreeInterface tree, List<TaxonSet> taxaSets) {
+    public static CalibrationForest buildFromTaxonSets(List<TaxonSet> taxaSets) {
         CalibrationForest forest = new CalibrationForest();
-        for (TaxonSet tset : taxaSets) {
-            forest.allNodes.add(new CalibrationNode(tree, tset));
+        for (TaxonSet taxonSet : taxaSets) {
+            forest.allNodes.add(new CalibrationNode(taxonSet));
         }
         forest.buildInclusionForest();
         return forest;
@@ -48,7 +48,7 @@ public class CalibrationForest extends BEASTObject {
         Map<CalibrationNode, Set<String>> nodeTaxaMap = new HashMap<>();
         for (CalibrationNode node : allNodes) {
             Set<String> taxaIds = new HashSet<>();
-            for (var t : node.taxa.getTaxonSet()) {
+            for (Taxon t : node.taxa.getTaxonSet()) {
                 taxaIds.add(t.getID());
             }
             nodeTaxaMap.put(node, taxaIds);
@@ -110,6 +110,10 @@ public class CalibrationForest extends BEASTObject {
             }
         }
         return null;
+    }
+
+    public CalibrationNode getCalibrationNodeFromCalibrationClade(CalibrationClade calibrationClade) {
+        return getCalibrationNodeFromTaxonSet(calibrationClade.getTaxa());
     }
 
     // --- Accessors ---

@@ -9,6 +9,7 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.inference.parameter.RealParameter;
+import calibrationprior.CalibrationForest;
 import calibrationprior.CalibrationNode;
 import org.junit.Test;
 
@@ -17,15 +18,15 @@ import static org.junit.jupiter.api.Assertions.*;
 public class CalibratedCoalescentPointProcessTest {
 
     private CalibratedCoalescentPointProcess cpp;
-    private Tree tree;
+    private final Tree tree;
     TaxonSet taxaABC;
     TaxonSet taxaDE;
     TaxonSet taxaABCDE;
     TaxonSet taxaHI;
     TaxonSet taxaHIJ;
     TaxonSet taxaFGHIJ;
-    private BirthDeathModel birthDeath;
-    private List<TaxonSet> calibrations;
+    private final BirthDeathModel birthDeath;
+    private final List<TaxonSet> calibrations;
     private CalibratedCoalescentPointProcess rootConditionedCPP;
 
     public CalibratedCoalescentPointProcessTest() {
@@ -96,17 +97,18 @@ public class CalibratedCoalescentPointProcessTest {
 
     @Test
     public void calibrationForest(){
-        List<CalibrationNode> calibrationGraph = cpp.buildCalibrationForest(tree, calibrations);
+        CalibrationForest calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+        List<CalibrationNode> calibrationNodes = calibrationForest.getAllNodes();
 
-        for (CalibrationNode node : calibrationGraph) {
+        for (CalibrationNode node : calibrationNodes) {
             if (!node.isRoot) {
                 assertTrue( node.parent.taxa.getTaxonSet().size() > node.taxa.getTaxonSet().size());
-                assertTrue(node.parent.mrca.getHeight() > node.mrca.getHeight());
+                assertTrue(node.parent.getCommonAncestor(tree).getHeight() > node.getCommonAncestor(tree).getHeight());
             }
         }
 
         int n_roots = 0;
-        for (CalibrationNode node : calibrationGraph) {
+        for (CalibrationNode node : calibrationNodes) {
             n_roots += node.isRoot ? 1 : 0;
         }
 
@@ -115,47 +117,54 @@ public class CalibratedCoalescentPointProcessTest {
 
     @Test
     public void calculateLogMarginalDensityOfCalibrations() {
-        List<CalibrationNode> calibrationGraph = cpp.buildCalibrationForest(tree, calibrations);
+        CalibrationForest calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
 
         assertEquals(birthDeath.calculateLogDensity(5.0) + birthDeath.calculateLogDensity(2.5) + birthDeath.calculateLogDensity(0.5) + Math.log(2.0) +
                         Math.log(4 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5))) + 2 * Math.exp(birthDeath.calculateLogCDF(5.0))) + // density of FGHIJ
                         birthDeath.calculateLogDensity(4.0) + birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogDensity(1.5) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) + Math.log(2.0) + // density of ABCDE
                         Math.log(2.0) + // number of ways to arrange the clades
-                        2 * Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.0))), // two terminating heights for the two sub-trees
-                rootConditionedCPP.calculateLogMarginalDensityOfCalibrations(tree, calibrationGraph),1e-4, "Unconditioned density of the tree is incorrect.");
+                        2 * Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.0))), // two terminating heights for the two subtrees
+                rootConditionedCPP.calculateLogMarginalDensityOfCalibrations(tree, calibrationForest),1e-4, "Unconditioned density of the tree is incorrect.");
 
         assertEquals(birthDeath.calculateLogDensity(5.0) + birthDeath.calculateLogDensity(2.5) + birthDeath.calculateLogDensity(0.5) + Math.log(2.0) +
                         Math.log(4 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5))) + 2 * Math.exp(birthDeath.calculateLogCDF(5.0))) + // density of FGHIJ
                         birthDeath.calculateLogDensity(4.0) + birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogDensity(1.5) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) + Math.log(2.0) + // density of ABCDE
                         Math.log(2.0) + // number of ways to arrange the clades
                         Math.log(Math.exp(birthDeath.calculateLogCDF(6.5)) - Math.exp(birthDeath.calculateLogCDF(5.0))) + Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.5))), // distribution of the free node age and the terminating node age > origin
-                cpp.calculateLogMarginalDensityOfCalibrations(tree, calibrationGraph), "MarginalDensity of the calibrations is incorrect.");
+                cpp.calculateLogMarginalDensityOfCalibrations(tree, calibrationForest), "MarginalDensity of the calibrations is incorrect.");
 
     }
 
     @Test
     public void computeCalibrationDensity() {
-        List<CalibrationNode> calibrationForest = cpp.buildCalibrationForest(tree, calibrations);
+        CalibrationForest calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+        List<CalibrationNode> calibrationNodes = calibrationForest.getAllNodes();
 
-        CalibrationNode cpHI = CalibrationNode.getByTaxa(calibrationForest, taxaHI);
-        CalibrationNode cpDE = CalibrationNode.getByTaxa(calibrationForest, taxaDE);
-        CalibrationNode cpABC = CalibrationNode.getByTaxa(calibrationForest, taxaABC);
-        CalibrationNode cpHIJ = CalibrationNode.getByTaxa(calibrationForest, taxaHIJ);
-        CalibrationNode cpFGHIJ = CalibrationNode.getByTaxa(calibrationForest, taxaFGHIJ);
-        CalibrationNode cpABCDE = CalibrationNode.getByTaxa(calibrationForest, taxaABCDE);
+        CalibrationNode cpHI = CalibrationNode.getByTaxa(calibrationNodes, taxaHI);
+        CalibrationNode cpDE = CalibrationNode.getByTaxa(calibrationNodes, taxaDE);
+        CalibrationNode cpABC = CalibrationNode.getByTaxa(calibrationNodes, taxaABC);
+        CalibrationNode cpHIJ = CalibrationNode.getByTaxa(calibrationNodes, taxaHIJ);
+        CalibrationNode cpFGHIJ = CalibrationNode.getByTaxa(calibrationNodes, taxaFGHIJ);
+        CalibrationNode cpABCDE = CalibrationNode.getByTaxa(calibrationNodes, taxaABCDE);
 
+        assert cpHI != null;
         assertEquals(birthDeath.calculateLogDensity(0.5),
                 cpp.computeCalibrationDensity(tree, cpHI), 1e-6, "Density for calibration HI is incorrect.");
+        assert cpDE != null;
         assertEquals(birthDeath.calculateLogDensity(1.5),
                 cpp.computeCalibrationDensity(tree, cpDE), 1e-6, "Density for calibration DE is incorrect.");
+        assert cpABC != null;
         assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0),
                 cpp.computeCalibrationDensity(tree, cpABC), 1e-6, "Density for calibration ABC is incorrect.");
+        assert cpHIJ != null;
         assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0),
                 cpp.computeCalibrationDensity(tree, cpHIJ), 1e-6, "Density for calibration HIJ is incorrect.");
+        assert cpABCDE != null;
         assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) +
                         birthDeath.calculateLogDensity(1.5) +
                         birthDeath.calculateLogDensity(4.0) + Math.log(2.0),
                 cpp.computeCalibrationDensity(tree, cpABCDE), 1e-6, "Density for calibration ABCDE is incorrect.");
+        assert cpFGHIJ != null;
         assertEquals(birthDeath.calculateLogDensity(5.0) + birthDeath.calculateLogDensity(2.5) + birthDeath.calculateLogDensity(0.5) + Math.log(2.0) +
                 Math.log(4 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5))) + 2 * Math.exp(birthDeath.calculateLogCDF(5.0))),
                 cpp.computeCalibrationDensity(tree, cpFGHIJ), 1e-6, "Density for calibration FGHIJ is incorrect.");

@@ -14,7 +14,7 @@ import java.util.*;
  * @author Marcus Overwater
  */
 
-@Description("A topology consistent prior on clade calibration ages")
+@Description("A topology consistent prior on clade calibration ages.")
 public class CalibrationPrior extends Distribution {
 
    public Input<TreeInterface> treeInput =
@@ -23,7 +23,7 @@ public class CalibrationPrior extends Distribution {
    public Input<List<CalibrationClade>> cladesInput =
            new Input<>("clade", "List of calibration clades", Input.Validate.REQUIRED);
 
-    private List<CalibrationNode> calibrationNodes;
+   private List<CalibrationNode> calibrationNodes;
 
    List<CalibrationClade> clades;
 
@@ -35,14 +35,14 @@ public class CalibrationPrior extends Distribution {
       if (clades.isEmpty()) throw new IllegalArgumentException("No clades provided");
 
       // === Step 2: build inclusion hierarchy ===
-      CalibrationForest calibrationForest = CalibrationForest.buildFromClades(tree, clades);
+      CalibrationForest calibrationForest = CalibrationForest.buildFromClades(clades);
       calibrationNodes = calibrationForest.getAllNodes();
 
       // === Step 3: compute log-moments ===
       for (CalibrationNode n : calibrationNodes) computeLogTargets(n);
 
       // === Step 4: partition into overlap components and fit ===
-      List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationNodes);
+      List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationForest);
       for (CalibrationComponent comp : comps) fitComponent(comp);
       // done
    }
@@ -61,7 +61,8 @@ public class CalibrationPrior extends Distribution {
 
       public List<CalibrationNode> getMembers() { return members; }
 
-      public static List<CalibrationComponent> partition(List<CalibrationNode> all) {
+      public static List<CalibrationComponent> partition(CalibrationForest calibrationForest) {
+         List<CalibrationNode> all = calibrationForest.getAllNodes();
          List<CalibrationComponent> components = new ArrayList<>();
          Set<CalibrationNode> visited = new HashSet<>();
 
@@ -97,9 +98,9 @@ public class CalibrationPrior extends Distribution {
 
       private static boolean overlaps(CalibrationNode a, CalibrationNode b) {
          if (a.parent == b)
-            return b.getLower() < a.getUpper(); // child inside parent's range
+            return b.getCalibrationClade().getLower() < a.getCalibrationClade().getUpper(); // child inside parent's range
          if (b.parent == a)
-            return a.getLower() < b.getUpper();
+            return a.getCalibrationClade().getLower() < b.getCalibrationClade().getUpper();
          return false;
       }
 
@@ -154,8 +155,8 @@ public class CalibrationPrior extends Distribution {
             }
          }
 
-         bMu[row] = child.mu - root.mu;
-         bVar[row] = child.sigma2 - root.sigma2;
+         bMu[row] = child.getCalibrationClade().mu - root.getCalibrationClade().mu;
+         bVar[row] = child.getCalibrationClade().sigma2 - root.getCalibrationClade().sigma2;
       }
 
       // Solve least-squares for mean and variance edges
@@ -171,12 +172,12 @@ public class CalibrationPrior extends Distribution {
          CalibrationNode child = e.getKey();
          int j = e.getValue();
 
-         child.mEdge = mHat.getEntry(j);
-         child.vEdge = vHat.getEntry(j);
+         child.getCalibrationClade().mEdge = mHat.getEntry(j);
+         child.getCalibrationClade().vEdge = vHat.getEntry(j);
 
-         double[] ab = invertLogMomentsToBetaParams(child.mEdge, child.vEdge);
-         child.alpha = ab[0];
-         child.beta = ab[1];
+         double[] ab = invertLogMomentsToBetaParams(child.getCalibrationClade().mEdge, child.getCalibrationClade().vEdge);
+         child.getCalibrationClade().alpha = ab[0];
+         child.getCalibrationClade().beta = ab[1];
       }
    }
 
@@ -199,12 +200,12 @@ public class CalibrationPrior extends Distribution {
    // ------------------------------------------------------------------
    // log-moment target from calibration bounds
    private void computeLogTargets(CalibrationNode n) {
-      double tLo = n.getLower(), tHi = n.getUpper(), p = n.getCoverage();
+      double tLo = n.getCalibrationClade().getLower(), tHi = n.getCalibrationClade().getUpper(), p = n.getCalibrationClade().getCoverage();
       NormalDistribution nd = new NormalDistribution(0, 1);
       double z = nd.inverseCumulativeProbability((1 + p) / 2);
       double sigma = (Math.log(tHi) - Math.log(tLo)) / (2 * z);
-      n.sigma2 = sigma * sigma;
-      n.mu = Math.log(tLo) + z * sigma;
+      n.getCalibrationClade().sigma2 = sigma * sigma;
+      n.getCalibrationClade().mu = Math.log(tLo) + z * sigma;
    }
 
    // ------------------------------------------------------------------
@@ -247,12 +248,13 @@ public class CalibrationPrior extends Distribution {
    // BEAST interface
    @Override
    public double calculateLogP() {
+      TreeInterface tree = treeInput.get();
       double logP = 0;
       for (CalibrationNode n : calibrationNodes) {
 
          // Check for monophyly
          Set<String> leafIDs = new HashSet<>();
-         Node treeNode = n.mrca;
+         Node treeNode = n.getCommonAncestor(tree);
          collectLeafTaxa(treeNode, leafIDs);
          if (!leafIDs.equals(n.clade.getTaxa().getTaxaNames())){
             return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
@@ -261,20 +263,20 @@ public class CalibrationPrior extends Distribution {
          double t = treeNode.getHeight();
          if (n.parent == null) {
             // root lognormal
-            double lp = logNormalLogPdf(t, n.mu, Math.sqrt(n.sigma2));
+            double lp = logNormalLogPdf(t, n.getCalibrationClade().mu, Math.sqrt(n.getCalibrationClade().sigma2));
             logP += lp;
          } else {
-            Node pNode = n.parent.mrca;
+            Node pNode = n.parent.getCommonAncestor(tree);
             double tp = pNode.getHeight();
-            if (n.isOverlapEdge) {
+            if (n.getCalibrationClade().isOverlapEdge) {
                // overlapping → Beta
                double r = t / tp;
                if (r <= 0 || r >= 1) return Double.NEGATIVE_INFINITY;
-               logP += betaLogPdf(r, n.alpha, n.beta) - Math.log(tp); // Jacobian for conversion of the joint density of tp and r to tp and t
+               logP += betaLogPdf(r, n.getCalibrationClade().alpha, n.getCalibrationClade().beta) - Math.log(tp); // Jacobian for conversion of the joint density of tp and r to tp and t
             } else {
                // non-overlapping → truncated lognormal
-               double lp = logNormalLogPdf(t, n.mu, Math.sqrt(n.sigma2));
-               double cdf = logNormalCdf(tp, n.mu, Math.sqrt(n.sigma2));
+               double lp = logNormalLogPdf(t, n.getCalibrationClade().mu, Math.sqrt(n.getCalibrationClade().sigma2));
+               double cdf = logNormalCdf(tp, n.getCalibrationClade().mu, Math.sqrt(n.getCalibrationClade().sigma2));
                logP += lp - Math.log(cdf);
             }
          }

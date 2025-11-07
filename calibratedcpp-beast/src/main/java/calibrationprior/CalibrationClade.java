@@ -40,19 +40,31 @@ public class CalibrationClade extends BEASTObject {
         }
     }
 
+    public boolean isOverlapEdge; // true if overlaps parent interval
+
+    // Fitted parameters
+    public double mu;        // log-mean (lognormal)
+    public double sigma2;    // log-variance (lognormal)
+
+    double mEdge;
+    double vEdge;                 // edge log-mean and log-variance increments
+
+    public double alpha;     // Beta alpha
+    public double beta;      // Beta beta
+
     public TaxonSet getTaxa() {
         return taxa.get();
     }
 
-    public double getUpperAge() {
+    public double getUpper() {
         return upperAgeInput.get().getValue();
     }
 
-    public double getLowerAge() {
+    public double getLower() {
         return lowerAgeInput.get().getValue();
     }
 
-    public double getPCoverage() {
+    public double getCoverage() {
         return pCoverageInput.get().getValue();
     }
 }

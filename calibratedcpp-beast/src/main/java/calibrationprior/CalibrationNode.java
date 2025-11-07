@@ -16,63 +16,52 @@ import java.util.Set;
  * @author Marcus Overwater
  */
 
-@Description("A calibration node is a node in a calibration forest for optimising a joint prior on ages of monophyletic clades")
+@Description("A calibration node is a node in a calibration forest.")
 public class CalibrationNode extends BEASTObject {
-    public Node mrca;
     public CalibrationClade clade;
     public TaxonSet taxa;
 
     public CalibrationNode parent;
     public List<CalibrationNode> children = new ArrayList<>();
 
-    public boolean isOverlapEdge; // true if overlaps parent interval
     public boolean isRoot;        // true if start of independent subtree
 
-    // Fitted parameters
-    public double mu;        // log-mean (lognormal)
-    public double sigma2;    // log-variance (lognormal)
-
-    double mEdge;
-    double vEdge;                 // edge log-mean and log-variance increments
-
-    public double alpha;     // Beta alpha
-    public double beta;      // Beta beta
-
     // constructor used in CalibrationPrior
-    public CalibrationNode(TreeInterface tree, CalibrationClade clade) {
+    public CalibrationNode(CalibrationClade clade) {
         this.clade = clade;
         this.taxa = clade.getTaxa();
-        this.mrca = getCommonAncestor(tree, clade.getTaxa());
     }
 
     // constructor used for CalibratedCPP
-    public CalibrationNode(TreeInterface tree, TaxonSet taxa) {
-        this.mrca = getCommonAncestor(tree, taxa);
+    public CalibrationNode(TaxonSet taxa) {
         this.taxa = taxa;
-    }
-
-    public double getLower() {
-        return clade != null ? clade.getLowerAge() : Double.NaN;
-    }
-    public double getUpper() {
-        return clade != null ? clade.getUpperAge() : Double.NaN;
-    }
-    public double getCoverage() {
-        return clade != null ? clade.getPCoverage() : Double.NaN;
+        this.clade = null;
     }
 
     public static CalibrationNode getByTaxa(List<CalibrationNode> nodes, TaxonSet taxa) {
+        Set<String> targetTaxa = new HashSet<>();
+        for (Taxon t : taxa.getTaxonSet()) targetTaxa.add(t.getID());
+
         for (CalibrationNode node : nodes) {
-            if (node.taxa != null && node.taxa.equals(taxa)) {
-                return node;
-            }
+            Set<String> nodeTaxa = new HashSet<>();
+            for (Taxon t : node.taxa.getTaxonSet()) nodeTaxa.add(t.getID());
+            if (nodeTaxa.equals(targetTaxa)) return node;
         }
-        return null; // not found
+        return null;
     }
 
-    private Node getCommonAncestor(TreeInterface tree, TaxonSet taxa) {
+    public CalibrationClade getCalibrationClade() {
+        return clade;
+    }
+
+    public boolean hasCalibration() {
+        return clade != null;
+    }
+
+    // --- Utility ---
+    public Node getCommonAncestor(TreeInterface tree) {
         List<Node> nodes = new ArrayList<>();
-        for (Taxon t : taxa.getTaxonSet()) {
+        for (Taxon t : this.taxa.getTaxonSet()) {
             int idx = tree.getTaxonset().getTaxonIndex(t.toString());
             nodes.add(tree.getNode(idx));
         }
@@ -94,9 +83,14 @@ public class CalibrationNode extends BEASTObject {
 
     @Override
     public String toString() {
-        String id = (taxa != null ? taxa.getID() : "noID");
-        return String.format("CalibrationNode[%s, [%.3f, %.3f]]", id, getLower(), getUpper());
+        String id = taxa != null ? taxa.getID() : "noID";
+        if (hasCalibration()) {
+            return String.format("CalibrationNode[%s, [%.3f, %.3f]]", id, clade.getLower(), clade.getUpper());
+        } else {
+            return String.format("CalibrationNode[%s]", id);
+        }
     }
+
     @Override
     public void initAndValidate() {
 
