@@ -8,5 +8,9 @@
         <provider classname="calibratedcpp.model.BirthDeathModel"/>
         <provider classname="calibratedcpp.model.BirthDeathSkylineModel"/>
         <provider classname="calibratedcpp.model.AgeDependentModel"/>
+        <provider classname="calibrationprior.CalibrationPrior"/>
+        <provider classname="calibrationprior.CalibrationClade"/>
+        <provider classname="calibrationprior.CalibrationNode"/>
+        <provider classname="calibrationprior.CalibrationForest"/>
     </service>
 </package>

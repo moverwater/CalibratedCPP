@@ -11,7 +11,7 @@ import beast.base.evolution.alignment.Taxon;
 import beast.base.inference.parameter.RealParameter;
 import calibrationprior.CalibrationForest;
 import calibrationprior.CalibrationNode;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
