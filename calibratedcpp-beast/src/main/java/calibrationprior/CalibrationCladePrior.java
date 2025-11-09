@@ -1,19 +1,16 @@
 package calibrationprior;
 
-import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.evolution.alignment.TaxonSet;
 import beast.base.inference.parameter.RealParameter;
+import calibration.CalibrationClade;
 
 /**
  * @author Marcus Overwater
  */
 
 @Description("A calibration clade is a taxon set in a monophyletic clade and an upper and lower bound on the age of the clade")
-public class CalibrationClade extends BEASTObject {
-    Input<TaxonSet> taxa =
-            new Input<>("taxa","the set of taxa in the clade", Input.Validate.REQUIRED);
+public class CalibrationCladePrior extends CalibrationClade {
     Input<RealParameter> upperAgeInput =
             new Input<>("upperAge","the soft upper bound on the age of the clade", Input.Validate.REQUIRED);
     Input<RealParameter> lowerAgeInput =
@@ -24,6 +21,7 @@ public class CalibrationClade extends BEASTObject {
 
     @Override
     public void initAndValidate() {
+        super.initAndValidate();
         double p = pCoverageInput.get().getValue();
         if ((p < 0.0) || (p > 1.0)){
             throw new IllegalArgumentException("confidenceLevel (" + p + ") should be between 0.0 and 1.0");
@@ -51,10 +49,6 @@ public class CalibrationClade extends BEASTObject {
 
     public double alpha;     // Beta alpha
     public double beta;      // Beta beta
-
-    public TaxonSet getTaxa() {
-        return taxa.get();
-    }
 
     public double getUpper() {
         return upperAgeInput.get().getValue();

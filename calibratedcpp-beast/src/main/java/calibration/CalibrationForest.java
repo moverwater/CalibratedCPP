@@ -1,4 +1,4 @@
-package calibrationprior;
+package calibration;
 
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
@@ -6,6 +6,7 @@ import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author Marcus Overwater
@@ -17,78 +18,75 @@ public class CalibrationForest extends BEASTObject {
     private final List<CalibrationNode> allNodes = new ArrayList<>();
     private final List<CalibrationNode> roots = new ArrayList<>();
 
-    // --- Private constructor (used only internally) ---
-    private CalibrationForest() {}
-
-    // --- Static factory for clade-based forest ---
-    public static CalibrationForest buildFromClades(List<CalibrationClade> clades) {
-        CalibrationForest forest = new CalibrationForest();
+    // --- Constructor ---
+    public CalibrationForest(List<? extends CalibrationClade> clades) {
         for (CalibrationClade clade : clades) {
-            forest.allNodes.add(new CalibrationNode(clade));
+            allNodes.add(new CalibrationNode(clade));
         }
-        forest.buildInclusionForest();
-        return forest;
-    }
-
-    // --- Static factory for taxa-based forest (no bounds) ---
-    public static CalibrationForest buildFromTaxonSets(List<TaxonSet> taxaSets) {
-        CalibrationForest forest = new CalibrationForest();
-        for (TaxonSet taxonSet : taxaSets) {
-            forest.allNodes.add(new CalibrationNode(taxonSet));
-        }
-        forest.buildInclusionForest();
-        return forest;
+        buildInclusionForest();
     }
 
     // --- Core forest structure builder ---
     private void buildInclusionForest() {
-        roots.clear(); // clear old roots
+        roots.clear();
 
-        // Precompute taxa sets for each node
+        // Precompute taxa sets
         Map<CalibrationNode, Set<String>> nodeTaxaMap = new HashMap<>();
         for (CalibrationNode node : allNodes) {
-            Set<String> taxaIds = new HashSet<>();
-            for (Taxon t : node.taxa.getTaxonSet()) {
-                taxaIds.add(t.getID());
-            }
+            Set<String> taxaIds = node.taxa.getTaxonSet().stream()
+                    .map(Taxon::getID)
+                    .collect(Collectors.toSet());
             nodeTaxaMap.put(node, taxaIds);
         }
 
-        // Validate nested or disjoint
+        // --- Validate nesting/disjointness ---
         for (int i = 0; i < allNodes.size(); i++) {
             CalibrationNode a = allNodes.get(i);
             Set<String> aTaxa = nodeTaxaMap.get(a);
+
             for (int j = i + 1; j < allNodes.size(); j++) {
                 CalibrationNode b = allNodes.get(j);
                 Set<String> bTaxa = nodeTaxaMap.get(b);
 
                 boolean aContainsB = aTaxa.containsAll(bTaxa);
                 boolean bContainsA = bTaxa.containsAll(aTaxa);
+                boolean disjoint = Collections.disjoint(aTaxa, bTaxa);
 
-                if (!aContainsB && !bContainsA && !Collections.disjoint(aTaxa, bTaxa)) {
+                // identical taxon sets not allowed
+                if (aTaxa.equals(bTaxa)) {
+                    throw new IllegalArgumentException("Duplicate calibration clade: " + a.taxa.getID());
+                }
+
+                if (!aContainsB && !bContainsA && !disjoint) {
                     throw new IllegalArgumentException(
                             "Calibration clades must be nested or disjoint: " +
-                                    a.taxa.getID() + " and " + b.taxa.getID()
-                    );
+                                    a.taxa.getID() + " and " + b.taxa.getID());
                 }
             }
         }
 
-        // Build parent-child relations
+        // --- Build parent-child relations ---
         for (CalibrationNode child : allNodes) {
             CalibrationNode bestParent = null;
             Set<String> childTaxa = nodeTaxaMap.get(child);
 
             for (CalibrationNode candidate : allNodes) {
                 if (candidate == child) continue;
-                Set<String> candidateTaxa = nodeTaxaMap.get(candidate);
 
+                Set<String> candidateTaxa = nodeTaxaMap.get(candidate);
                 if (candidateTaxa.containsAll(childTaxa)) {
-                    // pick the most specific parent (smallest superset)
-                    if (bestParent == null || nodeTaxaMap.get(bestParent).containsAll(candidateTaxa)) {
+                    // most specific superset (smallest one)
+                    if (bestParent == null ||
+                            (nodeTaxaMap.get(bestParent).containsAll(candidateTaxa)
+                                    && !nodeTaxaMap.get(candidate).equals(childTaxa))) {
                         bestParent = candidate;
                     }
                 }
+            }
+
+            // Prevent self or circular assignment
+            if (bestParent == child) {
+                throw new IllegalStateException("Self-parent detected for " + child);
             }
 
             child.parent = bestParent;
@@ -100,14 +98,30 @@ public class CalibrationForest extends BEASTObject {
                 roots.add(child);
             }
         }
+
+        // Final sanity check: detect cycles
+        for (CalibrationNode node : allNodes) {
+            checkForCycle(node, new HashSet<>());
+        }
+    }
+
+    // Helper to detect cycles
+    private void checkForCycle(CalibrationNode node, Set<CalibrationNode> visited) {
+        if (node == null) return;
+        if (!visited.add(node)) {
+            throw new IllegalStateException("Cycle detected involving: " + node);
+        }
+        if (node.parent != null) {
+            checkForCycle(node.parent, visited);
+        }
     }
 
     // --- Lookup methods ---
     public CalibrationNode getCalibrationNodeFromTaxonSet(TaxonSet taxonSet) {
         for (CalibrationNode node : allNodes) {
-            if (node.taxa != null && node.taxa.getTaxonSet().equals(taxonSet.getTaxonSet())) {
-                return node;
-            }
+            Set<String> nodeIds = node.taxa.getTaxonSet().stream().map(Taxon::getID).collect(Collectors.toSet());
+            Set<String> targetIds = taxonSet.getTaxonSet().stream().map(Taxon::getID).collect(Collectors.toSet());
+            if (nodeIds.equals(targetIds)) return node;
         }
         return null;
     }

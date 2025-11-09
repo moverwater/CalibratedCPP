@@ -2,7 +2,6 @@ package calibratedcpp;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.speciation.SpeciesTreeDistribution;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
@@ -11,8 +10,9 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.parameter.RealParameter;
 import calibratedcpp.model.BirthDeathModel;
 import calibratedcpp.model.CoalescentPointProcessModel;
-import calibrationprior.CalibrationForest;
-import calibrationprior.CalibrationNode;
+import calibration.CalibrationClade;
+import calibration.CalibrationForest;
+import calibration.CalibrationNode;
 
 import java.util.*;
 
@@ -31,25 +31,23 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     public Input<CoalescentPointProcessModel> cppModelInput =
             new Input<>("treeModel", "The tree model", (CoalescentPointProcessModel) null);
 
-    public Input<List<TaxonSet>> calibrationsInput =
+    public Input<List<CalibrationClade>> calibrationsInput =
             new Input<>("calibrations", "Clade calibrations", new ArrayList<>());
 
     public Input<Boolean> conditionOnCalibrationsInput =
             new Input<>("conditionOnCalibrations", "Boolean if the likelihood is conditioned on the clade calibrations (Default: true). " +
                     "For large trees with many calibrations it is recommended to set this to false and use the exchange operator.", true);
 
-    protected TreeInterface tree;
-
-    protected CoalescentPointProcessModel model;
-    protected List<TaxonSet> calibrations;
+    protected List<CalibrationClade> calibrations;
     protected CalibrationForest calibrationForest;
     protected List<CalibrationNode> calibrationNodes;
     protected boolean conditionOnCalibrations;
-
-    protected Double origin;
-    protected Double rootAge;
-
     protected boolean conditionOnRoot;
+
+    protected TreeInterface tree;
+    protected CoalescentPointProcessModel model;
+    protected Double origin;
+    protected double rootAge;
     protected double maxTime;
 
     @Override
@@ -70,7 +68,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
 
         if (conditionOnCalibrations) {
-            calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+            calibrationForest = new CalibrationForest(calibrations);
             calibrationNodes = calibrationForest.getAllNodes();
         }
 
@@ -84,7 +82,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     }
 
     public double calculateUnConditionedTreeLogLikelihood(TreeInterface tree) {
-        updateModel(tree);
 
         double logP = Math.log1p(-Math.exp(model.calculateLogCDF(maxTime)));
 
@@ -213,7 +210,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
     @Override
     public double calculateTreeLogLikelihood(TreeInterface tree) {
-        updateModel(tree);
+
         if (!conditionOnRoot && origin < rootAge) {
             return Double.NEGATIVE_INFINITY;
         }
@@ -225,11 +222,16 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         if (conditionOnCalibrations) {
             for (CalibrationNode c : calibrationNodes) {
                 Set<String> leafIDs = new HashSet<>();
-                Node beastNode = c.getCommonAncestor(tree);
+                Node mrca = c.getCommonAncestor(tree);
 
-                collectLeafTaxa(beastNode, leafIDs);
+                collectLeafTaxa(mrca, leafIDs);
                 if (!leafIDs.equals(c.taxa.getTaxaNames())) {
                     return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
+                }
+                if (c.getCalibrationClade().providedAge) {
+                    if (Math.abs(mrca.getHeight() - c.getCalibrationClade().getAge().getValue()) > 1e-4) {
+                        return Double.NEGATIVE_INFINITY;
+                    }
                 }
             }
             logP -= calculateLogMarginalDensityOfCalibrations(tree, calibrationForest);
@@ -363,18 +365,17 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         }
     }
 
-    public void updateModel(TreeInterface tree) {
+    public void updateModel() {
         model = cppModelInput.get();
         origin = (originInput.get() != null) ? originInput.get().getValue() : null;
         rootAge = tree.getRoot().getHeight();
         maxTime = (conditionOnRoot) ? rootAge : origin;
-
-        calibrations = new ArrayList<>(calibrationsInput.get());
-        conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
+        calibrations = calibrationsInput.get();
     }
 
     @Override
     public boolean requiresRecalculation() {
+        updateModel();
         return true;
     }
 

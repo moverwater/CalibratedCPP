@@ -9,8 +9,9 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.inference.parameter.RealParameter;
-import calibrationprior.CalibrationForest;
-import calibrationprior.CalibrationNode;
+import calibration.CalibrationClade;
+import calibration.CalibrationForest;
+import calibration.CalibrationNode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -26,7 +27,7 @@ public class CalibratedCoalescentPointProcessTest {
     TaxonSet taxaHIJ;
     TaxonSet taxaFGHIJ;
     private final BirthDeathModel birthDeath;
-    private final List<TaxonSet> calibrations;
+    private final List<CalibrationClade> calibrations;
     private CalibratedCoalescentPointProcess rootConditionedCPP;
 
     public CalibratedCoalescentPointProcessTest() {
@@ -83,7 +84,20 @@ public class CalibratedCoalescentPointProcessTest {
         taxaHIJ = new TaxonSet(Arrays.asList(H, I, J));
         taxaFGHIJ = new TaxonSet(Arrays.asList(F, G, H, I, J));
 
-        calibrations = Arrays.asList(taxaDE, taxaABC, taxaABCDE, taxaHI, taxaHIJ, taxaFGHIJ);    }
+        CalibrationClade calibrationABC = new CalibrationClade();
+        calibrationABC.initByName("taxa",taxaABC);
+        CalibrationClade calibrationDE = new CalibrationClade();
+        calibrationDE.initByName("taxa",taxaDE);
+        CalibrationClade calibrationABCDE = new CalibrationClade();
+        calibrationABCDE.initByName("taxa",taxaABCDE);
+        CalibrationClade calibrationHI = new CalibrationClade();
+        calibrationHI.initByName("taxa",taxaHI);
+        CalibrationClade calibrationHIJ = new CalibrationClade();
+        calibrationHIJ.initByName("taxa",taxaHIJ);
+        CalibrationClade calibrationFGHIJ = new CalibrationClade();
+        calibrationFGHIJ.initByName("taxa",taxaFGHIJ);
+
+        calibrations = Arrays.asList(calibrationDE, calibrationABC, calibrationABCDE, calibrationHI, calibrationHIJ, calibrationFGHIJ);    }
 
     @Test
     public void calculateUnConditionedTreeLogLikelihood() {
@@ -97,12 +111,12 @@ public class CalibratedCoalescentPointProcessTest {
 
     @Test
     public void calibrationForest(){
-        CalibrationForest calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+        CalibrationForest calibrationForest = new CalibrationForest(calibrations);
         List<CalibrationNode> calibrationNodes = calibrationForest.getAllNodes();
 
         for (CalibrationNode node : calibrationNodes) {
             if (!node.isRoot) {
-                assertTrue( node.parent.taxa.getTaxonSet().size() > node.taxa.getTaxonSet().size());
+                assertTrue( node.parent.getCalibrationClade().getTaxa().getTaxonCount() > node.getCalibrationClade().getTaxa().getTaxonCount());
                 assertTrue(node.parent.getCommonAncestor(tree).getHeight() > node.getCommonAncestor(tree).getHeight());
             }
         }
@@ -117,7 +131,7 @@ public class CalibratedCoalescentPointProcessTest {
 
     @Test
     public void calculateLogMarginalDensityOfCalibrations() {
-        CalibrationForest calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+        CalibrationForest calibrationForest = new CalibrationForest(calibrations);
 
         assertEquals(birthDeath.calculateLogDensity(5.0) + birthDeath.calculateLogDensity(2.5) + birthDeath.calculateLogDensity(0.5) + Math.log(2.0) +
                         Math.log(4 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5))) + 2 * Math.exp(birthDeath.calculateLogCDF(5.0))) + // density of FGHIJ
@@ -137,7 +151,7 @@ public class CalibratedCoalescentPointProcessTest {
 
     @Test
     public void computeCalibrationDensity() {
-        CalibrationForest calibrationForest = CalibrationForest.buildFromTaxonSets(calibrations);
+        CalibrationForest calibrationForest = new CalibrationForest(calibrations);
         List<CalibrationNode> calibrationNodes = calibrationForest.getAllNodes();
 
         CalibrationNode cpHI = CalibrationNode.getByTaxa(calibrationNodes, taxaHI);
@@ -202,9 +216,13 @@ public class CalibratedCoalescentPointProcessTest {
                 rootConditionedCPP.calculateTreeLogLikelihood(tree), 1e-4, "Tree log likelihood incorrect.");
 
         CalibratedCoalescentPointProcess nonmonophyleticCPP = new CalibratedCoalescentPointProcess();
+        CalibrationClade badClade = new CalibrationClade();
+        badClade.initByName("taxa", new TaxonSet(Arrays.asList(
+                new Taxon("A"), new Taxon("B"), new Taxon("J")
+        )));
         nonmonophyleticCPP.initByName("tree", tree,
                 "origin", new RealParameter("6.5"),
-                "calibrations", new TaxonSet(Arrays.asList(new Taxon("A"), new Taxon("B"), new Taxon("J"))),
+                "calibrations", badClade,
                 "conditionOnRoot", true,
                 "conditionOnCalibrations", true,
                 "treeModel", birthDeath);
