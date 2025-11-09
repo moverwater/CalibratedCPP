@@ -11,11 +11,11 @@ import calibration.CalibrationClade;
 
 @Description("A calibration clade is a taxon set in a monophyletic clade and an upper and lower bound on the age of the clade")
 public class CalibrationCladePrior extends CalibrationClade {
-    Input<RealParameter> upperAgeInput =
+    public Input<RealParameter> upperAgeInput =
             new Input<>("upperAge","the soft upper bound on the age of the clade", Input.Validate.REQUIRED);
-    Input<RealParameter> lowerAgeInput =
+    public Input<RealParameter> lowerAgeInput =
             new Input<>("lowerAge","the soft lower bound on the age of the clade", Input.Validate.REQUIRED);
-    Input<RealParameter> pCoverageInput =
+    public Input<RealParameter> pCoverageInput =
             new Input<>("confidenceLevel","the amount of probability mass in the bounds" +
             "default value (0.9)", new RealParameter("0.9"));
 

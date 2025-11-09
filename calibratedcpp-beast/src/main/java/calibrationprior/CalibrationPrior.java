@@ -4,6 +4,7 @@ import beast.base.core.*;
 import beast.base.inference.*;
 import beast.base.evolution.tree.*;
 
+import calibration.CalibrationClade;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
 import org.apache.commons.math3.linear.*;
@@ -23,7 +24,7 @@ public class CalibrationPrior extends Distribution {
            new Input<>("tree", "Tree to calibrate", Input.Validate.REQUIRED);
 
    public Input<List<CalibrationCladePrior>> cladesInput =
-           new Input<>("clade", "List of calibration clades", Input.Validate.REQUIRED);
+           new Input<>("calibration", "List of calibration clades", new ArrayList<>());
 
    private List<CalibrationNode> calibrationNodes = new ArrayList<>();
 
@@ -42,7 +43,7 @@ public class CalibrationPrior extends Distribution {
 
        for (CalibrationNode node : calibrationNodes) {
           if (node.parent != null) {
-              node.getCalibrationCladePrior().isOverlapEdge = node.getCalibrationCladePrior().getLower() < node.parent.getCalibrationCladePrior().getUpper();
+              node.getCalibrationCladePrior().isOverlapEdge = node.parent.getCalibrationCladePrior().getLower() < node.getCalibrationCladePrior().getUpper();
           }
        }
 
@@ -310,6 +311,10 @@ public class CalibrationPrior extends Distribution {
               - (Gamma.logGamma(a) + Gamma.logGamma(b) - Gamma.logGamma(a + b));
    }
 
+   public List<CalibrationCladePrior> getCalibrationCladePriors() {
+       return cladesInput.get();
+   }
+
    @Override
    public List<String> getArguments() { return List.of(); }
    @Override
@@ -322,7 +327,9 @@ public class CalibrationPrior extends Distribution {
       // Do any updates
       for (CalibrationNode calibration : calibrationNodes){
          Node mrca = calibration.getCommonAncestor(treeInput.get());
-         calibration.getCalibrationClade().getAge().setValue(mrca.getHeight());
+         if (calibration.getCalibrationCladePrior().getAge() != null) {
+            calibration.getCalibrationClade().getAge().setValue(mrca.getHeight());
+         }
       }
       return true;
    }
