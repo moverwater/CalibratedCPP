@@ -1,0 +1,175 @@
+<beast namespace="beast.pkgmgmt
+                 :beast.base.core
+                 :beast.base.inference
+                 :beast.base.util
+                 :beast.base.math
+                 :beast.evolution.nuc
+                 :beast.base.evolution.operator
+                 :beast.base.inference.operator
+                 :beast.base.evolution.likelihood
+                 :beast.base.evolution.speciation
+                 :beast.base.core
+                 :beast.base.inference.parameter
+                 :beast.base.evolution.operator.kernel
+                 :beastlabs.evolution.operators
+                 :beast.base.evolution.tree
+                 :beast.base.evolution.alignment
+                 :beast.base.evolution.alignment.Taxon
+                 :beast.base.evolution.alignment.TaxonSet
+                 :feast.fileio
+                 :calibrationprior" version="2.7">
+
+
+    <run chainLength="50000000" id="mcmc" spec="MCMC" storeEvery="1000">
+        <state id="state" storeEvery="1000">
+            <stateNode id="tree" spec="feast.fileio.TreeFromNewickFile"
+                       fileName="calibration_tree.txt"
+                       IsLabelledNewick="true"
+                       adjustTipHeights="true">
+                <taxa spec="beast.base.evolution.alignment.Alignment">
+                    <sequence taxon="leaf_1" value="?"/>
+                    <sequence taxon="leaf_2" value="?"/>
+                    <sequence taxon="leaf_3" value="?"/>
+                    <sequence taxon="leaf_4" value="?"/>
+                    <sequence taxon="leaf_5" value="?"/>
+                    <sequence taxon="leaf_6" value="?"/>
+                    <sequence taxon="leaf_7" value="?"/>
+                    <sequence taxon="leaf_8" value="?"/>
+                    <sequence taxon="leaf_9" value="?"/>
+                    <sequence taxon="leaf_10" value="?"/>
+                    <sequence taxon="leaf_11" value="?"/>
+                </taxa>
+            </stateNode>
+        </state>
+
+        <distribution spec="calibrationprior.CalibrationPrior" id="Calibrations" tree="@tree">
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration1">
+                <lowerAge id="lowerCalibration1" spec="RealParameter" value="1.6"/>
+                <upperAge spec="RealParameter" value="2.5"/>
+                <taxa name="taxa" spec="beast.base.evolution.alignment.TaxonSet" id="clade1">
+                    <taxon spec="beast.base.evolution.alignment.Taxon" id="leaf_1"/>
+                    <taxon spec="Taxon" id="leaf_2"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration2">
+                <lowerAge spec="RealParameter" value="1.7"/>
+                <upperAge spec="RealParameter" value="2.5"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade2">
+                    <taxon idref="leaf_1"/>
+                    <taxon idref="leaf_2"/>
+                    <taxon spec="Taxon" id="leaf_3"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration3">
+                <lowerAge spec="RealParameter" value="2.0"/>
+                <upperAge spec="RealParameter" value="3.2"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade3">
+                    <taxon idref="leaf_1"/>
+                    <taxon idref="leaf_2"/>
+                    <taxon idref="leaf_3"/>
+                    <taxon spec="Taxon" id="leaf_4"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration4">
+                <lowerAge spec="RealParameter" value="1.8"/>
+                <upperAge spec="RealParameter" value="2.5"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade4">
+                    <taxon spec="Taxon" id="leaf_5"/>
+                    <taxon spec="Taxon" id="leaf_6"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration5">
+                <lowerAge spec="RealParameter" value="8.0"/>
+                <upperAge spec="RealParameter" value="9.5"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade5">
+                    <taxon spec="Taxon" id="leaf_7"/>
+                    <taxon spec="Taxon" id="leaf_8"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration6">
+                <lowerAge spec="RealParameter" value="4.0"/>
+                <upperAge spec="RealParameter" value="5.0"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade6">
+                    <taxon spec="Taxon" id="leaf_9"/>
+                    <taxon spec="Taxon" id="leaf_10"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration7">
+                <lowerAge spec="RealParameter" value="4.8"/>
+                <upperAge spec="RealParameter" value="5.0"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade7">
+                    <taxon idref="leaf_9"/>
+                    <taxon idref="leaf_10"/>
+                    <taxon spec="Taxon" id="leaf_11"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration8">
+                <lowerAge spec="RealParameter" value="6.8"/>
+                <upperAge spec="RealParameter" value="8.0"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade8">
+                    <taxon idref="leaf_1"/>
+                    <taxon idref="leaf_2"/>
+                    <taxon idref="leaf_3"/>
+                    <taxon idref="leaf_4"/>
+                    <taxon idref="leaf_5"/>
+                    <taxon idref="leaf_6"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration9">
+                <lowerAge spec="RealParameter" value="9.4"/>
+                <upperAge spec="RealParameter" value="9.6"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade9">
+                    <taxon idref="leaf_1"/>
+                    <taxon idref="leaf_2"/>
+                    <taxon idref="leaf_3"/>
+                    <taxon idref="leaf_4"/>
+                    <taxon idref="leaf_5"/>
+                    <taxon idref="leaf_6"/>
+                    <taxon idref="leaf_7"/>
+                    <taxon idref="leaf_8"/>
+                </taxa>
+            </calibration>
+            <calibration spec="calibrationprior.CalibrationCladePrior" id="calibration10">
+                <lowerAge spec="RealParameter" value="10.0"/>
+                <upperAge spec="RealParameter" value="10.5"/>
+                <taxa name="taxa" spec="TaxonSet" id="clade10">
+                    <taxon idref="leaf_1"/>
+                    <taxon idref="leaf_2"/>
+                    <taxon idref="leaf_3"/>
+                    <taxon idref="leaf_4"/>
+                    <taxon idref="leaf_5"/>
+                    <taxon idref="leaf_6"/>
+                    <taxon idref="leaf_7"/>
+                    <taxon idref="leaf_8"/>
+                    <taxon idref="leaf_9"/>
+                    <taxon idref="leaf_10"/>
+                    <taxon idref="leaf_11"/>
+                </taxa>
+            </calibration>
+        </distribution>
+
+        <operator id='treeScaler_root' spec='ScaleOperator' scaleFactor=".75" weight="2" tree="@tree" degreesOfFreedom="1" scaleAllIndependently="false" rootOnly='true'/>
+        <operator id='treeScaler' spec='ScaleOperator' scaleFactor=".9" weight="20" tree="@tree"/>
+        <operator id="uniform" spec='Uniform' weight="40" tree="@tree"/>
+        <operator id="subtreeSlide" spec='SubtreeSlide' weight="20" gaussian="true" size="6" tree="@tree"/>
+        <operator id='narrow2' spec='Exchange' isNarrow='true' weight="10" tree="@tree"/>
+        <operator id='wide2' spec='Exchange' isNarrow='false' weight="10" tree="@tree"/>
+        <operator id="wilsonBalding" spec='WilsonBalding' weight="10" tree="@tree"/>
+        <operator id="EpochFlex" spec="beast.base.evolution.operator.EpochFlexOperator" tree="@tree" weight="10"/>
+        <operator id="Stretch" spec="beast.base.evolution.operator.TreeStretchOperator" tree="@tree" weight="10"/>
+
+        <logger fileName="$(filebase).log" id="tracelog" logEvery="1000" mode="autodetect">
+            <log id="treeStats" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
+            <log id="mrca" spec="calibrationprior.logger.MRCALogger" tree="@tree" calibrations="@Calibrations"/>
+        </logger>
+
+        <logger id="screenlog" logEvery="10000" mode="autodetect">
+            <log idref="treeStats"/>
+            <log idref="mrca"/>
+        </logger>
+
+        <logger fileName="$(filebase).trees" id="treelog" logEvery="10000" mode="tree">
+            <log idref="tree"/>
+        </logger>
+    </run>
+</beast>
