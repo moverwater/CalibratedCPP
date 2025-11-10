@@ -4,7 +4,6 @@ import beast.base.core.*;
 import beast.base.inference.*;
 import beast.base.evolution.tree.*;
 
-import calibration.CalibrationClade;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
 import org.apache.commons.math3.linear.*;
