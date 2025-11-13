@@ -11,6 +11,7 @@
         <provider classname="calibrationprior.CalibrationPrior"/>
         <provider classname="calibrationprior.CalibrationCladePrior"/>
         <provider classname="calibration.CalibrationNode"/>
+        <provider classname="calibration.CalibrationClade"/>
         <provider classname="calibration.CalibrationForest"/>
         <provider classname="calibrationprior.logger.MRCALogger"/>
     </service>
