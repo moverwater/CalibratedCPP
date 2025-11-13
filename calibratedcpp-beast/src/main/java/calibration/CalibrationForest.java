@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
+ * A forest of CalibrationNodes
+ *
  * @author Marcus Overwater
  */
 

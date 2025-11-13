@@ -8,10 +8,12 @@ import beast.base.inference.parameter.RealParameter;
 
 
 /**
+ * Class for clade calibrations
+ *
  * @author Marcus Overwater
  */
 
-@Description("A calibration clade is a set of taxa and an age for the MRCA of the taxa.")
+@Description("A calibration clade is a set of taxa and an age for the TMRCA of the taxa.")
 public class CalibrationClade extends BEASTObject {
     public Input<TaxonSet> taxaInput =
             new Input<>("taxa", "The set of taxa in the clade", Input.Validate.REQUIRED);

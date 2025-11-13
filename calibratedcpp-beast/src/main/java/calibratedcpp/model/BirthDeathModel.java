@@ -5,11 +5,25 @@ import beast.base.core.Input;
 import beast.base.inference.parameter.RealParameter;
 
 /**
+ * Implements the node age distribution under a constant-rate birth-death process
+ * for the Coalescent Point Process (CPP) representation.
+ *
+ * <p>This model defines how node ages are distributed in a phylogenetic tree
+ * generated under a constant birth-death process, parameterized by combinations of
+ * rates such as birth (λ), death (μ), diversification (λ - μ), reproductive number (λ / μ),
+ * turnover (μ / λ), and sampling probability (ρ).</p>
+ *
+ * <p>Exactly two parameters among {birthRate, deathRate, diversificationRate,
+ * reproductiveNumber, turnover} must be provided, along with rho (sampling probability).
+ * The remaining parameters are derived automatically.</p>
+ *
+ * <p>Based on analytical derivations of CPP distributions for birth-death models.</p>
+ *
  * @author Marcus Overwater
  */
-
 @Description("Node age distribution for the CPP representation of the birth-death process")
 public class BirthDeathModel extends CoalescentPointProcessModel {
+
     public Input<RealParameter> birthRateInput =
             new Input<>("birthRate", "The birth rate (lambda)", (RealParameter) null);
 
@@ -28,6 +42,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
     public Input<RealParameter> rhoInput =
             new Input<>("rho", "Probability with which each individual in the population is sampled.", (RealParameter) null);
 
+    // Numeric versions of model parameters after extraction from inputs
     public Double birthRate;
     public Double deathRate;
     public Double diversificationRate;
@@ -35,19 +50,23 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
     public Double turnover;
     public Double rho;
 
+    // Cached logarithmic values for efficiency
     public double logBirthRate;
     public double logDeathRate;
     public double logDiversificationRate;
     public double logRho;
 
+    // Derived constants for density and CDF calculations
     public double A;
     public double B;
 
+    // Indicates whether diversification rate ≈ 0 (critical case)
     public boolean isCritical;
 
     @Override
     public void initAndValidate() {
 
+        // Extract initial parameter values safely
         birthRate = safeGet(birthRateInput);
         deathRate = safeGet(deathRateInput);
         diversificationRate = safeGet(diversificationRateInput);
@@ -55,73 +74,100 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
         turnover = safeGet(turnoverInput);
         rho = safeGet(rhoInput);
 
+        // Count how many of the five possible parameters were provided
         int specified = 0;
         for (Double i : new Double[]{birthRate, deathRate, diversificationRate, reproductiveNumber, turnover}) {
             if (i != null) specified++;
         }
 
+        // rho is mandatory
         if (rho == null) {
             throw new IllegalArgumentException("rho parameter must be specified.");
         }
 
+        // Exactly two parameters must be provided
         if (specified != 2) {
             throw new IllegalArgumentException("Exactly TWO of {birthRate, deathRate, diversificationRate, reproductiveNumber, turnover} must be specified.");
         }
 
-        // disallow repNumber + turnover
+        // Disallow incompatible combinations
         if (reproductiveNumber != null && turnover != null) {
             throw new IllegalArgumentException("Cannot specify both reproductiveNumber and turnover together.");
         }
 
+        // Compute all derived parameters
         updateParameters();
     }
 
+    /**
+     * Computes the log of the probability density function (PDF)
+     * for a given node age {@code time}.
+     *
+     * @param time node age
+     * @return log-density value
+     */
     @Override
     public double calculateLogDensity(double time) {
         double logDensity;
         double rt = diversificationRate * time;
 
         if (isCritical) {
-            // Critical case
+            // Case when diversification rate ≈ 0
             logDensity = logRho + logBirthRate - 2 * Math.log1p(A * time);
         } else if (diversificationRate < 0) {
-            // Sub-critical case: use stable form with exp(r * t)
+            // Subcritical case: r < 0
             logDensity = logRho + logBirthRate + 2 * logDiversificationRate + rt
                     - 2 * Math.log(Math.abs(A * Math.exp(rt) + B));
         } else {
-            // Supercritical case: formula with exp(-r * t)
+            // Supercritical case: r > 0
             logDensity = logRho + logBirthRate + 2 * logDiversificationRate - rt
                     - 2 * Math.log(A + B * Math.exp(-rt));
         }
         return logDensity;
     }
 
+    /**
+     * Computes the log of the cumulative distribution function (CDF)
+     * for a given node age {@code time}.
+     *
+     * @param time node age
+     * @return log-CDF value
+     */
     @Override
     public double calculateLogCDF(double time) {
         double logCDF;
 
         if (isCritical) {
-            // Critical case
+            // Critical case: r ≈ 0
             logCDF = logRho + logBirthRate + Math.log(time) - Math.log1p(A * time);
         } else if (diversificationRate < 0) {
-            // Sub-critical case
-            double exp_rt = Math.exp(diversificationRate * time); // decays, stable
-
+            // Subcritical case: r < 0
+            double exp_rt = Math.exp(diversificationRate * time); // decaying exponential
             logCDF = logRho + logBirthRate
-                    + Math.log1p(-exp_rt)     // log(1 - exp(r * t)) stable for r<0
+                    + Math.log1p(-exp_rt)
                     - Math.log(-A * exp_rt - B);
         } else {
-            // Supercritical case
+            // Supercritical case: r > 0
             double exp_neg_rt = Math.exp(-diversificationRate * time);
-
             logCDF = logRho + logBirthRate
-                    + Math.log1p(-exp_neg_rt)  // log(1 - exp(-r * t)) stable for r>=0
+                    + Math.log1p(-exp_neg_rt)
                     - Math.log(A + B * exp_neg_rt);
         }
         return logCDF;
     }
 
+    /**
+     * Updates derived parameters based on which two input parameters were specified.
+     *
+     * <p>This method determines the remaining model parameters using algebraic relationships
+     * among λ (birth), μ (death), diversification (λ - μ), reproductive number (λ / μ),
+     * and turnover (μ / λ).</p>
+     *
+     * <p>It also computes derived constants (A, B), criticality flag,
+     * and cached logarithmic values for efficiency.</p>
+     */
     public void updateParameters() {
+        // Retrieve current parameter values
         birthRate = safeGet(birthRateInput);
         deathRate = safeGet(deathRateInput);
         diversificationRate = safeGet(diversificationRateInput);
@@ -129,6 +175,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
         turnover = safeGet(turnoverInput);
         rho = safeGet(rhoInput);
 
+        // Derive missing parameters depending on which are defined
         if (birthRate != null && deathRate != null) {
             diversificationRate = birthRate - deathRate;
         } else if (birthRate != null && diversificationRate != null) {
@@ -153,13 +200,16 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
             throw new IllegalArgumentException("Unsupported parameter combination.");
         }
 
+        // Precompute constants for PDF/CDF
         A = rho * birthRate;
         B = birthRate * (1 - rho) - deathRate;
 
         diversificationRate = birthRate - deathRate;
 
+        // Check if diversification ≈ 0
         isCritical = Math.abs(diversificationRate) < 1e-10;
 
+        // Cache logarithmic values for performance
         logBirthRate = Math.log(birthRate);
         logDeathRate = Math.log(deathRate);
         logRho = Math.log(rho);
@@ -172,8 +222,20 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
         return true;
     }
 
+    /**
+     * Safely retrieves a numeric value from an {@link Input<RealParameter>}.
+     *
+     * @param input the RealParameter input
+     * @return the numeric value, or {@code null} if input is undefined
+     */
     private Double safeGet(Input<RealParameter> input) {
         RealParameter param = input.get();
         return (param != null) ? param.getValue() : null;
+    }
+
+    @Override
+    protected void restore() {
+        updateParameters();
+        super.restore();
     }
 }

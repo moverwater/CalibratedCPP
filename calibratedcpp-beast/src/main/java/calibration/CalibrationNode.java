@@ -14,6 +14,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
+ *
+ * A node in a calibration forest
+ *
  * @author Marcus Overwater
  */
 

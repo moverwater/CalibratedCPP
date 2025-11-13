@@ -17,6 +17,8 @@ import calibration.CalibrationNode;
 import java.util.*;
 
 /**
+ * Species tree distribution for a coalescent point process conditioned on the ages of the mrca of clade calibrations.
+ *
  * @author Marcus Overwater
  */
 
@@ -377,6 +379,12 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     public boolean requiresRecalculation() {
         updateModel();
         return true;
+    }
+
+    @Override
+    public void restore() {
+        updateModel();
+        super.restore();
     }
 
     public static void main(String[] args) {
