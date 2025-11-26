@@ -152,9 +152,9 @@
         <operator id='treeScaler' spec='ScaleOperator' scaleFactor=".9" weight="20" tree="@tree"/>
         <operator id="uniform" spec='Uniform' weight="40" tree="@tree"/>
         <operator id="subtreeSlide" spec='SubtreeSlide' weight="20" gaussian="true" size="6" tree="@tree"/>
-        <operator id='narrow2' spec='Exchange' isNarrow='true' weight="10" tree="@tree"/>
-        <operator id='wide2' spec='Exchange' isNarrow='false' weight="10" tree="@tree"/>
-        <operator id="wilsonBalding" spec='WilsonBalding' weight="10" tree="@tree"/>
+        <!-- <operator id='narrow2' spec='Exchange' isNarrow='true' weight="10" tree="@tree"/> -->
+        <!-- <operator id='wide2' spec='Exchange' isNarrow='false' weight="10" tree="@tree"/> -->
+        <!-- <operator id="wilsonBalding" spec='WilsonBalding' weight="10" tree="@tree"/> -->
         <operator id="EpochFlex" spec="beast.base.evolution.operator.EpochFlexOperator" tree="@tree" weight="10"/>
         <operator id="Stretch" spec="beast.base.evolution.operator.TreeStretchOperator" tree="@tree" weight="10"/>
 
