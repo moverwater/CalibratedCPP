@@ -37,8 +37,8 @@ The Lphy simulator is currently implemented within LinguaPhylo as a generative m
 ### calibratedcpp-lphybeast
 
 This subproject is converting Lphy simulators to XMLs for BEAST2 running:
-- Construct calibrationPoints with clade calibration taxa and age, only take distribution for age sampling.
-- The simulator does not take conditionOnCalibrations, users should modify in the output XML.
+- The simulator set conditionOnCalibrations as false for default, users should modify in the output XML if needs it to turn on.
+- Construct CalibrationClades with taxa set for the clade and an age parameter with its prior distribution if it's not constant.
 
 ## License
 
