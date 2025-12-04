@@ -174,7 +174,13 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         }
 
         int numFreeLineages = tree.getLeafNodeCount() - Arrays.stream(rootCladeSizes).sum(); // number of free lineages
-        double interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
+
+        double interactionSum;
+        if (conditionOnRoot){
+            interactionSum = computeExtendedRootSum(weights, numFreeLineages);
+        } else {
+            interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
+        }
 
         double density = interactionSum + numFreeLineages * logQ_t - logFactorial(tree.getLeafNodeCount());
 
@@ -211,19 +217,10 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                     }
                 }
             }
-            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest);
+            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) + Math.log1p(model.calculateLogCDF(maxTime));
         }
 
         return logP;
-    }
-
-    // Log tricks
-    private double logSumExp(List<Double> logValues) {
-        if (logValues.isEmpty()) return Double.NEGATIVE_INFINITY;
-        double max = Collections.max(logValues);
-        double sum = 0.0;
-        for (double val : logValues) sum += Math.exp(val - max);
-        return max + Math.log(sum);
     }
 
     private double logDiffExp(double a, double b) {
