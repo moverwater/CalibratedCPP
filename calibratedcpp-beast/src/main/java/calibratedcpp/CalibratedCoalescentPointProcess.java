@@ -15,6 +15,7 @@ import calibration.CalibrationForest;
 import calibration.CalibrationNode;
 
 import java.util.*;
+import java.util.function.IntUnaryOperator;
 
 /**
  * Species tree distribution for a coalescent point process conditioned on the ages of the mrca of clade calibrations.
@@ -86,29 +87,27 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     public double calculateUnConditionedTreeLogLikelihood(TreeInterface tree) {
 
         double logP = Math.log1p(-Math.exp(model.calculateLogCDF(maxTime)));
-
-        if (conditionOnRoot) {
-            logP += logP - model.calculateLogDensity(rootAge);
-        }
+        int numTaxa = tree.getLeafNodeCount();
 
         for (Node node : tree.getInternalNodes()) {
             double age = node.getHeight();
             logP += model.calculateLogDensity(age);
         }
+        logP += (numTaxa - 1) * Math.log(2.0) - logFactorial(numTaxa); // Ignore orientation and include labelling with factor of 2^{n-1}/n!
         return logP;
     }
 
     protected double computeCalibrationDensity(TreeInterface tree, CalibrationNode calibration) {
         // Sort children descending by height
         List<CalibrationNode> children = calibration.children;
-        children.sort(Comparator.comparingDouble(c -> -c.getCommonAncestor(tree).getHeight()));
+        children.sort(Comparator.comparingDouble(c -> -c.getCommonAncestor(tree).getHeight())); // sorts children from oldest to youngest
 
         Node mrca = calibration.getCommonAncestor(tree);
         double cladeHeight = mrca.getHeight();
         int cladeSize = calibration.taxa.getTaxonSet().size();
 
         double logQ_t = model.calculateLogCDF(cladeHeight);
-        double logDensity = model.calculateLogDensity(cladeHeight);
+        double logDensity = - logFactorial(cladeSize) + model.calculateLogDensity(cladeHeight);
 
         // Base case: leaf calibration
         if (children.isEmpty()) {
@@ -122,92 +121,68 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int[] childCladeSizes = new int[numChildren];
         double[] childCDFs = new double[numChildren];
 
+        double[] logDiff = new double[numChildren];
+        double[] weights = new double[numChildren];
+
         for (int i = 0; i < numChildren; i++) {
             CalibrationNode child = children.get(i);
             logChildDensities[i] = computeCalibrationDensity(tree, child);
             childCladeSizes[i] = child.taxa.getTaxonSet().size();
             childCDFs[i] = model.calculateLogCDF(child.getCommonAncestor(tree).getHeight());
-        }
 
-        double[] logDiff = new double[numChildren];
-        for (int i = 0; i < numChildren; i++) {
-            logDiff[i] = logDiffExp(logQ_t, childCDFs[i]);
+            logDiff[i] = logDiffExp(logQ_t, childCDFs[i]); // log(Q(t)-Q(x_i))
+            weights[i] = logDiff[i] - logQ_t;
         }
 
         int sumChildSizes = Arrays.stream(childCladeSizes).sum();
-        int numRootLocations = cladeSize - sumChildSizes + numChildren - 1;
 
         // Compute permutation sum over root locations
-        List<Double> perRootLogs = new ArrayList<>();
-        for (int rootLoc = 1; rootLoc <= numRootLocations; rootLoc++) {
-            perRootLogs.add(calculateLogSumOfPermutationsWithRoot(
-                    numChildren,
-                    sumChildSizes,
-                    cladeSize,
-                    logQ_t,
-                    logDiff,
-                    rootLoc
-            ));
+        logDensity += computeExtendedRootSum(weights, cladeSize - sumChildSizes);
+
+        for (int i = 0; i < numChildren; i++) {
+            logDensity += logFactorial(childCladeSizes[i]) + 2 * logDiff[i] + logChildDensities[i];
         }
 
-        double logPermutationSum = logSumExp(perRootLogs);
-        double childrenSum = Arrays.stream(logChildDensities).sum();
+        logDensity += (cladeSize - sumChildSizes) * logQ_t;
 
-        return logDensity + childrenSum + logPermutationSum;
+        return logDensity;
     }
 
-    public double calculateLogMarginalDensityOfCalibrations(
+    public double calculateMarginalLogDensityOfCalibrations(
             TreeInterface tree,
             CalibrationForest calibrationForest) {
 
-        List<CalibrationNode> calibrations = calibrationForest.getAllNodes();
+        List<CalibrationNode> rootNodes = calibrationForest.getRoots();
 
-        // Step 1: Update model and get base quantities
-        double logQt = model.calculateLogCDF(maxTime);
-        double marginalDensity = Math.log1p(-Math.exp(logQt)); // terminating node age > maxTime
+        double logQ_t = model.calculateLogCDF(maxTime);
 
-        int numTaxa = tree.getLeafNodeCount();
+        int numRoots = rootNodes.size();
+        double[] logRootDensities = new double[numRoots];
+        int[] rootCladeSizes = new int[numRoots];
+        double[] rootCDFs = new double[numRoots];
 
-        // Step 2: Collect and sort root calibrations by clade height (descending)
-        List<CalibrationNode> roots = calibrations.stream()
-                .filter(c -> c.isRoot)
-                .sorted(Comparator.comparingDouble(c -> -c.getCommonAncestor(tree).getHeight()))
-                .toList();
-
-        // Step 3: Compute density for each root recursively
-        int numRoots = roots.size();
-        double[] logQti = new double[numRoots];
         double[] logDiff = new double[numRoots];
-        int[] cladeSizes = new int[numRoots];
-        int sumCladeSizes = 0;
+        double[] weights = new double[numRoots];
 
         for (int i = 0; i < numRoots; i++) {
-            CalibrationNode root = roots.get(i);
-            double logDensity = computeCalibrationDensity(tree, root);
-            marginalDensity += logDensity;
+            logRootDensities[i] = computeCalibrationDensity(tree, rootNodes.get(i));
+            rootCladeSizes[i] = rootNodes.get(i).taxa.getTaxonSet().size();
+            rootCDFs[i] = model.calculateLogCDF(logRootDensities[i]);
 
-            double height = root.getCommonAncestor(tree).getHeight();
-            logQti[i] = model.calculateLogCDF(height);
-            logDiff[i] = logDiffExp(logQt, logQti[i]);
-
-            cladeSizes[i] = root.taxa.getTaxonCount();
-            sumCladeSizes += cladeSizes[i];
+            logDiff[i] = logDiffExp(logQ_t, rootCDFs[i]);
+            weights[i] = logDiff[i] - logQ_t;
         }
 
-        // Step 4: Add permutation terms depending on conditioning
-        if (!conditionOnRoot) {
-            marginalDensity += calculateLogSumOfPermutations(
-                    numRoots, sumCladeSizes, numTaxa, logQt, logDiff);
-        } else {
-            int numRootLocations = numTaxa - sumCladeSizes + numRoots - 1;
-            marginalDensity += Math.log1p(-Math.exp(logQt));
-            for (int rootLoc = 1; rootLoc <= numRootLocations; rootLoc++) {
-                marginalDensity += calculateLogSumOfPermutationsWithRoot(
-                        numRoots, sumCladeSizes, numTaxa, logQt, logDiff, rootLoc);
-            }
+        int numFreeLineages = tree.getLeafNodeCount() - Arrays.stream(rootCladeSizes).sum(); // number of free lineages
+        double interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
+
+        double density = interactionSum + numFreeLineages * logQ_t - logFactorial(tree.getLeafNodeCount());
+
+        for (int i = 0; i< numRoots; i++) {
+            density += logFactorial(rootCladeSizes[i]) + logRootDensities[i] + 2 * logDiff[i];
         }
 
-        return marginalDensity;
+        return density;
     }
 
     @Override
@@ -232,112 +207,14 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 }
                 if (c.getCalibrationClade().providedAge) {
                     if (Math.abs(mrca.getHeight() - c.getCalibrationClade().getAge().getValue()) > 1e-4) {
-                        return Double.NEGATIVE_INFINITY;
+                        return Double.NEGATIVE_INFINITY; // tmrca of clade is not the calibration age!
                     }
                 }
             }
-            logP -= calculateLogMarginalDensityOfCalibrations(tree, calibrationForest);
+            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest);
         }
 
         return logP;
-    }
-
-    private double calculateLogSumOfPermutationsCommon(
-            int numCalibrations,
-            int sumCladeSizes,
-            int numTaxa,
-            double logQ_t,
-            double[] logDiff,
-            boolean hasRoot,
-            int locationOfRoot) {
-
-        int m = numTaxa - sumCladeSizes;
-        int totalElements = m + numCalibrations;
-
-        List<List<Integer>> permutations = new ArrayList<>();
-        generatePermutations(totalElements, numCalibrations, new ArrayList<>(),
-                new boolean[totalElements], permutations);
-
-        List<Double> logTerms = new ArrayList<>();
-
-        for (List<Integer> perm : permutations) {
-            double logTerm = 0.0;
-            int sum_s = 0;
-
-            for (int i = 0; i < numCalibrations; i++) {
-                int ell_i = perm.get(i);
-
-                // count adjacency to previously chosen elements
-                int countAdj = 0;
-                for (int j = 0; j < i; j++) {
-                    int ell_j = perm.get(j);
-                    if (ell_j == ell_i - 1 || ell_j == ell_i + 1) {
-                        countAdj++;
-                    }
-                }
-
-                int s_i = 0;
-                if (ell_i == 0 || ell_i == totalElements - 1) s_i++;
-                s_i += countAdj;
-
-                // Root adjacency logic
-                if (hasRoot && (ell_i == locationOfRoot || ell_i == locationOfRoot - 1)) {
-                    s_i++;
-                }
-
-                if (hasRoot) {
-                    s_i = Math.min(s_i, 2);
-                }
-
-                sum_s += s_i;
-                logTerm += (2 - s_i) * logDiff[i];
-            }
-
-            // Base term
-            int rootAdjustment = hasRoot ? -1 : 0;
-            logTerm += (m - numCalibrations - 1 + sum_s + rootAdjustment) * logQ_t;
-
-            logTerms.add(logTerm);
-        }
-
-        return logSumExp(logTerms);
-    }
-
-    private double calculateLogSumOfPermutations(
-            int numCalibrations, int sumCladeSizes, int numTaxa,
-            double logQ_t, double[] logDiff) {
-
-        return calculateLogSumOfPermutationsCommon(
-                numCalibrations, sumCladeSizes, numTaxa,
-                logQ_t, logDiff,
-                false, -1);
-    }
-
-    private double calculateLogSumOfPermutationsWithRoot(
-            int numCalibrations, int sumCladeSizes, int numTaxa,
-            double logQ_t, double[] logDiff, int locationOfRoot) {
-
-        return calculateLogSumOfPermutationsCommon(
-                numCalibrations, sumCladeSizes, numTaxa,
-                logQ_t, logDiff,
-                true, locationOfRoot);
-    }
-
-    private void generatePermutations(int n, int k, List<Integer> current, boolean[] used, List<List<Integer>> result) {
-        if (current.size() == k) {
-            result.add(new ArrayList<>(current));
-            return;
-        }
-
-        for (int i = 0; i < n; i++) {
-            if (!used[i]) {
-                used[i] = true;
-                current.add(i);
-                generatePermutations(n, k, current, used, result);
-                current.remove(current.size() - 1);
-                used[i] = false;
-            }
-        }
     }
 
     // Log tricks
@@ -354,6 +231,398 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         if (b > a) return Double.NEGATIVE_INFINITY;
         if (a == b) return Double.NEGATIVE_INFINITY;
         return a + Math.log1p(-Math.exp(b - a));
+    }
+
+    private double logFactorial(double n) {
+        double result = 0.0;
+        if (n < 0) return Double.NEGATIVE_INFINITY;
+        for (int i = 1; i <= n; i++) {
+            result += Math.log(i);
+        }
+        return result;
+    }
+
+    private double logAdd(double logA, double logB) {
+        if (Double.isInfinite(logA)) return logB;
+        if (Double.isInfinite(logB)) return logA;
+        double m = Math.max(logA, logB);
+        return m + Math.log(Math.exp(logA - m) + Math.exp(logB - m));
+    }
+
+    public double computeBellmanHeldKarpWithTruncatedESP(double[] lx, int M) {
+        int k = lx.length;
+        if (k == 0) return 0.0;
+        if (k >= 20) throw new IllegalArgumentException("k must be < 20 for this array-based implementation.");
+
+        int W = M + 1;
+        int fullMask = (1 << k) - 1;
+
+        // compute total array size and guard integer overflow
+        long totalStates = (long) (1 << k) * k * W;
+        if (totalStates > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("DP array size too large: " + totalStates);
+        }
+        int totalSize = (int) totalStates;
+
+        // flat dp array: index = ((mask * k) + j) * W + w
+        double[] dp = new double[totalSize];
+        Arrays.fill(dp, Double.NEGATIVE_INFINITY);
+
+        // helper for indexing
+        int strideMask = k * W; // number of entries per mask
+        java.util.function.IntUnaryOperator idx = (mi) -> mi * strideMask; // base for mask
+
+        // Precompute logs:
+        // la[j] = log(a_j) = log(1/x_j) = -lx[j]
+        double[] la = new double[k];
+        for (int j = 0; j < k; j++) la[j] = -lx[j];
+
+        // laij[i][j] = log(a_{i,j}) = log(1/max(x_i,x_j)) = -max(lx[i], lx[j])
+        double[][] laij = new double[k][k];
+        for (int i = 0; i < k; i++) {
+            for (int j = 0; j < k; j++) {
+                laij[i][j] = -Math.max(lx[i], lx[j]);
+            }
+        }
+
+        // Precompute log-factorials up to (M-1)
+        int nForBinom = Math.max(0, M - 1);
+        double[] logFact = new double[nForBinom + 1];
+        logFact[0] = 0.0;
+        for (int i = 1; i <= nForBinom; i++) logFact[i] = logFact[i - 1] + Math.log(i);
+
+        // Precompute log binomials logBin[w] = log C(M-1, w-1) for w=0..M
+        double[] logBin = new double[W];
+        for (int w = 0; w <= M; w++) {
+            if (M == 0 && w == 0) {
+                // Special case: binom(-1, -1) = 1
+                logBin[w] = 0.0; // log(1)
+                continue;
+            }
+            if (w == 0) {
+                logBin[w] = Double.NEGATIVE_INFINITY; // normally C(M-1, -1)=0
+                continue;
+            }
+            int r = w - 1;
+            if (r < 0 || r > M - 1)
+                logBin[w] = Double.NEGATIVE_INFINITY;
+            else
+                logBin[w] = logFact[M - 1] - logFact[r] - logFact[(M - 1) - r];
+        }
+
+        // Base cases: singletons
+        for (int j = 0; j < k; j++) {
+            int mask = 1 << j;
+            int base = idx.applyAsInt(mask);
+            // dp[((mask * k) + j) * W + w]
+            int baseIdx = base + j * W;
+            for (int w = 0; w < W; w++) dp[baseIdx + w] = Double.NEGATIVE_INFINITY;
+            // P_{ {j}, j }(t) = a_j + t  => coeff[0] = a_j, coeff[1] = 1
+            dp[baseIdx] = la[j];         // log(a_j)
+            if (W > 1) dp[baseIdx + 1] = 0.0; // log(1)
+        }
+
+        // Iterate masks in increasing order
+        int maxMask = 1 << k;
+        for (int mask = 1; mask < maxMask; mask++) {
+            int bits = Integer.bitCount(mask);
+            if (bits == 1) continue; // already inited
+
+            int baseMask = idx.applyAsInt(mask);
+
+            // For each endpoint j in mask
+            for (int j = 0; j < k; j++) {
+                if ((mask & (1 << j)) == 0) continue; // j not in mask
+                int baseIdx = baseMask + j * W;
+
+                // initialize to Double.NEGATIVE_INFINITY
+                for (int w = 0; w < W; w++) dp[baseIdx + w] = Double.NEGATIVE_INFINITY;
+
+                int prevMask = mask ^ (1 << j);
+                int basePrev = idx.applyAsInt(prevMask);
+
+                // iterate over possible previous endpoint i in prevMask
+                for (int i = 0; i < k; i++) {
+                    if ((prevMask & (1 << i)) == 0) continue;
+                    int prevIdx = basePrev + i * W;
+
+                    // for each coefficient w
+                    // dp[mask,j,w] += laij[i][j] + dp[prevMask,i,w]
+                    // dp[mask,j,w] += dp[prevMask,i,w-1]   (for w>0)
+                    for (int w = 0; w < W; w++) {
+                        double cur = dp[baseIdx + w];
+
+                        // term a_{i,j} * prev[w]  -> log: prev[w] + laij[i][j]
+                        double prevW = dp[prevIdx + w];
+                        if (!Double.isInfinite(prevW)) {
+                            double v = prevW + laij[i][j];
+                            cur = logAdd(cur, v);
+                        }
+
+                        // term prev[w-1] (if w>0)
+                        if (w > 0) {
+                            double prevWm1 = dp[prevIdx + (w - 1)];
+                            if (!Double.isInfinite(prevWm1)) {
+                                cur = logAdd(cur, prevWm1);
+                            }
+                        }
+
+                        dp[baseIdx + w] = cur;
+                    }
+                }
+            }
+        }
+
+        // Finalize: for each endpoint j, compute ~P_j[w] = a_j * P[full][j][w] + P[full][j][w-1]
+        double total = 0.0;
+        int baseFull = idx.applyAsInt(fullMask);
+        for (int j = 0; j < k; j++) {
+            int pIdx = baseFull + j * W;
+            // build ~P_j in log-space, accumulate weighted sum
+            for (int w = 0; w < W; w++) {
+                double tLog = Double.NEGATIVE_INFINITY;
+                double pw = dp[pIdx + w];
+                if (!Double.isInfinite(pw)) tLog = logAdd(tLog, pw + la[j]); // a_j * P[w] => add logs
+
+                if (w > 0) {
+                    double pwm1 = dp[pIdx + (w - 1)];
+                    if (!Double.isInfinite(pwm1)) tLog = logAdd(tLog, pwm1);
+                }
+
+                if (Double.isInfinite(tLog) || Double.isInfinite(logBin[w])) continue;
+                // convert back and accumulate: exp(tLog + logBin[w])
+                total = logAdd(total, tLog + logBin[w]);
+            }
+        }
+
+        return total;
+    }
+
+    public double computeExtendedRootSum(double[] lx, int M) {
+        int k = lx.length;
+        if (k == 0) return Double.NEGATIVE_INFINITY; // log(0)
+        if (k >= 20) throw new IllegalArgumentException("k must be < 20 for this array-based implementation.");
+
+        int W = M + 1;
+        int fullMask = (1 << k) - 1;
+
+        // 1. Memory Management
+        long totalStates = (long) (1 << k) * k * W;
+        if (totalStates > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("DP array size too large.");
+        }
+        int totalSize = (int) totalStates;
+
+        // dpP stores log(Sum(weights))
+        double[] dpP = new double[totalSize];
+        Arrays.fill(dpP, Double.NEGATIVE_INFINITY);
+
+        // dpQ stores log(Sum(weights * cost))
+        double[] dpQ = new double[totalSize];
+        Arrays.fill(dpQ, Double.NEGATIVE_INFINITY);
+
+        // Helper for flat indexing: index = ((mask * k) + j) * W + w
+        int strideMask = k * W;
+        IntUnaryOperator idx = (mi) -> mi * strideMask;
+
+        // 2. Precomputations
+
+        // log(a_j) = -log(x_j)
+        double[] la = new double[k];
+        for (int j = 0; j < k; j++) la[j] = -Math.log(lx[j]);
+
+        // laij[i][j] = log(1/min(x_i, x_j)) = -log(min(x_i, x_j))
+        // Note: The previous code used -max(lx[i], lx[j]) assuming lx was already log.
+        // Assuming input lx here is raw x values:
+        double[][] laij = new double[k][k];
+
+        // Cost 0: log(1/max(x_i, x_j)) = -log(max(x_i, x_j))
+        double[][] logCost0 = new double[k][k];
+
+        // Cost 1: log(1/x_i + 1/x_j)
+        double[][] logCost1 = new double[k][k];
+
+        for (int i = 0; i < k; i++) {
+            for (int j = 0; j < k; j++) {
+                // Weight term
+                laij[i][j] = -Math.log(Math.min(lx[i], lx[j]));
+
+                // Cost terms
+                logCost0[i][j] = -Math.log(Math.max(lx[i], lx[j]));
+                logCost1[i][j] = Math.log(1.0/lx[i] + 1.0/lx[j]);
+            }
+        }
+
+        // Log Factorials and Binomials
+        int nForBinom = Math.max(0, M - 1);
+        double[] logFact = new double[nForBinom + 1];
+        logFact[0] = 0.0;
+        for (int i = 1; i <= nForBinom; i++) logFact[i] = logFact[i - 1] + Math.log(i);
+
+        double[] logBin = new double[W];
+        for (int w = 0; w <= M; w++) {
+            if (M == 0 && w == 0) { logBin[w] = 0.0; continue; }
+            if (w == 0) { logBin[w] = Double.NEGATIVE_INFINITY; continue; }
+            int r = w - 1;
+            if (r < 0 || r > M - 1) logBin[w] = Double.NEGATIVE_INFINITY;
+            else logBin[w] = logFact[M - 1] - logFact[r] - logFact[(M - 1) - r];
+        }
+
+        // 3. Base Cases: Singletons {j}
+        for (int j = 0; j < k; j++) {
+            int baseIdx = idx.applyAsInt(1 << j) + j * W;
+
+            // Case z_0 = 0 (w=0): P = a_j, Q = P * (z_0 * ...) = 0 -> log(-inf)
+            dpP[baseIdx] = la[j];
+            dpQ[baseIdx] = Double.NEGATIVE_INFINITY;
+
+            // Case z_0 = 1 (w=1): P = 1, Q = P * (a_j) = a_j
+            if (W > 1) {
+                dpP[baseIdx + 1] = 0.0; // log(1)
+                dpQ[baseIdx + 1] = la[j];
+            }
+        }
+
+        // 4. DP Iteration
+        int maxMask = 1 << k;
+        for (int mask = 1; mask < maxMask; mask++) {
+            if (Integer.bitCount(mask) == 1) continue;
+
+            int baseMask = idx.applyAsInt(mask);
+
+            for (int j = 0; j < k; j++) {
+                if ((mask & (1 << j)) == 0) continue;
+
+                int baseIdx = baseMask + j * W;
+                int prevMask = mask ^ (1 << j);
+                int basePrev = idx.applyAsInt(prevMask);
+
+                for (int i = 0; i < k; i++) {
+                    if ((prevMask & (1 << i)) == 0) continue;
+                    int prevIdx = basePrev + i * W;
+
+                    // Compute transitions for all w
+                    for (int w = 0; w < W; w++) {
+                        double curP = dpP[baseIdx + w];
+                        double curQ = dpQ[baseIdx + w];
+
+                        // --- Case A: No Gap (z = 0), comes from same w ---
+                        double prevP = dpP[prevIdx + w];
+                        double prevQ = dpQ[prevIdx + w];
+
+                        if (!Double.isInfinite(prevP)) {
+                            // P_new = P_old * weight
+                            double pTerm = prevP + laij[i][j];
+
+                            // Q_new = Q_old * weight + P_old * weight * cost
+                            double qTermPart1 = (!Double.isInfinite(prevQ)) ? prevQ + laij[i][j] : Double.NEGATIVE_INFINITY;
+                            double qTermPart2 = pTerm + logCost0[i][j];
+
+                            double qTerm = logAdd(qTermPart1, qTermPart2);
+
+                            curP = logAdd(curP, pTerm);
+                            curQ = logAdd(curQ, qTerm);
+                        }
+
+                        // --- Case B: Gap (z = 1), comes from w-1 ---
+                        if (w > 0) {
+                            double prevPm1 = dpP[prevIdx + (w - 1)];
+                            double prevQm1 = dpQ[prevIdx + (w - 1)];
+
+                            if (!Double.isInfinite(prevPm1)) {
+                                // P_new = P_old (weight is 1)
+                                double pTerm = prevPm1;
+
+                                // Q_new = Q_old + P_old * cost
+                                double qTermPart1 = prevQm1; // * 1
+                                double qTermPart2 = pTerm + logCost1[i][j];
+
+                                double qTerm = logAdd(qTermPart1, qTermPart2);
+
+                                curP = logAdd(curP, pTerm);
+                                curQ = logAdd(curQ, qTerm);
+                            }
+                        }
+
+                        dpP[baseIdx + w] = curP;
+                        dpQ[baseIdx + w] = curQ;
+                    }
+                }
+            }
+        }
+
+        // 5. Final Summation
+        double totalLogSum = Double.NEGATIVE_INFINITY;
+        int baseFull = idx.applyAsInt(fullMask);
+
+        for (int j = 0; j < k; j++) {
+            int pIdx = baseFull + j * W;
+
+            for (int w = 0; w < W; w++) {
+                // Calculate ~P_j[w] and ~Q_j[w] incorporating the final edge z_k
+
+                double pFinal = Double.NEGATIVE_INFINITY;
+                double qFinal = Double.NEGATIVE_INFINITY;
+
+                // Term z_k = 0: P accumulates a_j, Cost adds 0
+                double pRaw = dpP[pIdx + w];
+                double qRaw = dpQ[pIdx + w];
+                if (!Double.isInfinite(pRaw)) {
+                    pFinal = logAdd(pFinal, pRaw + la[j]);
+                    // Q is scaled by a_j, no added cost
+                    if (!Double.isInfinite(qRaw)) {
+                        qFinal = logAdd(qFinal, qRaw + la[j]);
+                    }
+                }
+
+                // Term z_k = 1: P accumulates 1, Cost adds a_j (requires w > 0)
+                if (w > 0) {
+                    double pRawM1 = dpP[pIdx + (w - 1)];
+                    double qRawM1 = dpQ[pIdx + (w - 1)];
+                    if (!Double.isInfinite(pRawM1)) {
+                        pFinal = logAdd(pFinal, pRawM1);
+                        // Q accumulates 1 + P * cost(a_j)
+                        double termQ = (!Double.isInfinite(qRawM1)) ? qRawM1 : Double.NEGATIVE_INFINITY;
+                        double termCost = pRawM1 + la[j];
+                        qFinal = logAdd(qFinal, logAdd(termQ, termCost));
+                    }
+                }
+
+                if (Double.isInfinite(pFinal) || Double.isInfinite(logBin[w])) continue;
+
+                // Combine: Binom * ( Q_final + P_final * Constant )
+                // Constant = M - k + w - 1
+                int constantVal = M - k + w - 1;
+
+                // We need log(Q + P*C).
+                // Note: If C is negative, we need logSubtract.
+
+                double weightedPart; // log(P * C)
+                boolean isNegative = false;
+
+                if (constantVal == 0) {
+                    weightedPart = Double.NEGATIVE_INFINITY;
+                } else {
+                    weightedPart = pFinal + Math.log(Math.abs(constantVal));
+                    if (constantVal < 0) isNegative = true;
+                }
+
+                double termInside;
+                // Calculate log(exp(qFinal) + exp(weightedPart)) or log(exp(qFinal) - exp(weightedPart))
+                if (!isNegative) {
+                    termInside = logAdd(qFinal, weightedPart);
+                } else {
+                    // P*C is negative in linear domain. We do Q - |P*C|
+                    // If Q < |P*C|, the density would be negative, which shouldn't happen
+                    // in valid probability contexts, but numerically we must handle it.
+                    termInside = logDiffExp(qFinal, weightedPart);
+                }
+
+                totalLogSum = logAdd(totalLogSum, logBin[w] + termInside);
+            }
+        }
+
+        return totalLogSum;
     }
 
     // tree methods

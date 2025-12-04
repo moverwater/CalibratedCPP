@@ -138,14 +138,14 @@ public class CalibratedCoalescentPointProcessTest {
                         birthDeath.calculateLogDensity(4.0) + birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogDensity(1.5) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) + Math.log(2.0) + // density of ABCDE
                         Math.log(2.0) + // number of ways to arrange the clades
                         2 * Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.0))), // two terminating heights for the two subtrees
-                rootConditionedCPP.calculateLogMarginalDensityOfCalibrations(tree, calibrationForest),1e-4, "Unconditioned density of the tree is incorrect.");
+                rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest),1e-4, "Unconditioned density of the tree is incorrect.");
 
         assertEquals(birthDeath.calculateLogDensity(5.0) + birthDeath.calculateLogDensity(2.5) + birthDeath.calculateLogDensity(0.5) + Math.log(2.0) +
                         Math.log(4 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5))) + 2 * Math.exp(birthDeath.calculateLogCDF(5.0))) + // density of FGHIJ
                         birthDeath.calculateLogDensity(4.0) + birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogDensity(1.5) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) + Math.log(2.0) + // density of ABCDE
                         Math.log(2.0) + // number of ways to arrange the clades
                         Math.log(Math.exp(birthDeath.calculateLogCDF(6.5)) - Math.exp(birthDeath.calculateLogCDF(5.0))) + Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.5))), // distribution of the free node age and the terminating node age > origin
-                cpp.calculateLogMarginalDensityOfCalibrations(tree, calibrationForest), "MarginalDensity of the calibrations is incorrect.");
+                cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), "MarginalDensity of the calibrations is incorrect.");
 
     }
 
