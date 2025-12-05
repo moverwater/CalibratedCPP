@@ -137,7 +137,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int sumChildSizes = Arrays.stream(childCladeSizes).sum();
 
         // Compute permutation sum over root locations
-        logDensity += computeExtendedRootSum(weights, cladeSize - sumChildSizes);
+        logDensity += computeExtendedRootSum(weights, cladeSize - sumChildSizes) - logFactorial(cladeSize);
 
         for (int i = 0; i < numChildren; i++) {
             logDensity += logFactorial(childCladeSizes[i]) + 2 * logDiff[i] + logChildDensities[i];
@@ -167,7 +167,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         for (int i = 0; i < numRoots; i++) {
             logRootDensities[i] = computeCalibrationDensity(tree, rootNodes.get(i));
             rootCladeSizes[i] = rootNodes.get(i).taxa.getTaxonSet().size();
-            rootCDFs[i] = model.calculateLogCDF(logRootDensities[i]);
+            rootCDFs[i] = model.calculateLogCDF(rootNodes.get(i).getCommonAncestor(tree).getHeight());
 
             logDiff[i] = logDiffExp(logQ_t, rootCDFs[i]);
             weights[i] = logDiff[i] - logQ_t;
@@ -217,7 +217,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                     }
                 }
             }
-            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) + Math.log1p(model.calculateLogCDF(maxTime));
+            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) + Math.log1p(-Math.exp(model.calculateLogCDF(maxTime)));
         }
 
         return logP;
@@ -424,29 +424,29 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         // 2. Precomputations
 
-        // log(a_j) = -log(x_j)
+        // lx contains log(x_j).
+        // We need log(a_j) = log(1/x_j) = -log(x_j) = -lx[j].
         double[] la = new double[k];
-        for (int j = 0; j < k; j++) la[j] = -Math.log(lx[j]);
+        for (int j = 0; j < k; j++) la[j] = -lx[j];
 
-        // laij[i][j] = log(1/min(x_i, x_j)) = -log(min(x_i, x_j))
-        // Note: The previous code used -max(lx[i], lx[j]) assuming lx was already log.
-        // Assuming input lx here is raw x values:
+        // laij[i][j] = log(1/min(x_i, x_j)) = -log(min(x_i, x_j)) = -min(lx[i], lx[j])
         double[][] laij = new double[k][k];
 
-        // Cost 0: log(1/max(x_i, x_j)) = -log(max(x_i, x_j))
+        // Cost 0: log(1/max(x_i, x_j)) = -log(max(x_i, x_j)) = -max(lx[i], lx[j])
         double[][] logCost0 = new double[k][k];
 
-        // Cost 1: log(1/x_i + 1/x_j)
+        // Cost 1: log(1/x_i + 1/x_j) = log( exp(-lx[i]) + exp(-lx[j]) )
         double[][] logCost1 = new double[k][k];
 
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < k; j++) {
-                // Weight term
-                laij[i][j] = -Math.log(Math.min(lx[i], lx[j]));
+                // Weight term (min in log domain is just min)
+                laij[i][j] = -Math.min(lx[i], lx[j]);
 
                 // Cost terms
-                logCost0[i][j] = -Math.log(Math.max(lx[i], lx[j]));
-                logCost1[i][j] = Math.log(1.0/lx[i] + 1.0/lx[j]);
+                logCost0[i][j] = -Math.max(lx[i], lx[j]);
+                // Use logAdd for sum of exponentials
+                logCost1[i][j] = logAdd(-lx[i], -lx[j]);
             }
         }
 
@@ -467,6 +467,13 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         // 3. Base Cases: Singletons {j}
         for (int j = 0; j < k; j++) {
+            // If the weight is -Infinity (prob 0), skip or let it propagate as -Inf.
+            if (Double.isInfinite(la[j])) {
+                // If la[j] is Inf (because lx[j] was -Inf), math works out,
+                // but if lx[j] was -Inf, we shouldn't really start here.
+                // However, standard logic handles -Inf propagation usually.
+            }
+
             int baseIdx = idx.applyAsInt(1 << j) + j * W;
 
             // Case z_0 = 0 (w=0): P = a_j, Q = P * (z_0 * ...) = 0 -> log(-inf)
@@ -587,9 +594,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 // Constant = M - k + w - 1
                 int constantVal = M - k + w - 1;
 
-                // We need log(Q + P*C).
-                // Note: If C is negative, we need logSubtract.
-
                 double weightedPart; // log(P * C)
                 boolean isNegative = false;
 
@@ -601,13 +605,10 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 }
 
                 double termInside;
-                // Calculate log(exp(qFinal) + exp(weightedPart)) or log(exp(qFinal) - exp(weightedPart))
                 if (!isNegative) {
                     termInside = logAdd(qFinal, weightedPart);
                 } else {
-                    // P*C is negative in linear domain. We do Q - |P*C|
-                    // If Q < |P*C|, the density would be negative, which shouldn't happen
-                    // in valid probability contexts, but numerically we must handle it.
+                    // If P*C is negative in linear domain, we compute Q - |P*C|
                     termInside = logDiffExp(qFinal, weightedPart);
                 }
 
