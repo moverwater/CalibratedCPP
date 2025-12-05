@@ -527,16 +527,12 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                             double prevQm1 = dpQ[prevIdx + (w - 1)];
 
                             if (!Double.isInfinite(prevPm1)) {
-                                // P_new = P_old (weight is 1)
-                                double pTerm = prevPm1;
-
                                 // Q_new = Q_old + P_old * cost
-                                double qTermPart1 = prevQm1; // * 1
-                                double qTermPart2 = pTerm + logCost1[i][j];
+                                // * 1
+                                double qTermPart2 = prevPm1 + logCost1[i][j];
+                                double qTerm = logAdd(prevQm1, qTermPart2);
 
-                                double qTerm = logAdd(qTermPart1, qTermPart2);
-
-                                curP = logAdd(curP, pTerm);
+                                curP = logAdd(curP, prevPm1);
                                 curQ = logAdd(curQ, qTerm);
                             }
                         }
