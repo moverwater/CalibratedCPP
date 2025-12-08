@@ -176,7 +176,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int numFreeLineages = tree.getLeafNodeCount() - Arrays.stream(rootCladeSizes).sum(); // number of free lineages
 
         double interactionSum;
-        if (conditionOnRoot || numFreeLineages==0) {
+        if (conditionOnRoot) {
             interactionSum = computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);
         } else {
             interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
@@ -233,6 +233,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     private double logFactorial(double n) {
         double result = 0.0;
         if (n < 0) return Double.NEGATIVE_INFINITY;
+        if (n == 0) return result;
         for (int i = 1; i <= n; i++) {
             result += Math.log(i);
         }
