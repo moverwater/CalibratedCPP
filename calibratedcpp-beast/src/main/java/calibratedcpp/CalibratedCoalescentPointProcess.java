@@ -177,7 +177,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         double interactionSum;
         if (conditionOnRoot || numFreeLineages==0) {
-            interactionSum = computeExtendedRootSum(weights, numFreeLineages);
+            interactionSum = computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);
         } else {
             interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
         }
