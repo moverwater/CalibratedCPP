@@ -132,8 +132,8 @@
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution" >
             <distribution id="birthDeath" spec="calibratedcpp.CalibratedCoalescentPointProcess" tree="@tree" origin="3.0" conditionOnCalibrations="true">
                 <treeModel id="treeModel" spec="calibratedcpp.model.BirthDeathModel" birthRate="@birthRate" deathRate="@deathRate" rho="0.1"/>
-<!--                <calibrations spec="beast.base.evolution.speciation.CalibrationPoint" id="clade2">-->
-                    <calibrations id="clade_2_taxa" spec="TaxonSet">
+                <calibrations spec="calibration.CalibrationClade" id="clade2">
+                    <taxa id="clade_2_taxa" spec="TaxonSet">
                             <taxon id="leaf_45" spec="Taxon"/>
                             <taxon id="leaf_46" spec="Taxon"/>
                             <taxon id="leaf_47" spec="Taxon"/>
@@ -141,11 +141,10 @@
                             <taxon id="leaf_49" spec="Taxon"/>
                             <taxon id="leaf_50" spec="Taxon"/>
                             <taxon id="leaf_51" spec="Taxon"/>
-                    </calibrations>
-<!--                    <distr spec="beast.base.inference.distribution.Uniform" lower="1.19" upper="1.21"/>-->
-<!--                </calibrations>-->
-<!--                <calibrations spec="beast.base.evolution.speciation.CalibrationPoint" id="clade1">-->
-                        <calibrations id="clade_3_taxa" spec="TaxonSet">
+                    </taxa>
+                </calibrations>
+                <calibrations spec="calibration.CalibrationClade" id="clade1">
+                        <taxa id="clade_3_taxa" spec="TaxonSet">
                             <taxon idref="leaf_45"/>
                             <taxon idref="leaf_46"/>
                             <taxon idref="leaf_47"/>
@@ -157,18 +156,16 @@
                             <taxon id="leaf_53" spec="Taxon"/>
                             <taxon id="leaf_54" spec="Taxon"/>
                             <taxon id="leaf_55" spec="Taxon"/>
-                        </calibrations>
-<!--                        <distr spec="beast.base.inference.distribution.Uniform" lower="1.49" upper="1.51"/>-->
-<!--                </calibrations>-->
-<!--                <calibrations spec="beast.base.evolution.speciation.CalibrationPoint" id="clade3">-->
-                        <calibrations id="clade_4_taxa" spec="TaxonSet">
+                        </taxa>
+                </calibrations>
+                <calibrations spec="calibration.CalibrationClade" id="clade3">
+                        <taxa id="clade_4_taxa" spec="TaxonSet">
                             <taxon id="leaf_87" spec="Taxon"/>
                             <taxon id="leaf_88" spec="Taxon"/>
                             <taxon id="leaf_89" spec="Taxon"/>
                             <taxon id="leaf_90" spec="Taxon"/>
-                        </calibrations>
-<!--                        <distr spec="beast.base.inference.distribution.Uniform" lower="1.99" upper="2.01"/>-->
-<!--                </calibrations>-->
+                        </taxa>
+                </calibrations>
             </distribution>
             <distribution id="birthRatePrior" spec="beast.base.inference.distribution.Prior" x="@birthRate">
                 <distr spec="beast.base.inference.distribution.Uniform" lower="0.0" upper="10.0"/>
