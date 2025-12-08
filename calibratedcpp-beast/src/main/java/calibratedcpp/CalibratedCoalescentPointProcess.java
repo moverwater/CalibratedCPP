@@ -107,7 +107,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int cladeSize = calibration.taxa.getTaxonSet().size();
 
         double logQ_t = model.calculateLogCDF(cladeHeight);
-        double logDensity = - logFactorial(cladeSize) + model.calculateLogDensity(cladeHeight);
+        double logDensity = model.calculateLogDensity(cladeHeight);
 
         // Base case: leaf calibration
         if (children.isEmpty()) {
@@ -143,7 +143,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
             logDensity += logFactorial(childCladeSizes[i]) + 2 * logDiff[i] + logChildDensities[i];
         }
 
-        logDensity += (cladeSize - sumChildSizes) * logQ_t;
+        logDensity += logFactorial(cladeSize - sumChildSizes) + (cladeSize - sumChildSizes - 2 - numChildren) * logQ_t;
 
         return logDensity;
     }
@@ -176,13 +176,13 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int numFreeLineages = tree.getLeafNodeCount() - Arrays.stream(rootCladeSizes).sum(); // number of free lineages
 
         double interactionSum;
-        if (conditionOnRoot){
+        if (conditionOnRoot || numFreeLineages==0) {
             interactionSum = computeExtendedRootSum(weights, numFreeLineages);
         } else {
             interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
         }
 
-        double density = interactionSum + numFreeLineages * logQ_t - logFactorial(tree.getLeafNodeCount());
+        double density = interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorial(numFreeLineages) - logFactorial(tree.getLeafNodeCount());
 
         for (int i = 0; i< numRoots; i++) {
             density += logFactorial(rootCladeSizes[i]) + logRootDensities[i] + 2 * logDiff[i];
@@ -296,7 +296,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 logBin[w] = 0.0; // log(1)
                 continue;
             }
-            if (w == 0) {
+            else if (w == 0) {
                 logBin[w] = Double.NEGATIVE_INFINITY; // normally C(M-1, -1)=0
                 continue;
             }
@@ -441,10 +441,10 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < k; j++) {
                 // Weight term (min in log domain is just min)
-                laij[i][j] = -Math.min(lx[i], lx[j]);
+                laij[i][j] = -Math.max(lx[i], lx[j]);
 
                 // Cost terms
-                logCost0[i][j] = -Math.max(lx[i], lx[j]);
+                logCost0[i][j] = -Math.min(lx[i], lx[j]);
                 // Use logAdd for sum of exponentials
                 logCost1[i][j] = logAdd(-lx[i], -lx[j]);
             }
@@ -459,7 +459,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         double[] logBin = new double[W];
         for (int w = 0; w <= M; w++) {
             if (M == 0 && w == 0) { logBin[w] = 0.0; continue; }
-            if (w == 0) { logBin[w] = Double.NEGATIVE_INFINITY; continue; }
+            else if (w == 0) { logBin[w] = Double.NEGATIVE_INFINITY; continue; }
             int r = w - 1;
             if (r < 0 || r > M - 1) logBin[w] = Double.NEGATIVE_INFINITY;
             else logBin[w] = logFact[M - 1] - logFact[r] - logFact[(M - 1) - r];
@@ -468,11 +468,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         // 3. Base Cases: Singletons {j}
         for (int j = 0; j < k; j++) {
             // If the weight is -Infinity (prob 0), skip or let it propagate as -Inf.
-            if (Double.isInfinite(la[j])) {
-                // If la[j] is Inf (because lx[j] was -Inf), math works out,
-                // but if lx[j] was -Inf, we shouldn't really start here.
-                // However, standard logic handles -Inf propagation usually.
-            }
 
             int baseIdx = idx.applyAsInt(1 << j) + j * W;
 
@@ -591,8 +586,8 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 if (Double.isInfinite(pFinal) || Double.isInfinite(logBin[w])) continue;
 
                 // Combine: Binom * ( Q_final + P_final * Constant )
-                // Constant = M - k + w - 1
-                int constantVal = M - k + w - 1;
+                // Constant = M + k - w - 1
+                int constantVal = M - w;
 
                 double weightedPart; // log(P * C)
                 boolean isNegative = false;

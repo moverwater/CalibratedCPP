@@ -102,11 +102,15 @@ public class CalibratedCoalescentPointProcessTest {
     @Test
     public void calculateUnConditionedTreeLogLikelihood() {
 
-        assertEquals(-25.05062, cpp.calculateUnConditionedTreeLogLikelihood(tree), 1e-4, "Unconditioned density of the tree is incorrect.");
-        assertEquals(-25.05062 - Math.log(1 - Math.exp(birthDeath.calculateLogCDF(6.5))) + 2 * Math.log(1 - Math.exp(birthDeath.calculateLogCDF(6.0)))
-                        - birthDeath.calculateLogDensity(6.0),
-                rootConditionedCPP.calculateUnConditionedTreeLogLikelihood(tree), 1e-4, "Unconditioned density of the tree is incorrect."
-                );
+        int n = tree.getLeafNodeCount();
+
+        double log_n_factorial = 0;
+        for (int i = 1 ; i <= n; i++){
+            log_n_factorial += Math.log(i);
+        }
+
+        assertEquals(-25.05062 + (n - 1) * Math.log(2) - log_n_factorial,
+                cpp.calculateUnConditionedTreeLogLikelihood(tree), 1e-4, "Unconditioned density of the tree is incorrect.");
     }
 
     @Test
@@ -171,16 +175,21 @@ public class CalibratedCoalescentPointProcessTest {
         assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0),
                 cpp.computeCalibrationDensity(tree, cpABC), 1e-6, "Density for calibration ABC is incorrect.");
         assert cpHIJ != null;
-        assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0),
+        assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0)
+                         - (Math.log(3.0)),
                 cpp.computeCalibrationDensity(tree, cpHIJ), 1e-6, "Density for calibration HIJ is incorrect.");
         assert cpABCDE != null;
         assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) +
                         birthDeath.calculateLogDensity(1.5) +
-                        birthDeath.calculateLogDensity(4.0) + Math.log(2.0),
+                        birthDeath.calculateLogDensity(4.0) +
+                        2 * Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
                 cpp.computeCalibrationDensity(tree, cpABCDE), 1e-6, "Density for calibration ABCDE is incorrect.");
         assert cpFGHIJ != null;
-        assertEquals(birthDeath.calculateLogDensity(5.0) + birthDeath.calculateLogDensity(2.5) + birthDeath.calculateLogDensity(0.5) + Math.log(2.0) +
-                Math.log(4 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5))) + 2 * Math.exp(birthDeath.calculateLogCDF(5.0))),
+        assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0)
+                        - (Math.log(3.0)) + // density of HIJ
+                birthDeath.calculateLogDensity(5.0) +
+                Math.log(4.0 * (Math.exp(birthDeath.calculateLogCDF(5.0))-Math.exp(birthDeath.calculateLogCDF(2.5)))
+                + 2.0 * Math.exp(birthDeath.calculateLogCDF(5.0))) + Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
                 cpp.computeCalibrationDensity(tree, cpFGHIJ), 1e-6, "Density for calibration FGHIJ is incorrect.");
     }
 
