@@ -161,7 +161,7 @@ public class CalibratedCoalescentPointProcessTest {
         assertEquals(cpp.computeCalibrationDensity(tree, cpABCDE) + cpp.computeCalibrationDensity(tree, cpFGHIJ) +
                 Math.log(2.0) + birthDeath.calculateLogCDF(6.5) + Math.log1p(-Math.exp(birthDeath.calculateLogCDF(5.0) - birthDeath.calculateLogCDF(6.5))) +
                 labellings,
-                cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), 1e-2,
+                cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), 1e-4,
                 "MarginalDensity of the calibrations is incorrect.");
     }
 

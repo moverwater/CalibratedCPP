@@ -175,14 +175,15 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         int numFreeLineages = tree.getLeafNodeCount() - Arrays.stream(rootCladeSizes).sum(); // number of free lineages
 
-        double interactionSum;
+        double interactionSum = 0.0;
+        double density = 0.0;
         if (conditionOnRoot) {
-            interactionSum = computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);
+            interactionSum += computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);
+            density += interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorial(numFreeLineages) - logFactorial(tree.getLeafNodeCount());
         } else {
-            interactionSum = computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
+            interactionSum += computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
+            density += interactionSum + (numFreeLineages - numRoots - 1) * logQ_t + logFactorial(numFreeLineages) - logFactorial(tree.getLeafNodeCount());
         }
-
-        double density = interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorial(numFreeLineages) - logFactorial(tree.getLeafNodeCount());
 
         for (int i = 0; i< numRoots; i++) {
             density += logFactorial(rootCladeSizes[i]) + logRootDensities[i] + 2 * logDiff[i];
