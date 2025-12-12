@@ -62,9 +62,9 @@ public class CalibrationNode extends BEASTObject {
     public Node getCommonAncestor(TreeInterface tree) {
         List<Node> nodes = new ArrayList<>();
         for (Taxon t : this.taxa.getTaxonSet()) {
-            int idx = tree.getTaxonset().getTaxonIndex(t.getID());
-            if (idx < 0) throw new IllegalArgumentException("Taxon " + t.getID() + " not in tree");
-            nodes.add(tree.getNode(idx));
+            for (Node n : tree.getExternalNodes()) {
+                if (n.getID().equals(t.getID())) nodes.add(n);
+            }
         }
         if (nodes.isEmpty()) return null;
 
