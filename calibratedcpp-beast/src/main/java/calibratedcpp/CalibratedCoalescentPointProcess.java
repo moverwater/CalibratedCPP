@@ -52,6 +52,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     protected Double origin;
     protected double rootAge;
     protected double maxTime;
+    protected double[] logFactorials;
 
     @Override
     public void initAndValidate() {
@@ -69,6 +70,13 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         model = cppModelInput.get();
         calibrations = new ArrayList<>(calibrationsInput.get());
         conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
+
+        int nTaxa = tree.getLeafNodeCount();
+        logFactorials = new double[nTaxa + 1];
+        logFactorials[0] = 0.0;
+        for (int i = 1; i <= nTaxa; i++) {
+            logFactorials[i] = logFactorials[i-1] + Math.log(i);
+        }
 
         if (conditionOnCalibrations) {
             calibrationForest = new CalibrationForest(calibrations);
@@ -93,7 +101,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
             double age = node.getHeight();
             logP += model.calculateLogDensity(age);
         }
-        logP += (numTaxa - 1) * Math.log(2.0) - logFactorial(numTaxa); // Ignore orientation and include labelling with factor of 2^{n-1}/n!
+        logP += (numTaxa - 1) * Math.log(2.0) - logFactorials[numTaxa]; // Ignore orientation and include labelling with factor of 2^{n-1}/n!
         return logP;
     }
 
@@ -137,13 +145,13 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int sumChildSizes = Arrays.stream(childCladeSizes).sum();
 
         // Compute permutation sum over root locations
-        logDensity += computeExtendedRootSum(weights, cladeSize - sumChildSizes) - logFactorial(cladeSize);
+        logDensity += computeExtendedRootSum(weights, cladeSize - sumChildSizes) - logFactorials[cladeSize];
 
         for (int i = 0; i < numChildren; i++) {
-            logDensity += logFactorial(childCladeSizes[i]) + 2 * logDiff[i] + logChildDensities[i];
+            logDensity += logFactorials[childCladeSizes[i]] + 2 * logDiff[i] + logChildDensities[i];
         }
 
-        logDensity += logFactorial(cladeSize - sumChildSizes) + (cladeSize - sumChildSizes - 2 - numChildren) * logQ_t;
+        logDensity += logFactorials[cladeSize - sumChildSizes] + (cladeSize - sumChildSizes - 2 - numChildren) * logQ_t;
 
         return logDensity;
     }
@@ -179,14 +187,14 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         double density = 0.0;
         if (conditionOnRoot) {
             interactionSum += computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);
-            density += interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorial(numFreeLineages) - logFactorial(tree.getLeafNodeCount());
+            density += interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorials[numFreeLineages] - logFactorials[tree.getLeafNodeCount()];
         } else {
             interactionSum += computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
-            density += interactionSum + (numFreeLineages - numRoots - 1) * logQ_t + logFactorial(numFreeLineages) - logFactorial(tree.getLeafNodeCount());
+            density += interactionSum + (numFreeLineages - numRoots - 1) * logQ_t + logFactorials[numFreeLineages] - logFactorials[tree.getLeafNodeCount()];
         }
 
         for (int i = 0; i< numRoots; i++) {
-            density += logFactorial(rootCladeSizes[i]) + logRootDensities[i] + 2 * logDiff[i];
+            density += logFactorials[rootCladeSizes[i]] + logRootDensities[i] + 2 * logDiff[i];
         }
 
         return density;
@@ -229,16 +237,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         if (b > a) return Double.NEGATIVE_INFINITY;
         if (a == b) return Double.NEGATIVE_INFINITY;
         return a + Math.log1p(-Math.exp(b - a));
-    }
-
-    private double logFactorial(double n) {
-        double result = 0.0;
-        if (n < 0) return Double.NEGATIVE_INFINITY;
-        if (n == 0) return result;
-        for (int i = 1; i <= n; i++) {
-            result += Math.log(i);
-        }
-        return result;
     }
 
     private double logAdd(double logA, double logB) {

@@ -129,7 +129,7 @@ public class LikelihoodBenchmark {
         // 1. Change the parameter slightly to invalidate the cache
         // We toggle between 2.0 and 2.0000001
         double newVal = (birthDeathModel.birthRateInput.get().getValue() > 2.0) ? 2.0 : 2.0000001;
-        ((RealParameter) heled_and_drummond.birthRateInput.get()).setValue(newVal);
+        heled_and_drummond.birthRateInput.get().setValue(newVal);
 
         // 2. Measure the calculation
         return heled_and_drummond.calculateTreeLogLikelihood(tree);

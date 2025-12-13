@@ -315,8 +315,9 @@ public class CalibratedCoalescentPointProcessTest {
                 "birthRate", birthRate,
                 "relativeDeathRate", turnover,
                 "sampleProbability", rho);
-        assertEquals(cpp.calculateTreeLogLikelihood(tree) - logNfactorial,
-                heled_and_drummond.calculateTreeLogLikelihood(tree), 1e-10, "Calibrated CPP tree log likelihood does not math Heled and Drummond Tree log likelihood.");
+        assertEquals(cpp.calculateTreeLogLikelihood(tree),
+                heled_and_drummond.calculateTreeLogLikelihood(tree) + logNfactorial, 1e-10,
+                "Calibrated CPP tree log likelihood does not math Heled and Drummond Tree log likelihood.");
     }
 
 }
