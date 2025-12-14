@@ -8,10 +8,7 @@ import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
 import calibrationprior.CalibrationCladePrior;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  *
@@ -60,12 +57,20 @@ public class CalibrationNode extends BEASTObject {
 
     // --- Utility ---
     public Node getCommonAncestor(TreeInterface tree) {
+        Map<String, Node> leafMap = new HashMap<>();
+        for (Node n : tree.getExternalNodes()) {
+            leafMap.put(n.getID(), n);
+        }
+
         List<Node> nodes = new ArrayList<>();
         for (Taxon t : this.taxa.getTaxonSet()) {
-            for (Node n : tree.getExternalNodes()) {
-                if (n.getID().equals(t.getID())) nodes.add(n);
+            // 2. O(1) - Instant lookup
+            Node n = leafMap.get(t.getID());
+            if (n != null) {
+                nodes.add(n);
             }
         }
+
         if (nodes.isEmpty()) return null;
 
         Node a = nodes.get(0);

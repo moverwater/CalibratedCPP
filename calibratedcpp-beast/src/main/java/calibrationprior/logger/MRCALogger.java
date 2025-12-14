@@ -3,6 +3,7 @@ package calibrationprior.logger;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.core.Loggable;
+import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
@@ -60,21 +61,33 @@ public class MRCALogger extends CalculationNode implements Loggable {
     // ----------------------- Helper methods -----------------------
 
     private Node findMRCA(TreeInterface tree, TaxonSet taxonSet) {
-        List<String> taxaNames = tree.getTaxonset().asStringList();
-        List<Node> leafNodes = new ArrayList<>();
-
-        for (String taxon : taxonSet.asStringList()) {
-            int taxonIndex = taxaNames.indexOf(taxon);
-            if (taxonIndex < 0) {
-                throw new IllegalArgumentException("Taxon " + taxon + " not found in tree taxa: " + taxaNames);
-            }
-            Node node = tree.getNode(taxonIndex);
-            leafNodes.add(node);
+        // 1. Optimization: Index all leaf nodes in the tree by their ID.
+        // This allows O(1) lookup instead of iterating through the whole tree for every taxon.
+        Map<String, Node> leafMap = new HashMap<>();
+        for (Node n : tree.getExternalNodes()) {
+            leafMap.put(n.getID(), n);
         }
 
+        List<Node> leafNodes = new ArrayList<>();
+        for (Taxon t : taxonSet.getTaxonSet()) {
+            // O(1) lookup
+            Node n = leafMap.get(t.getID());
+
+            // Safety check: ensure the taxon actually exists in the tree
+            if (n != null) {
+                leafNodes.add(n);
+            }
+        }
+
+        if (leafNodes.isEmpty()) return null;
+
+        // 2. Reduce logic remains the same (Iterative MRCA)
         Node mrca = leafNodes.get(0);
         for (int i = 1; i < leafNodes.size(); i++) {
             mrca = getMRCA(mrca, leafNodes.get(i));
+            // Optimization: If we hit the root, we can stop immediately.
+            assert mrca != null;
+            if (mrca.isRoot()) return mrca;
         }
         return mrca;
     }

@@ -75,7 +75,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         logFactorials = new double[nTaxa + 1];
         logFactorials[0] = 0.0;
         for (int i = 1; i <= nTaxa; i++) {
-            logFactorials[i] = logFactorials[i-1] + Math.log(i);
+            logFactorials[i] = logFactorials[i - 1] + Math.log(i);
         }
 
         if (conditionOnCalibrations) {
@@ -193,7 +193,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
             density += interactionSum + (numFreeLineages - numRoots - 1) * logQ_t + logFactorials[numFreeLineages] - logFactorials[tree.getLeafNodeCount()];
         }
 
-        for (int i = 0; i< numRoots; i++) {
+        for (int i = 0; i < numRoots; i++) {
             density += logFactorials[rootCladeSizes[i]] + logRootDensities[i] + 2 * logDiff[i];
         }
 
@@ -295,8 +295,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 // Special case: binom(-1, -1) = 1
                 logBin[w] = 0.0; // log(1)
                 continue;
-            }
-            else if (w == 0) {
+            } else if (w == 0) {
                 logBin[w] = Double.NEGATIVE_INFINITY; // normally C(M-1, -1)=0
                 continue;
             }
@@ -458,8 +457,13 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         double[] logBin = new double[W];
         for (int w = 0; w <= M; w++) {
-            if (M == 0 && w == 0) { logBin[w] = 0.0; continue; }
-            else if (w == 0) { logBin[w] = Double.NEGATIVE_INFINITY; continue; }
+            if (M == 0 && w == 0) {
+                logBin[w] = 0.0;
+                continue;
+            } else if (w == 0) {
+                logBin[w] = Double.NEGATIVE_INFINITY;
+                continue;
+            }
             int r = w - 1;
             if (r < 0 || r > M - 1) logBin[w] = Double.NEGATIVE_INFINITY;
             else logBin[w] = logFact[M - 1] - logFact[r] - logFact[(M - 1) - r];

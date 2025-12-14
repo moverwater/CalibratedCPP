@@ -22,8 +22,8 @@
 
     <run chainLength="50000000" id="mcmc" spec="MCMC" storeEvery="1000">
         <state id="state" storeEvery="1000">
-            <stateNode id="tree" spec="feast.fileio.TreeFromNewickFile"
-                       fileName="calibration_tree.txt"
+            <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser"
+                       newick="((((((leaf_1:2.0,leaf_2:2.0):0.2,leaf_3:2.2):0.8,leaf_4:3.0):4.0,(leaf_5:2.0,leaf_6:2.0):5.0):2.5,(leaf_7:9.0,leaf_8:9.0):0.5):0.5,((leaf_9:4.5,leaf_10:4.5):0.4,leaf_11:4.9):5.1);"
                        IsLabelledNewick="true"
                        adjustTipHeights="true">
                 <taxa spec="beast.base.evolution.alignment.Alignment">
