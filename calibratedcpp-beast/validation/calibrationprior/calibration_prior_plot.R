@@ -1,4 +1,4 @@
-setwd("~/code/CalibratedCPP/calibratedcpp-beast/validation/")
+setwd("~/code/CalibratedCPP/calibratedcpp-beast/validation/calibrationprior/")
 
 log <- readLog("test_calibration_prior.log", as.mcmc = F)
 
@@ -23,7 +23,7 @@ for (i in 1:N) {
     geom_vline(xintercept = t_lo[i], color = "red", linetype = "dashed") +
     geom_vline(xintercept = t_hi[i], color = "red", linetype = "dashed") +
     labs(
-      title = paste0("Node ", i, " (Coverage=", round(mcmc_cov[i], 3), ")"),
+      title = paste0("Clade ", i, " (Coverage=", round(mcmc_cov[i], 3), ")"),
       x = TeX(paste0("$T_{", i, "}$"))
     ) + ylab("") +
     theme_minimal() +

@@ -155,8 +155,8 @@
         <!-- <operator id='narrow2' spec='Exchange' isNarrow='true' weight="10" tree="@tree"/> -->
         <!-- <operator id='wide2' spec='Exchange' isNarrow='false' weight="10" tree="@tree"/> -->
         <!-- <operator id="wilsonBalding" spec='WilsonBalding' weight="10" tree="@tree"/> -->
-        <operator id="EpochFlex" spec="beast.base.evolution.operator.EpochFlexOperator" tree="@tree" weight="10"/>
-        <operator id="Stretch" spec="beast.base.evolution.operator.TreeStretchOperator" tree="@tree" weight="10"/>
+        <operator id="EpochFlex" spec="beast.base.evolution.operator.EpochFlexOperator" tree="@tree" weight="40"/>
+        <operator id="Stretch" spec="beast.base.evolution.operator.TreeStretchOperator" tree="@tree" weight="40"/>
 
         <logger fileName="$(filebase).log" id="tracelog" logEvery="1000" mode="autodetect">
             <log id="treeStats" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>

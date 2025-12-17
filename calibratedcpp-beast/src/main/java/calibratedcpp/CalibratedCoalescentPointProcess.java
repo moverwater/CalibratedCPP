@@ -69,8 +69,11 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         tree = treeInput.get();
         model = cppModelInput.get();
         calibrations = new ArrayList<>(calibrationsInput.get());
-        conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
-
+        if (conditionOnRoot) {
+            conditionOnCalibrations = true;
+        } else {
+            conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
+        }
         int nTaxa = tree.getLeafNodeCount();
         logFactorials = new double[nTaxa + 1];
         logFactorials[0] = 0.0;
@@ -135,10 +138,15 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         for (int i = 0; i < numChildren; i++) {
             CalibrationNode child = children.get(i);
             logChildDensities[i] = computeCalibrationDensity(tree, child);
+            if (Double.isInfinite(logChildDensities[i])) {
+                return Double.POSITIVE_INFINITY;
+            }
             childCladeSizes[i] = child.taxa.getTaxonSet().size();
             childCDFs[i] = model.calculateLogCDF(child.getCommonAncestor(tree).getHeight());
-
             logDiff[i] = logDiffExp(logQ_t, childCDFs[i]); // log(Q(t)-Q(x_i))
+            if (Double.isInfinite(logDiff[i])) {
+                return Double.POSITIVE_INFINITY;
+            }
             weights[i] = logDiff[i] - logQ_t;
         }
 
@@ -174,9 +182,14 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         for (int i = 0; i < numRoots; i++) {
             logRootDensities[i] = computeCalibrationDensity(tree, rootNodes.get(i));
+            if (Double.isInfinite(logRootDensities[i])) {
+                return Double.POSITIVE_INFINITY;
+            }
             rootCladeSizes[i] = rootNodes.get(i).taxa.getTaxonSet().size();
             rootCDFs[i] = model.calculateLogCDF(rootNodes.get(i).getCommonAncestor(tree).getHeight());
-
+            if (Double.isInfinite(logDiff[i])) {
+                return Double.POSITIVE_INFINITY;
+            }
             logDiff[i] = logDiffExp(logQ_t, rootCDFs[i]);
             weights[i] = logDiff[i] - logQ_t;
         }
@@ -186,7 +199,8 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         double interactionSum = 0.0;
         double density = 0.0;
         if (conditionOnRoot) {
-            interactionSum += computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);
+            density += model.calculateLogDensity(maxTime);
+            if (numRoots > 0) { interactionSum += computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);}
             density += interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorials[numFreeLineages] - logFactorials[tree.getLeafNodeCount()];
         } else {
             interactionSum += computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);

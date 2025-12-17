@@ -8,7 +8,7 @@ import calibration.CalibrationForest;
 import calibration.CalibrationNode;
 import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.special.Gamma;
-import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.special.Erf;
 
 import java.util.*;
 
@@ -208,9 +208,14 @@ public class CalibrationPrior extends Distribution {
    // ------------------------------------------------------------------
    // log-moment target from calibration bounds
    private void computeLogTargets(CalibrationNode n) {
-      double tLo = n.getCalibrationCladePrior().getLower(), tHi = n.getCalibrationCladePrior().getUpper(), p = n.getCalibrationCladePrior().getCoverage();
-      NormalDistribution nd = new NormalDistribution(0, 1);
-      double z = nd.inverseCumulativeProbability((1 + p) / 2);
+      double tLo = n.getCalibrationCladePrior().getLower();
+      double tHi = n.getCalibrationCladePrior().getUpper();
+      double p = n.getCalibrationCladePrior().getCoverage();
+
+      // Replaced NormalDistribution.inverseCumulativeProbability with Erf.erfInv
+      // This calculates the z-score for the given coverage probability
+      double z = Math.sqrt(2.0) * Erf.erfInv(p);
+
       double sigma = (Math.log(tHi) - Math.log(tLo)) / (2 * z);
       n.getCalibrationCladePrior().sigma2 = sigma * sigma;
       n.getCalibrationCladePrior().mu = Math.log(tLo) + z * sigma;
@@ -284,8 +289,9 @@ public class CalibrationPrior extends Distribution {
             } else {
                // non-overlapping → truncated lognormal
                double lp = logNormalLogPdf(t, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
-               double cdf = logNormalCdf(tp, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
-               logP += lp - Math.log(cdf);
+               double lcdf = logNormalLogCdf(tp, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
+               if (Double.isInfinite(lcdf)) return Double.NEGATIVE_INFINITY;
+               logP += lp - lcdf;
             }
          }
       }
@@ -298,10 +304,17 @@ public class CalibrationPrior extends Distribution {
       return -Math.log(x * sigma * Math.sqrt(2 * Math.PI)) - 0.5 * z * z;
    }
 
-   private double logNormalCdf(double x, double mu, double sigma) {
-      if (x <= 0) return 0;
-      NormalDistribution nd = new NormalDistribution(0, 1);
-      return nd.cumulativeProbability((Math.log(x) - mu) / sigma);
+   private double logNormalLogCdf(double x, double mu, double sigma) {
+      if (x <= 0) return Double.NEGATIVE_INFINITY;
+
+      // 1. Convert to Z-score
+      double z = (Math.log(x) - mu) / sigma;
+
+      // 2. Calculate Cumulative Probability using Erf
+      // Formula: 0.5 * (1 + erf(z / sqrt(2)))
+      double p = 0.5 * (1.0 + Erf.erf(z / Math.sqrt(2.0)));
+
+      return Math.log(p);
    }
 
    private double betaLogPdf(double x, double a, double b) {
