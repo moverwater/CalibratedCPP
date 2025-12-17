@@ -200,7 +200,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         double density = 0.0;
         if (conditionOnRoot) {
             density += model.calculateLogDensity(maxTime);
-            if (numRoots > 0) { interactionSum += computeExtendedRootSum(weights, numFreeLineages) + model.calculateLogDensity(maxTime);}
+            if (numRoots > 0) { interactionSum += computeExtendedRootSum(weights, numFreeLineages);}
             density += interactionSum + (numFreeLineages - numRoots - 2) * logQ_t + logFactorials[numFreeLineages] - logFactorials[tree.getLeafNodeCount()];
         } else {
             interactionSum += computeBellmanHeldKarpWithTruncatedESP(weights, numFreeLineages);
