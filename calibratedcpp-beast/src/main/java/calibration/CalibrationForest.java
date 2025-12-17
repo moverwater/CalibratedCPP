@@ -133,8 +133,13 @@ public class CalibrationForest extends BEASTObject {
     }
 
     // --- Accessors ---
-    public List<CalibrationNode> getAllNodes() { return allNodes; }
-    public List<CalibrationNode> getRoots() { return roots; }
+    public List<CalibrationNode> getAllNodes() {
+        return allNodes;
+    }
+
+    public List<CalibrationNode> getRoots() {
+        return roots;
+    }
 
     @Override
     public void initAndValidate() {

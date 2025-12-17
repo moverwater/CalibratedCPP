@@ -11,7 +11,6 @@ import calibrationprior.CalibrationCladePrior;
 import java.util.*;
 
 /**
- *
  * A node in a calibration forest
  *
  * @author Marcus Overwater
@@ -85,7 +84,10 @@ public class CalibrationNode extends BEASTObject {
             throw new IllegalStateException("Node " + a + " is its own parent!");
         }
         Set<Node> ancA = new HashSet<>();
-        while (a != null) { ancA.add(a); a = a.getParent(); }
+        while (a != null) {
+            ancA.add(a);
+            a = a.getParent();
+        }
         while (b != null) {
             if (ancA.contains(b)) return b;
             b = b.getParent();

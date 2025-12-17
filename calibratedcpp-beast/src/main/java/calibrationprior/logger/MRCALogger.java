@@ -56,7 +56,8 @@ public class MRCALogger extends CalculationNode implements Loggable {
     }
 
     @Override
-    public void close(PrintStream out) { }
+    public void close(PrintStream out) {
+    }
 
     // ----------------------- Helper methods -----------------------
 

@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+
 import org.openjdk.jmh.results.format.ResultFormatType;
 
 @State(Scope.Thread) // Each thread gets its own instance of the state
@@ -66,7 +67,7 @@ public class LikelihoodBenchmark {
                 "distr", rootAgeDist);
         calibrationPoints.add(rootCalibrationPoint);
 
-        for (int i = 0; i < nCalibrations ; i++) {
+        for (int i = 0; i < nCalibrations; i++) {
             String t1Name = "leaf_" + (2 * i + 1);
             String t2Name = "leaf_" + (2 * (i + 1));
 
@@ -110,7 +111,7 @@ public class LikelihoodBenchmark {
         double epsilon = 1e-9;
 
         double logNfactorial = 0.0;
-        for (int i = 1; i <= taxa.getTaxonCount() ; i++) {
+        for (int i = 1; i <= taxa.getTaxonCount(); i++) {
             logNfactorial += Math.log(i);
         }
 
@@ -135,7 +136,7 @@ public class LikelihoodBenchmark {
         return heled_and_drummond.calculateTreeLogLikelihood(tree);
     }
 
-//     Benchmark for CalibratedCoalescentPointProcess
+    //     Benchmark for CalibratedCoalescentPointProcess
     @Benchmark
     public double measureCPP() {
         return cpp.calculateTreeLogLikelihood(tree);

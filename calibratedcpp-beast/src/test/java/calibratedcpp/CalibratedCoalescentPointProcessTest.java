@@ -12,6 +12,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.evolution.alignment.TaxonSet;
@@ -93,19 +94,20 @@ public class CalibratedCoalescentPointProcessTest {
         taxaFGHIJ = new TaxonSet(Arrays.asList(F, G, H, I, J));
 
         CalibrationClade calibrationABC = new CalibrationClade();
-        calibrationABC.initByName("taxa",taxaABC);
+        calibrationABC.initByName("taxa", taxaABC);
         CalibrationClade calibrationDE = new CalibrationClade();
-        calibrationDE.initByName("taxa",taxaDE);
+        calibrationDE.initByName("taxa", taxaDE);
         CalibrationClade calibrationABCDE = new CalibrationClade();
-        calibrationABCDE.initByName("taxa",taxaABCDE);
+        calibrationABCDE.initByName("taxa", taxaABCDE);
         CalibrationClade calibrationHI = new CalibrationClade();
-        calibrationHI.initByName("taxa",taxaHI);
+        calibrationHI.initByName("taxa", taxaHI);
         CalibrationClade calibrationHIJ = new CalibrationClade();
-        calibrationHIJ.initByName("taxa",taxaHIJ);
+        calibrationHIJ.initByName("taxa", taxaHIJ);
         CalibrationClade calibrationFGHIJ = new CalibrationClade();
-        calibrationFGHIJ.initByName("taxa",taxaFGHIJ);
+        calibrationFGHIJ.initByName("taxa", taxaFGHIJ);
 
-        calibrations = Arrays.asList(calibrationDE, calibrationABC, calibrationABCDE, calibrationHI, calibrationHIJ, calibrationFGHIJ);    }
+        calibrations = Arrays.asList(calibrationDE, calibrationABC, calibrationABCDE, calibrationHI, calibrationHIJ, calibrationFGHIJ);
+    }
 
     @Test
     public void calculateUnConditionedTreeLogLikelihood() {
@@ -113,7 +115,7 @@ public class CalibratedCoalescentPointProcessTest {
         int n = tree.getLeafNodeCount();
 
         double log_n_factorial = 0;
-        for (int i = 1 ; i <= n; i++){
+        for (int i = 1; i <= n; i++) {
             log_n_factorial += Math.log(i);
         }
 
@@ -122,13 +124,13 @@ public class CalibratedCoalescentPointProcessTest {
     }
 
     @Test
-    public void calibrationForest(){
+    public void calibrationForest() {
         CalibrationForest calibrationForest = new CalibrationForest(calibrations);
         List<CalibrationNode> calibrationNodes = calibrationForest.getAllNodes();
 
         for (CalibrationNode node : calibrationNodes) {
             if (!node.isRoot) {
-                assertTrue( node.parent.getCalibrationClade().getTaxa().getTaxonCount() > node.getCalibrationClade().getTaxa().getTaxonCount());
+                assertTrue(node.parent.getCalibrationClade().getTaxa().getTaxonCount() > node.getCalibrationClade().getTaxa().getTaxonCount());
                 assertTrue(node.parent.getCommonAncestor(tree).getHeight() > node.getCommonAncestor(tree).getHeight());
             }
         }
@@ -150,11 +152,11 @@ public class CalibratedCoalescentPointProcessTest {
         CalibrationNode cpABCDE = CalibrationNode.getByTaxa(calibrationNodes, taxaABCDE);
 
         double labellings = 0;
-        for (int i = 1; i <= 5 ; i++ ){
+        for (int i = 1; i <= 5; i++) {
             labellings += Math.log(i);
         }
         labellings = 2 * labellings;
-        for (int i = 1; i <= 10 ; i++ ){
+        for (int i = 1; i <= 10; i++) {
             labellings -= Math.log(i);
         }
 
@@ -163,12 +165,12 @@ public class CalibratedCoalescentPointProcessTest {
         assertEquals(rootConditionedCPP.computeCalibrationDensity(tree, cpABCDE) +
                         rootConditionedCPP.computeCalibrationDensity(tree, cpFGHIJ) +
                         Math.log(2.0) + birthDeath.calculateLogDensity(6.0) + labellings,
-                rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest),1e-4,
+                rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), 1e-4,
                 "Marginal density of the calibrations and root is incorrect.");
 
         assertEquals(cpp.computeCalibrationDensity(tree, cpABCDE) + cpp.computeCalibrationDensity(tree, cpFGHIJ) +
-                Math.log(2.0) + birthDeath.calculateLogCDF(6.5) + Math.log1p(-Math.exp(birthDeath.calculateLogCDF(5.0) - birthDeath.calculateLogCDF(6.5))) +
-                labellings,
+                        Math.log(2.0) + birthDeath.calculateLogCDF(6.5) + Math.log1p(-Math.exp(birthDeath.calculateLogCDF(5.0) - birthDeath.calculateLogCDF(6.5))) +
+                        labellings,
                 cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), 1e-4,
                 "MarginalDensity of the calibrations is incorrect.");
     }
@@ -196,7 +198,7 @@ public class CalibratedCoalescentPointProcessTest {
                 cpp.computeCalibrationDensity(tree, cpABC), 1e-6, "Density for calibration ABC is incorrect.");
         assert cpHIJ != null;
         assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0)
-                         - (Math.log(3.0)),
+                        - (Math.log(3.0)),
                 cpp.computeCalibrationDensity(tree, cpHIJ), 1e-6, "Density for calibration HIJ is incorrect.");
         assert cpABCDE != null;
         assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) +
@@ -207,9 +209,9 @@ public class CalibratedCoalescentPointProcessTest {
         assert cpFGHIJ != null;
         assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0)
                         - (Math.log(3.0)) + // density of HIJ
-                birthDeath.calculateLogDensity(5.0) +
-                Math.log(4.0 * (Math.exp(birthDeath.calculateLogCDF(5.0))-Math.exp(birthDeath.calculateLogCDF(2.5)))
-                + 2.0 * Math.exp(birthDeath.calculateLogCDF(5.0))) + Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
+                        birthDeath.calculateLogDensity(5.0) +
+                        Math.log(4.0 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5)))
+                                + 2.0 * Math.exp(birthDeath.calculateLogCDF(5.0))) + Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
                 cpp.computeCalibrationDensity(tree, cpFGHIJ), 1e-6, "Density for calibration FGHIJ is incorrect.");
     }
 
@@ -224,7 +226,7 @@ public class CalibratedCoalescentPointProcessTest {
 
         assertEquals(cpp.calculateUnConditionedTreeLogLikelihood(tree) -
                         cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
-                Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.5))),
+                        Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.5))),
                 cpp.calculateTreeLogLikelihood(tree), 1e-4, "Tree log likelihood incorrect.");
 
         rootConditionedCPP = new CalibratedCoalescentPointProcess();
@@ -236,8 +238,8 @@ public class CalibratedCoalescentPointProcessTest {
                 "treeModel", birthDeath);
 
         assertEquals(rootConditionedCPP.calculateUnConditionedTreeLogLikelihood(tree) -
-                rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
-                Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.0))),
+                        rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
+                        Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.0))),
                 rootConditionedCPP.calculateTreeLogLikelihood(tree), 1e-4, "Tree log likelihood incorrect.");
 
         CalibratedCoalescentPointProcess nonmonophyleticCPP = new CalibratedCoalescentPointProcess();
@@ -276,7 +278,7 @@ public class CalibratedCoalescentPointProcessTest {
                 "distr", rootAgeDist);
         calibrationPoints.add(rootCalibrationPoint);
 
-        for (int i = 0; i < 3 ; i++) {
+        for (int i = 0; i < 3; i++) {
             String t1Name = "leaf_" + (2 * i + 1);
             String t2Name = "leaf_" + (2 * (i + 1));
 
@@ -297,7 +299,7 @@ public class CalibratedCoalescentPointProcessTest {
             calibrationPoints.add(calibrationPoint);
         }
         double logNfactorial = 0.0;
-        for (int i = 1; i <= taxa.getTaxonCount() ; i++) {
+        for (int i = 1; i <= taxa.getTaxonCount(); i++) {
             logNfactorial += Math.log(i);
         }
 
@@ -324,7 +326,7 @@ public class CalibratedCoalescentPointProcessTest {
     }
 
     @Test
-    public void heledAndDrummondComparison(){
+    public void heledAndDrummondComparison() {
         cpp = new CalibratedCoalescentPointProcess();
         BirthDeathModel model = new BirthDeathModel();
         CalibratedBirthDeathModel heled_and_drummond = new CalibratedBirthDeathModel();
@@ -339,7 +341,7 @@ public class CalibratedCoalescentPointProcessTest {
         TaxonSet taxonSet = tree.getTaxonset();
 
         List<Taxon> taxonList1 = new ArrayList<>();
-        for (int i = 45; i <= 51; i++){
+        for (int i = 45; i <= 51; i++) {
             String TaxonID = "leaf_" + i;
             Taxon taxon = new Taxon();
             taxon.setID(TaxonID);
@@ -349,7 +351,7 @@ public class CalibratedCoalescentPointProcessTest {
         taxonSet1.initByName("taxon", taxonList1);
 
         List<Taxon> taxonList2 = new ArrayList<>();
-        for (int i = 45; i <= 55; i++){
+        for (int i = 45; i <= 55; i++) {
             String TaxonID = "leaf_" + i;
             Taxon taxon = new Taxon();
             taxon.setID(TaxonID);
@@ -359,7 +361,7 @@ public class CalibratedCoalescentPointProcessTest {
         taxonSet2.initByName("taxon", taxonList2);
 
         List<Taxon> taxonList3 = new ArrayList<>();
-        for (int i = 87; i <= 90; i++){
+        for (int i = 87; i <= 90; i++) {
             String TaxonID = "leaf_" + i;
             Taxon taxon = new Taxon();
             taxon.setID(TaxonID);
@@ -423,7 +425,7 @@ public class CalibratedCoalescentPointProcessTest {
         model.initByName("birthRate", birthRate,
                 "turnover", turnover,
                 "rho", rho);
-        cpp.initByName("treeModel",model,
+        cpp.initByName("treeModel", model,
                 "tree", tree,
                 "calibrations", calibrationClades,
                 "conditionOnRoot", true);
@@ -435,7 +437,7 @@ public class CalibratedCoalescentPointProcessTest {
                 "calibrations", calibrationPoints);
 
         double logNFactorial = 0.0;
-        for (int i = 1; i <= 100; i++){
+        for (int i = 1; i <= 100; i++) {
             logNFactorial += Math.log(i);
         }
         try (PrintWriter writer = new PrintWriter(new FileWriter("./validation/calibratedcpp/likelihood_comparison/comparison_results.csv"))) {
@@ -456,7 +458,6 @@ public class CalibratedCoalescentPointProcessTest {
                 heled_and_drummond.birthRateInput.get().setValue(currentBirthRate);
 
                 double cppVal = cpp.calculateTreeLogLikelihood(tree);
-                // Note: You added logNFactorial in your original code, preserving that here
                 double heled_and_drummondVal = heled_and_drummond.calculateTreeLogLikelihood(tree) + logNFactorial;
 
                 // Write the values to the CSV file
