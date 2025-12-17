@@ -4,5 +4,5 @@ We benchmark the computation time for the likelihood calculation of a single ful
 
 To run the benchmark comparison:
  - Go to the [src/test/java/calibratedcpp/ directory](../../../src/test/java/calibratedcpp/) in the calibratedcpp-beast sub-project.
- - Run LikelihoodBenchmark.java.
- - This will write a csv file to this directory.
+ - Run `LikelihoodBenchmark.java`.
+ - This will write a csv file called [benchmark_results.csv](./benchmark_results.csv) to this directory.
