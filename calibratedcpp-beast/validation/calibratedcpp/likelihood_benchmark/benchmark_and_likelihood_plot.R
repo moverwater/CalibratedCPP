@@ -56,34 +56,21 @@ plot_time <- ggplot(clean_data, aes(x = Calibrations, y = Time, color = Method, 
 
 setwd("~/code/CalibratedCPP/calibratedcpp-beast/validation/calibratedcpp/likelihood_comparison/")
 
-# (Reusing your data loading logic)
-heled_and_drummond_logs <- list()
-cpp_logs <- list()
-birthRates <- seq(1.1,5,0.1)
+lik_vals <- read.csv("comparison_results.csv")
 
-# Loop to read logs
-for(i in 1:length(birthRates)){
-  heled_and_drummond_logs[[i]] <- readLog(paste0("heled_and_drummond_likelihood_",birthRates[i],".log"),as.mcmc=F,burnin = 0.5)
-  cpp_logs[[i]] <- readLog(paste0("cpp_likelihood_",birthRates[i],".log"),as.mcmc=F,burnin = 0.5)
-}
-
-# Extract values
-heled_and_drummond_lik <- sapply(heled_and_drummond_logs, function(x) x$birthDeath[1])
-cpp_lik <- sapply(cpp_logs, function(x) x$birthDeath[1])
-
-# Create Plot 2
-# Note: We use aes(color = "Name") to manually map the strings to the legend
 plot_lik <- ggplot() + 
-  geom_line(aes(x = birthRates, y = heled_and_drummond_lik, color = "Heled & Drummond"), linewidth = 1.1) + 
-  geom_point(aes(x = birthRates, y = cpp_lik - lfactorial(100), color = "Calibrated CPP"), size = 2) + 
+  # Move color inside aes() to create a mapping for the legend
+  geom_line(aes(x = lik_vals$BirthRate, y = lik_vals$HeledAndDrummond_LogLikelihood, color = "Heled and Drummond"), linewidth = 1.1) + 
+  geom_point(aes(x = lik_vals$BirthRate, y = lik_vals$CPP_LogLikelihood, color = "CPP"), size = 1.5) + 
   
-  # ESSENTIAL: Use the SAME name and values as Plot 1
-  scale_color_manual(name = "Method", values = custom_colors) +
+  # Manually define the colors for the labels created above
+  scale_color_manual(name = "Method", 
+                     values = c("Heled and Drummond" = "red", "CPP" = "black")) +
   
   ylab("Log-likelihoods") + 
   xlab("Birth-rate") + 
   theme_bw() +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") # Optional: moves legend to bottom
 
 # ==========================================
 # PART 3: Combine and Save
