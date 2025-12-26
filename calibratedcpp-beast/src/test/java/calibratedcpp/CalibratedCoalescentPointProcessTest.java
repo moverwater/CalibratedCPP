@@ -464,7 +464,7 @@ public class CalibratedCoalescentPointProcessTest {
                 // Format: Iteration, BirthRate, CPP Val, HD Val
                 writer.printf("%d,%s,%.8f,%.8f%n", i, birthRateValue, cppVal, heled_and_drummondVal);
 
-                assertEquals(cppVal, heled_and_drummondVal, 1e-8,
+                assertEquals(cppVal, heled_and_drummondVal, 1e-9,
                         "Tree Log-Likelihoods do not match for birthRate(" + birthRate.getValue() + ")");
             }
         } catch (IOException e) {
