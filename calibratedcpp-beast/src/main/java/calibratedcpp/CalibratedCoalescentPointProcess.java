@@ -267,7 +267,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         if (k == 0) return 0.0;
         if (k >= 20) throw new IllegalArgumentException("k must be < 20 for this array-based implementation.");
 
-        int W = M + 1;
+        int W = Math.min(M,k+1) + 1;
         int fullMask = (1 << k) - 1;
 
         // compute total array size and guard integer overflow
@@ -305,7 +305,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         for (int i = 1; i <= nForBinom; i++) logFact[i] = logFact[i - 1] + Math.log(i);
 
         // Precompute log binomials logBin[w] = log C(M-1, w-1) for w=0..M
-        double[] logBin = new double[W];
+        double[] logBin = new double[M + 1];
         for (int w = 0; w <= M; w++) {
             if (M == 0 && w == 0) {
                 // Special case: binom(-1, -1) = 1
@@ -415,7 +415,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         if (k == 0) return Double.NEGATIVE_INFINITY; // log(0)
         if (k >= 20) throw new IllegalArgumentException("k must be < 20 for this array-based implementation.");
 
-        int W = M + 1;
+        int W = Math.min(M,k+1) + 1;
         int fullMask = (1 << k) - 1;
 
         // 1. Memory Management
@@ -471,7 +471,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         logFact[0] = 0.0;
         for (int i = 1; i <= nForBinom; i++) logFact[i] = logFact[i - 1] + Math.log(i);
 
-        double[] logBin = new double[W];
+        double[] logBin = new double[M + 1];
         for (int w = 0; w <= M; w++) {
             if (M == 0 && w == 0) {
                 logBin[w] = 0.0;
@@ -481,7 +481,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 continue;
             }
             int r = w - 1;
-            if (r < 0 || r > M - 1) logBin[w] = Double.NEGATIVE_INFINITY;
+            if (r > M - 1) logBin[w] = Double.NEGATIVE_INFINITY;
             else logBin[w] = logFact[M - 1] - logFact[r] - logFact[(M - 1) - r];
         }
 
@@ -606,7 +606,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 if (Double.isInfinite(pFinal) || Double.isInfinite(logBin[w])) continue;
 
                 // Combine: Binom * ( Q_final + P_final * Constant )
-                // Constant = M + k - w - 1
                 int constantVal = M - w;
 
                 double weightedPart; // log(P * C)
