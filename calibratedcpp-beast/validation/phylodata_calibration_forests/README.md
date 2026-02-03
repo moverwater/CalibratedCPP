@@ -26,11 +26,7 @@ Annotated Newick format with BEAST-style metadata:
 
 ## Usage
 
-Run benchmark:
-```bash
-cd calibratedcpp-beast
-java -cp "lib/*:target/classes" calibratedcpp.SimpleConstraintBenchmark [iterations] [warmup]
-```
+Run `SimpleConstraintBenchmark` from your IDE, or from command line after building.
 
 ## Notes
 
