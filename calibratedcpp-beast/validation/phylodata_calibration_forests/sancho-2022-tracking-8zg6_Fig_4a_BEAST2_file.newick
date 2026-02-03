@@ -1,0 +1,8 @@
+# Calibration forest from: sancho-2022-tracking-8zg6/Fig_4a_BEAST2_file.xml
+# Total taxa: 38
+# Calibrated taxa: 19
+# Calibrations: 2
+# Trees in forest: 1
+# Complexity score: 2
+#
+(((Barb,Bboi_A2,Bdis,Bhyb_B,Bhyb_D,Bmex_A1,Bpho422_E2,Bpho422_G,Bpho6_E2,Bpho6_G,Bpin,Bret_A2,Bret_E1,Brup_E2,Brup_G,Bsta,Bsyl,Hvul)[&name=Brachy_Hordeum,dist=Normal,meanInRealSpace=true,monophyletic=true],Osat)[&name=BOP,dist=Normal,meanInRealSpace=true,monophyletic=true],seq_Barb,seq_Bboi_A2,seq_Bdis,seq_Bhyb_B,seq_Bhyb_D,seq_Bmex_A1,seq_Bpho422_E2,seq_Bpho422_G,seq_Bpho6_E2,seq_Bpho6_G,seq_Bpin,seq_Bret_A2,seq_Bret_E1,seq_Brup_E2,seq_Brup_G,seq_Bsta,seq_Bsyl,seq_Hvul,seq_Osat);

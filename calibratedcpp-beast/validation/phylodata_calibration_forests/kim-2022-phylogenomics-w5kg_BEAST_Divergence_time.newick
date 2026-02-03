@@ -1,0 +1,8 @@
+# Calibration forest from: kim-2022-phylogenomics-w5kg/BEAST_Divergence_time.xml
+# Total taxa: 38
+# Calibrated taxa: 19
+# Calibrations: 18
+# Trees in forest: 1
+# Complexity score: 174
+#
+(((((((((Mcah3,Mcoo3)[&name=McahMcoo,meanInRealSpace=true,monophyletic=true],Mtal3)[&name=McahMcooMtal,meanInRealSpace=true,monophyletic=true],(((Malt1,Mbrt3)[&name=MbrtMalt,meanInRealSpace=true,monophyletic=true],Mcht1)[&name=MchtMbrtMalt,meanInRealSpace=true,monophyletic=true],Mwar3)[&name=MwarMchtMbrtMalt,meanInRealSpace=true,monophyletic=true])[&name=AllRedeye,meanInRealSpace=true,monophyletic=true],((Mcho4,Mhen3)[&name=MchoMhen,meanInRealSpace=true,monophyletic=true],(Mpun3,Mtre1)[&name=MpunMtre,meanInRealSpace=true,monophyletic=true])[&name=AllSpotted,meanInRealSpace=true,monophyletic=true])[&name=All-MnotMsalMcatMdol,meanInRealSpace=true,monophyletic=true],(((Mlit4,Moua3)[&name=MlitMoua,meanInRealSpace=true,monophyletic=true],Mdol3)[&name=MdolMvel,meanInRealSpace=true,monophyletic=true],Mvel1)[&name=Mdol,meanInRealSpace=true,monophyletic=true])[&name=All-MnotMsalMcat,meanInRealSpace=true,monophyletic=true],Mcat2)[&name=All-MnotMsal,meanInRealSpace=true,monophyletic=true],(Mnig1,Msal2)[&name=MnigMsal,meanInRealSpace=true,monophyletic=true])[&name=All-Mnot,meanInRealSpace=true,monophyletic=true],Mnot1)[&name=Root,dist=Normal,offset=5.0,meanInRealSpace=true],seq_Malt1,seq_Mbrt3,seq_Mcah3,seq_Mcat2,seq_Mcho4,seq_Mcht1,seq_Mcoo3,seq_Mdol3,seq_Mhen3,seq_Mlit4,seq_Mnig1,seq_Mnot1,seq_Moua3,seq_Mpun3,seq_Msal2,seq_Mtal3,seq_Mtre1,seq_Mvel1,seq_Mwar3);

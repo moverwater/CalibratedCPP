@@ -1,0 +1,8 @@
+# Calibration forest from: tanoyo-2024-systematics-3ytw/varruculosa_beast.xml
+# Total taxa: 50
+# Calibrated taxa: 23
+# Calibrations: 1
+# Trees in forest: 1
+# Complexity score: 0
+#
+((AB444689_WJava,AB570273_EJava,AB570276_Bali,AF206473_Philip,China,EU435280_Taiwan,EU979849_Sulawesi,KX055954_I_food,MVZ293810_Alor,MVZ294011_Wetar,MVZ294016_Wetar,WAMR101508_Timor,WAMR101594_Sumba,WAMR101765_Sumba,WAMR105622_Rote,WAMR105681_Rote,WAMR106787_Timor,WAMR107646_Alor,WAMR107861_Pantar,WAMR108128_Semau,WAMR109159_Bali,WAMR98533_Sumbawa,WAMR98691_Mojo)[&name=ingroup,meanInRealSpace=true,monophyletic=true],F.iskandari,F.limnocharis,seq_AB444689_WJava,seq_AB570273_EJava,seq_AB570276_Bali,seq_AF206473_Philip,seq_China,seq_EU435280_Taiwan,seq_EU979849_Sulawesi,seq_F.iskandari,seq_F.limnocharis,seq_KX055954_I_food,seq_MVZ293810_Alor,seq_MVZ294011_Wetar,seq_MVZ294016_Wetar,seq_WAMR101508_Timor,seq_WAMR101594_Sumba,seq_WAMR101765_Sumba,seq_WAMR105622_Rote,seq_WAMR105681_Rote,seq_WAMR106787_Timor,seq_WAMR107646_Alor,seq_WAMR107861_Pantar,seq_WAMR108128_Semau,seq_WAMR109159_Bali,seq_WAMR98533_Sumbawa,seq_WAMR98691_Mojo);

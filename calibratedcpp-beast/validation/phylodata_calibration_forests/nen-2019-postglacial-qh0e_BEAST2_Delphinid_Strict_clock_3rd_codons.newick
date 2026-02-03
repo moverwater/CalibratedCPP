@@ -1,0 +1,8 @@
+# Calibration forest from: nen-2019-postglacial-qh0e/BEAST2_Delphinid_Strict_clock_3rd_codons.xml
+# Total taxa: 40
+# Calibrated taxa: 20
+# Calibrations: 2
+# Trees in forest: 1
+# Complexity score: 2
+#
+(((Orcinus_orca_resident,Orcinus_orca_transient)[&name=orca,meanInRealSpace=true],Cephalorhynchus_heavisidii,Delphinus_capensis,Feresa_attenuata,Globicephala_macrorhynchus,Globicephala_melas,Grampus_griseus,Lagenorhynchus_albirostris,Orcaella_brevirostris,Orcaella_heinsohni,Peponocephala_electra,Pseudorca_crassidens,SA99,SABD1,Sousa_chinensis,Stenella_attenuata,Stenella_coeruleoalba,Steno_bredanensis,Tursiops_truncatus)[&name=root,dist=Normal,meanInRealSpace=true,monophyletic=true],seq_Cephalorhynchus_heavisidii,seq_Delphinus_capensis,seq_Feresa_attenuata,seq_Globicephala_macrorhynchus,seq_Globicephala_melas,seq_Grampus_griseus,seq_Lagenorhynchus_albirostris,seq_Orcaella_brevirostris,seq_Orcaella_heinsohni,seq_Orcinus_orca_resident,seq_Orcinus_orca_transient,seq_Peponocephala_electra,seq_Pseudorca_crassidens,seq_SA991,seq_SABD1,seq_Sousa_chinensis,seq_Stenella_attenuata,seq_Stenella_coeruleoalba,seq_Steno_bredanensis,seq_Tursiops_truncatus);

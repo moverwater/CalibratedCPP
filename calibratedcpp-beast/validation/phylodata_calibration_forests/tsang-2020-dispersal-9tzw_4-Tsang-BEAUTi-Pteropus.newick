@@ -1,0 +1,8 @@
+# Calibration forest from: tsang-2020-dispersal-9tzw/4-Tsang-BEAUTi-Pteropus.xml
+# Total taxa: 74
+# Calibrated taxa: 34
+# Calibrations: 3
+# Trees in forest: 1
+# Complexity score: 32
+#
+(((PGILL,PWOOD)[&name=Pwood-Pgill,dist=Normal,meanInRealSpace=true],(PPEL,PYAP)[&name=Pyap-Ppel,dist=Normal,meanInRealSpace=true],MalUtPH_M64,MalUtPsp4_M50,PAAlecto,PADM,PAGouldi,PANET,PCAP,PCAPENN,PCHR,PCON,PD,PGIG,PGRIS,PLLom,PLYL,PMOL,PNEO,POC,PPER_T24,PPOL,PPSE,PPUM,PRAY,PRUF,PSAM,PSCAP,PTEM,PTON,PV,PVET)[&name=ingroup,dist=Normal,meanInRealSpace=true,monophyletic=true],ACEL,AJUB,AMAC,seq_ACEL,seq_AJUB,seq_AMAC,seq_MalUtPH_M64,seq_MalUtPsp4_M50,seq_PAAlecto,seq_PADM,seq_PAGouldi,seq_PANET,seq_PCAP,seq_PCAPENN,seq_PCHR,seq_PCON,seq_PD,seq_PGIG,seq_PGILL,seq_PGRIS,seq_PLLom,seq_PLYL,seq_PMOL,seq_PNEO,seq_POC,seq_PPEL,seq_PPER_T24,seq_PPOL,seq_PPSE,seq_PPUM,seq_PRAY,seq_PRUF,seq_PSAM,seq_PSCAP,seq_PTEM,seq_PTON,seq_PV,seq_PVET,seq_PWOOD,seq_PYAP);
