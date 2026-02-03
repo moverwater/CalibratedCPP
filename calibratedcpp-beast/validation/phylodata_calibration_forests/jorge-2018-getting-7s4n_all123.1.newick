@@ -1,0 +1,8 @@
+# Calibration forest from: jorge-2018-getting-7s4n/all123.1.xml
+# Total taxa: 114
+# Calibrated taxa: 38
+# Calibrations: 7
+# Trees in forest: 6
+# Complexity score: 13826
+#
+((2088F,2124F,2447F,2450F1,C2467F,S16492Fj,S19253M,S19278Fj,S19330M,S19336F,S19352M,S19471F,S19478M,S23142F2,S23142MIx,S23224F,S23235F,Sj19454)[&name=cladeA,meanInRealSpace=true,monophyletic=true],(1368F,C1337F2,C1492F,S16108F,S16154F,S23239F,Sj16536)[&name=cladeB,meanInRealSpace=true,monophyletic=true],(Ph19418F,SL2H3F)[&name=cladeC,meanInRealSpace=true,monophyletic=true],(S23071F,S23168F4)[&name=cladeD,meanInRealSpace=true,monophyletic=true],(S14167F,S14187F,S14717M,STF4F)[&name=mrca1,dist=Normal,meanInRealSpace=true,monophyletic=true],((S24287Fr1,SAP1F)[&name=mrca3,dist=LogNormal,M=0.5904079,S=0.85,offset=1.45,meanInRealSpace=true,monophyletic=true],S15120M,S15448M,S7158F2)[&name=mrca2,dist=Uniform,meanInRealSpace=true,monophyletic=true],C2597F,C2828F,CLm28F,Dr12EF,S13432M,S14064F,S15043M,S1757M,S20400M,S23854F,S3320F,SG4F,SG9M,SJCB6417M,SMpenF,c10057F,c9211M,c9553F,c9902F,seq_1368F,seq_2088F,seq_2124F,seq_2447F,seq_2450F1,seq_C1337F2,seq_C1492F,seq_C2467F,seq_C2597F,seq_C2828F,seq_CLm28F,seq_Dr12EF,seq_Ph19418F,seq_S13432M,seq_S14064F,seq_S14167F,seq_S14187F,seq_S14717M,seq_S15043M,seq_S15120M,seq_S15448M,seq_S16108F,seq_S16154F,seq_S16492Fj,seq_S1757M,seq_S19253M,seq_S19278Fj,seq_S19330M,seq_S19336F,seq_S19352M,seq_S19471F,seq_S19478M,seq_S20400M,seq_S23071F,seq_S23142F2,seq_S23142MIx,seq_S23168F4,seq_S23224F,seq_S23235F,seq_S23239F,seq_S23854F,seq_S24287Fr1,seq_S3320F,seq_S7158F2,seq_SAP1F,seq_SG4F,seq_SG9M,seq_SJCB6417M,seq_SL2H3F,seq_SMpenF,seq_STF4F,seq_Sj16536,seq_Sj19454,seq_c10057F,seq_c9211M,seq_c9553F,seq_c9902F);

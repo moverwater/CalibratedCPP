@@ -26,6 +26,10 @@ public class CalibrationNode extends BEASTObject {
 
     public boolean isRoot;        // true if start of independent subtree
 
+    // Cached leaf map to avoid O(n) lookup per taxon
+    // (BEAST's getTaxonIndex is O(n), HashMap is O(1))
+    private static final WeakHashMap<TreeInterface, Map<String, Node>> leafMapCache = new WeakHashMap<>();
+
     public CalibrationNode(CalibrationClade calibration) {
         this.calibration = calibration;
         this.taxa = calibration.getTaxa();
@@ -56,14 +60,18 @@ public class CalibrationNode extends BEASTObject {
 
     // --- Utility ---
     public Node getCommonAncestor(TreeInterface tree) {
-        Map<String, Node> leafMap = new HashMap<>();
-        for (Node n : tree.getExternalNodes()) {
-            leafMap.put(n.getID(), n);
+        // Cache leaf map per tree - O(1) lookup vs BEAST's O(n) getTaxonIndex
+        Map<String, Node> leafMap = leafMapCache.get(tree);
+        if (leafMap == null) {
+            leafMap = new HashMap<>();
+            for (Node n : tree.getExternalNodes()) {
+                leafMap.put(n.getID(), n);
+            }
+            leafMapCache.put(tree, leafMap);
         }
 
         List<Node> nodes = new ArrayList<>();
         for (Taxon t : this.taxa.getTaxonSet()) {
-            // 2. O(1) - Instant lookup
             Node n = leafMap.get(t.getID());
             if (n != null) {
                 nodes.add(n);
