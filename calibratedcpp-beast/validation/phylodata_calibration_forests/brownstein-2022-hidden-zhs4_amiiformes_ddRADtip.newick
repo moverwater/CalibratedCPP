@@ -1,0 +1,8 @@
+# Calibration forest from: brownstein-2022-hidden-zhs4/amiiformes_ddRADtip.xml
+# Total taxa: 16
+# Calibrated taxa: 7
+# Calibrations: 2
+# Trees in forest: 1
+# Complexity score: 2
+#
+(((Amia_calva_0.0,Amia_ocellicauda_0.0)[&name=Amia,meanInRealSpace=true,monophyletic=true],Amia_pattersoni_51.66,Amia_scutata_35.0,Calamopleurus_cylindricus_112.0,Caturus_furcatus_151.5,Ionoscopus_cyprinoides_151.5)[&name=pan-Amiidae,meanInRealSpace=true,monophyletic=true],Lepisosteus_oculatus_0.0,seq_Amia_calva_0.0,seq_Amia_ocellicauda_0.0,seq_Amia_pattersoni_51.66,seq_Amia_scutata_35.0,seq_Calamopleurus_cylindricus_112.0,seq_Caturus_furcatus_151.5,seq_Ionoscopus_cyprinoides_151.5,seq_Lepisosteus_oculatus_0.0);

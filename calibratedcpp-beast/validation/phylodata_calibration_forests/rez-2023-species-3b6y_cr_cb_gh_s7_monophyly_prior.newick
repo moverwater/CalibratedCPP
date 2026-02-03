@@ -1,0 +1,8 @@
+# Calibration forest from: rez-2023-species-3b6y/cr_cb_gh_s7_monophyly_prior.xml
+# Total taxa: 105
+# Calibrated taxa: 2
+# Calibrations: 1
+# Trees in forest: 1
+# Complexity score: 0
+#
+((Baker,Chubut)[&name=Baker-Chubut,dist=Normal,meanInRealSpace=true,monophyletic=true],Beauti2DummyTaxonSet,Biobio,Bue_02,Bueno,Car_01,Carampangue,Colorado,D2Bue,D3Bue,D4Bue,D5Bue,DBk142,DCUllm.1,DCau153,DCol222,DCru240,DIt124,DIt125,DLa205,DMAlt.1,DMau145,DTe184,DTi132,DTol03,DipBoca.1,Imperial,Itata,Lar_01,Lar_02,Laraquete,Maule,Negro,Rapel,Teno,Tolten,Valdivia,dummyTaxon,seq_Bue_021,seq_Bue_022,seq_Bue_023,seq_Car_011,seq_Car_012,seq_Car_013,seq_D2Bue1,seq_D2Bue2,seq_D2Bue3,seq_D3Bue1,seq_D3Bue2,seq_D3Bue3,seq_D4Bue1,seq_D4Bue2,seq_D4Bue3,seq_D5Bue1,seq_D5Bue2,seq_D5Bue3,seq_DBk1421,seq_DBk1422,seq_DBk1423,seq_DCUllm.11,seq_DCUllm.12,seq_DCUllm.13,seq_DCau1531,seq_DCau1532,seq_DCau1533,seq_DCol2221,seq_DCol2222,seq_DCol2223,seq_DCru2401,seq_DCru2402,seq_DCru2403,seq_DIt1241,seq_DIt1242,seq_DIt1243,seq_DIt1251,seq_DIt1252,seq_DIt1253,seq_DLa2051,seq_DLa2052,seq_DLa2053,seq_DMAlt.11,seq_DMAlt.12,seq_DMAlt.13,seq_DMau1451,seq_DMau1452,seq_DMau1453,seq_DTe1841,seq_DTe1842,seq_DTe1843,seq_DTi1321,seq_DTi1322,seq_DTi1323,seq_DTol031,seq_DTol032,seq_DTol033,seq_DipBoca.11,seq_DipBoca.12,seq_DipBoca.13,seq_Lar_011,seq_Lar_012,seq_Lar_013,seq_Lar_021,seq_Lar_022,seq_Lar_023);

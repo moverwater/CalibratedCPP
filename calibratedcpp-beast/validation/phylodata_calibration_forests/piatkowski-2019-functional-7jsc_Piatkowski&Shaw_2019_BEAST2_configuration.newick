@@ -1,0 +1,8 @@
+# Calibration forest from: piatkowski-2019-functional-7jsc/Piatkowski&Shaw_2019_BEAST2_configuration.xml
+# Total taxa: 30
+# Calibrated taxa: 15
+# Calibrations: 2
+# Trees in forest: 2
+# Complexity score: 32
+#
+((capillifolium,fuscum,girgensohnii,magellanicum,papillosum,rubellum,warnstorfii)[&name=Acutifolia+Sphagnum,meanInRealSpace=true,monophyletic=true],(angustifolium,balticum,contortum,cuspidatum,fallax,lindbergii,majus,tenellum)[&name=Cuspidata+Subsecunda,meanInRealSpace=true,monophyletic=true],seq_angustifolium4,seq_balticum4,seq_capillifolium4,seq_contortum4,seq_cuspidatum4,seq_fallax4,seq_fuscum4,seq_girgensohnii4,seq_lindbergii4,seq_magellanicum4,seq_majus4,seq_papillosum4,seq_rubellum4,seq_tenellum4,seq_warnstorfii4);

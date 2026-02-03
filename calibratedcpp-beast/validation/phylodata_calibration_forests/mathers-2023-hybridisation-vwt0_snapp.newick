@@ -1,0 +1,8 @@
+# Calibration forest from: mathers-2023-hybridisation-vwt0/snapp.xml
+# Total taxa: 38
+# Calibrated taxa: 8
+# Calibrations: 2
+# Trees in forest: 1
+# Complexity score: 2
+#
+(((KM,LF_MY,QD_TA,SZ_PL,TG_YC,UK,WH)[&name=Constraint0002,meanInRealSpace=true,monophyletic=true],MedirOG)[&name=Constraint0001,dist=Normal,offset=0.0,meanInRealSpace=true,monophyletic=true],JIC1,KM2,KM4,LF7,MY9,Medir,PL9,QD10,SZ9,SaWr1,TA9,TG7,WH1,WH7,YC7,seq_JIC1,seq_KM2,seq_KM4,seq_LF7,seq_MY9,seq_Medir,seq_PL9,seq_QD10,seq_SZ9,seq_SaWr1,seq_TA9,seq_TG7,seq_WH1,seq_WH7,seq_YC7);

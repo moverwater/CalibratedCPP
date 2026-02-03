@@ -1,0 +1,8 @@
+# Calibration forest from: vieira-2024-mitochondrial-cg9a/BEAST_infile_calibration.xml
+# Total taxa: 126
+# Calibrated taxa: 63
+# Calibrations: 1
+# Trees in forest: 1
+# Complexity score: 0
+#
+((AD13,AD4,AD5,AD9,AL11,AL15,AL3,AL8,AZ30,AZ5,GRi10,GRi15,GRi2,GRi9,IR10,IR15,IR6,IR8,ITI15,ITt3,ITt6,ITt8,MD1,MD11,MD15,MD3,MD6,MO13,MO3,NE15,PTn10,PTn3,PTn4,PTn6,PTs11,PTs13,PTs2,PTs3,PTs4,PTs7,SCe1,SCw12,SCw13,SCw2,SCw3,SCw6,SCw7,SPa11,SPa7,SPb1,SPb13,SPb15,SPb5,SPb9,SPc1,SPc2,SPc5,SPg11,SPg6,SPg8,Sard16,Sard17,Sard41)[&name=all,dist=LogNormal,M=23000000.0,S=0.35,meanInRealSpace=true],seq_AD13,seq_AD4,seq_AD5,seq_AD9,seq_AL11,seq_AL15,seq_AL3,seq_AL8,seq_AZ30,seq_AZ5,seq_GRi10,seq_GRi15,seq_GRi2,seq_GRi9,seq_IR10,seq_IR15,seq_IR6,seq_IR8,seq_ITI15,seq_ITt3,seq_ITt6,seq_ITt8,seq_MD1,seq_MD11,seq_MD15,seq_MD3,seq_MD6,seq_MO13,seq_MO3,seq_NE15,seq_PTn10,seq_PTn3,seq_PTn4,seq_PTn6,seq_PTs11,seq_PTs13,seq_PTs2,seq_PTs3,seq_PTs4,seq_PTs7,seq_SCe1,seq_SCw12,seq_SCw13,seq_SCw2,seq_SCw3,seq_SCw6,seq_SCw7,seq_SPa11,seq_SPa7,seq_SPb1,seq_SPb13,seq_SPb15,seq_SPb5,seq_SPb9,seq_SPc1,seq_SPc2,seq_SPc5,seq_SPg11,seq_SPg6,seq_SPg8,seq_Sard16,seq_Sard17,seq_Sard41);

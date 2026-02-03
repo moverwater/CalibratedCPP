@@ -18,19 +18,23 @@ import java.util.regex.*;
  * No JMH dependency - just basic timing.
  *
  * Default: reads from validation/phylodata_calibration_forests/
+ * Results are written to validation/phylodata_calibration_forests/benchmark_results.csv
  *
  * Usage:
- *   java -cp "lib/*:target/classes" calibratedcpp.SimpleConstraintBenchmark [newick-directory] [iterations] [warmup]
+ *   java -Xss32m -cp "lib/*:target/classes" calibratedcpp.SimpleConstraintBenchmark [newick-directory] [iterations] [warmup]
+ *
+ * Note: -Xss32m is recommended for large trees (>1000 taxa) to avoid StackOverflowError
  */
 public class SimpleConstraintBenchmark {
 
     private static final String DEFAULT_CONSTRAINTS_DIR = "validation/phylodata_calibration_forests";
+    private static final String DEFAULT_RESULTS_FILE = "benchmark_results.csv";
     private static final Pattern ANNOTATION_PATTERN = Pattern.compile("\\[&([^\\]]+)\\]");
     private static final Pattern KEY_VALUE_PATTERN = Pattern.compile("([^=,]+)=([^,\\]]+)");
 
     public static void main(String[] args) throws Exception {
-        int iterations = 1000;
-        int warmup = 100;
+        int iterations = 100;
+        int warmup = 10;
         Path inputPath = null;
 
         // Parse arguments - first non-numeric arg is path, rest are iterations/warmup
@@ -74,39 +78,95 @@ public class SimpleConstraintBenchmark {
             return;
         }
 
+        // Determine CSV output path
+        Path csvPath;
+        if (Files.isDirectory(inputPath)) {
+            csvPath = inputPath.resolve(DEFAULT_RESULTS_FILE);
+        } else {
+            csvPath = inputPath.getParent().resolve(DEFAULT_RESULTS_FILE);
+        }
+
         System.out.println("Found " + newickFiles.size() + " constraint file(s)");
         System.out.println("Iterations: " + iterations + ", Warmup: " + warmup);
+        System.out.println("Results will be written to: " + csvPath);
         System.out.println();
 
         // Output header
-        System.out.printf("%-45s %6s %5s %10s %10s %10s%n",
-                "File", "Taxa", "Cal", "p50(us)", "p95(us)", "p99(us)");
-        System.out.println("-".repeat(95));
+        System.out.printf("%-45s %6s %5s %12s %10s %10s %10s%n",
+                "File", "Taxa", "Cal", "Complexity", "p50(us)", "p95(us)", "p99(us)");
+        System.out.println("-".repeat(107));
+
+        // Collect results for CSV
+        List<String[]> results = new ArrayList<>();
 
         for (Path newickFile : newickFiles) {
+            String fileName = newickFile.getFileName().toString();
             try {
-                // Skip files known to cause issues (overlapping calibrations, too large)
-                String fileName = newickFile.getFileName().toString();
-                if (fileName.contains("harrington") || fileName.contains("hara")) {
-                    System.out.printf("%-45s %6s %5s %8s  SKIPPED (known issues)%n",
-                            fileName.substring(0, Math.min(45, fileName.length())), "-", "-", "-");
-                    continue;
-                }
-
                 BenchmarkResult result = runBenchmark(newickFile, iterations, warmup);
-                System.out.printf("%-45s %6d %5d %10.1f %10.1f %10.1f%n",
+                System.out.printf("%-45s %6d %5d %12d %10.1f %10.1f %10.1f%n",
                         fileName.substring(0, Math.min(45, fileName.length())),
                         result.numTaxa,
                         result.numCalibrations,
+                        result.complexity,
                         result.p50TimeUs,
                         result.p95TimeUs,
                         result.p99TimeUs);
+
+                results.add(new String[] {
+                    fileName.replace(".newick", ""),
+                    String.valueOf(result.numTaxa),
+                    String.valueOf(result.numCalibrations),
+                    String.valueOf(result.complexity),
+                    String.format("%.1f", result.meanTimeUs),
+                    String.format("%.1f", result.minTimeUs),
+                    String.format("%.1f", result.p50TimeUs),
+                    String.format("%.1f", result.p95TimeUs),
+                    String.format("%.1f", result.p99TimeUs),
+                    String.format("%.1f", result.maxTimeUs)
+                });
             } catch (Exception e) {
                 String msg = e.getMessage();
                 if (msg != null && msg.length() > 60) msg = msg.substring(0, 60) + "...";
-                System.out.printf("%-45s %6s %5s %8s  ERROR: %s%n",
-                        newickFile.getFileName().toString().substring(0, Math.min(45, newickFile.getFileName().toString().length())),
-                        "-", "-", "-", msg);
+                System.out.printf("%-45s %6s %5s %12s %10s %10s %10s  ERROR: %s%n",
+                        fileName.substring(0, Math.min(45, fileName.length())),
+                        "-", "-", "-", "-", "-", "-", msg);
+
+                results.add(new String[] {
+                    fileName.replace(".newick", ""),
+                    "", "", "", "", "", "", "", "", "",
+                    "ERROR: " + (msg != null ? msg : "unknown")
+                });
+            }
+        }
+
+        // Write CSV
+        writeResultsCsv(csvPath, results);
+        System.out.println("\nResults written to: " + csvPath);
+    }
+
+    private static void writeResultsCsv(Path csvPath, List<String[]> results) throws IOException {
+        try (PrintWriter writer = new PrintWriter(Files.newBufferedWriter(csvPath))) {
+            // Header
+            writer.println("file,taxa,calibrations,complexity,mean_us,min_us,p50_us,p95_us,p99_us,max_us,error");
+
+            // Data rows
+            for (String[] row : results) {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < row.length; i++) {
+                    if (i > 0) sb.append(",");
+                    String val = row[i];
+                    // Quote if contains comma
+                    if (val != null && val.contains(",")) {
+                        sb.append("\"").append(val).append("\"");
+                    } else {
+                        sb.append(val != null ? val : "");
+                    }
+                }
+                // Pad with empty columns if needed (11 columns: file, taxa, calibrations, complexity, mean, min, p50, p95, p99, max, error)
+                for (int i = row.length; i < 11; i++) {
+                    sb.append(",");
+                }
+                writer.println(sb);
             }
         }
     }
@@ -114,12 +174,80 @@ public class SimpleConstraintBenchmark {
     static class BenchmarkResult {
         int numTaxa;
         int numCalibrations;
+        long complexity;  // Σ 2^k × k³ for each node with k children
         double meanTimeUs;
         double minTimeUs;
         double maxTimeUs;
         double p50TimeUs;
         double p95TimeUs;
         double p99TimeUs;
+    }
+
+    /**
+     * Compute complexity score: Σ 2^k × k³ for each parent with k children.
+     * For multi-tree forests (multiple roots), also count the nominal root.
+     */
+    private static long computeComplexity(List<ParsedCalibration> calibrations) {
+        // Build parent-child relationships based on taxon set inclusion
+        Map<ParsedCalibration, List<ParsedCalibration>> children = new HashMap<>();
+
+        // Sort by size descending
+        List<ParsedCalibration> sorted = new ArrayList<>(calibrations);
+        sorted.sort((a, b) -> b.taxa.size() - a.taxa.size());
+
+        for (ParsedCalibration cal : sorted) {
+            children.put(cal, new ArrayList<>());
+        }
+
+        Set<ParsedCalibration> hasParent = new HashSet<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            ParsedCalibration child = sorted.get(i);
+            for (int j = 0; j < i; j++) {
+                ParsedCalibration potentialParent = sorted.get(j);
+                if (potentialParent.taxa.containsAll(child.taxa)) {
+                    // Check if there's a closer parent
+                    boolean hasCloserParent = false;
+                    for (int k = j + 1; k < i; k++) {
+                        ParsedCalibration middle = sorted.get(k);
+                        if (middle.taxa.containsAll(child.taxa) && potentialParent.taxa.containsAll(middle.taxa)) {
+                            hasCloserParent = true;
+                            break;
+                        }
+                    }
+                    if (!hasCloserParent) {
+                        children.get(potentialParent).add(child);
+                        hasParent.add(child);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Count roots (calibrations with no parent)
+        int numRoots = 0;
+        for (ParsedCalibration cal : calibrations) {
+            if (!hasParent.contains(cal)) {
+                numRoots++;
+            }
+        }
+
+        // Compute complexity
+        long complexity = 0;
+
+        // For each calibration with children: add 2^k * k^3
+        for (ParsedCalibration cal : calibrations) {
+            int k = children.get(cal).size();
+            if (k > 0) {
+                complexity += (1L << k) * k * k * k;
+            }
+        }
+
+        // For multi-tree forests, add complexity of combining independent trees
+        if (numRoots > 1) {
+            complexity += (1L << numRoots) * numRoots * numRoots * numRoots;
+        }
+
+        return complexity;
     }
 
     private static BenchmarkResult runBenchmark(Path newickPath, int iterations, int warmup) throws Exception {
@@ -129,6 +257,7 @@ public class SimpleConstraintBenchmark {
         BenchmarkResult result = new BenchmarkResult();
         result.numTaxa = parsed.allTaxa.size();
         result.numCalibrations = parsed.calibrations.size();
+        result.complexity = computeComplexity(parsed.calibrations);
 
         if (result.numTaxa == 0) {
             throw new RuntimeException("No taxa found in file");

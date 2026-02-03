@@ -1,0 +1,8 @@
+# Calibration forest from: obiol-2022-palaeoceanographic-rmgd/snapp_nofixtop_root_minmac2.xml
+# Total taxa: 129
+# Calibrated taxa: 27
+# Calibrations: 1
+# Trees in forest: 1
+# Complexity score: 0
+#
+((ABul,ACar,ACre,AGra,AGri,APac,ATen,CBor,CDio,CEdw,CLeu,PAHa,PBBa,PBDi,PBNi,PBar,PBoy,PEle,PGav,PHut,PLLh,PMau,PNat,PNew,POpi,PPuf,PYel)[&name=Constraint0001,dist=Normal,offset=0.0,meanInRealSpace=true,monophyletic=true],ABul1,ACar3,ACar5,ACre1,ACre8,AGra1,AGra2,AGri1,AGri2,APac1,APacLMG,ATen1,ATen2,CBor1,CBor2,CDio1,CDio2,CEdw1,CEdw17,CLeu1,CLeu2,PAHa2,PBBa54b,PBBa65,PBDi1,PBNi01,PBNi45,PEle2,PGav76,PGav96,PHut8,PLBa1,PLBa2,PLBa3,PLBo1,PLBo2,PLLh1,PLLo1,PMau1,PMau2,PNNe1,PNNe2,PNat1,PNat2,POpi2,PPuf2,PYel1,PYel2,XPLL1,XPP3,aPEle,seq_ABul1,seq_ACar3,seq_ACar5,seq_ACre1,seq_ACre8,seq_AGra1,seq_AGra2,seq_AGri1,seq_AGri2,seq_APac1,seq_APacLMG,seq_ATen1,seq_ATen2,seq_CBor1,seq_CBor2,seq_CDio1,seq_CDio2,seq_CEdw1,seq_CEdw17,seq_CLeu1,seq_CLeu2,seq_PAHa2,seq_PBBa54b,seq_PBBa65,seq_PBDi1,seq_PBNi01,seq_PBNi45,seq_PEle2,seq_PGav76,seq_PGav96,seq_PHut8,seq_PLBa1,seq_PLBa2,seq_PLBa3,seq_PLBo1,seq_PLBo2,seq_PLLh1,seq_PLLo1,seq_PMau1,seq_PMau2,seq_PNNe1,seq_PNNe2,seq_PNat1,seq_PNat2,seq_POpi2,seq_PPuf2,seq_PYel1,seq_PYel2,seq_XPLL1,seq_XPP3,seq_aPEle);

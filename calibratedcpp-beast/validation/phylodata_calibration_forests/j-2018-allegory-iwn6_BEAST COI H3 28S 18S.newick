@@ -1,0 +1,8 @@
+# Calibration forest from: j-2018-allegory-iwn6/BEAST COI H3 28S 18S.xml
+# Total taxa: 24
+# Calibrated taxa: 12
+# Calibrations: 10
+# Trees in forest: 1
+# Complexity score: 74
+#
+(((((((16251_03,16261_01)[&name=BI1,meanInRealSpace=true,monophyletic=true],16182_07)[&name=PHBI1,meanInRealSpace=true],(((15040_01,16118_02,9782_01)[&name=CRW1,meanInRealSpace=true,monophyletic=true],11199_01)[&name=CapeRange1,dist=Uniform,meanInRealSpace=true,monophyletic=true],16173_01)[&name=PLCapeRange1,meanInRealSpace=true])[&name=Aus1,meanInRealSpace=true,monophyletic=true],18000)[&name=AusXmas1,meanInRealSpace=true,monophyletic=true],(16843_01,17201_01)[&name=CanOkin1,dist=Uniform,meanInRealSpace=true,monophyletic=true])[&name=Halos1,meanInRealSpace=true,monophyletic=true],Tethysbaena)[&name=All taxa,dist=Normal,meanInRealSpace=true,monophyletic=true],seq_11199_01,seq_15040_01,seq_16118_02,seq_16173_01,seq_16182_07,seq_16251_03,seq_16261_01,seq_16843_01,seq_17201_01,seq_18000,seq_9782_01,seq_Tethysbaena);
