@@ -56,6 +56,7 @@ def main():
 
     # Plot 2: Time vs Taxa
     axes[1].scatter(df['taxa'], df['p50_us'], alpha=0.6, s=40)
+    axes[1].set_yscale('log')
     axes[1].set_xlabel('Number of Taxa')
     axes[1].set_ylabel('Median Time (μs)')
     axes[1].set_title('Time vs Taxa Count')
@@ -64,6 +65,8 @@ def main():
     # Plot 3: Actual vs Predicted
     axes[2].scatter(y_pred, y, alpha=0.6, s=40)
     axes[2].plot([0, max(y)], [0, max(y)], 'r--', label='Perfect fit', linewidth=2)
+    axes[2].set_xscale('log')
+    axes[2].set_yscale('log')
     axes[2].set_xlabel('Predicted Time (μs)')
     axes[2].set_ylabel('Actual Time (μs)')
     axes[2].set_title(f'Multivariate Fit (R²={r2:.4f})')
