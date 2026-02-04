@@ -1,0 +1,13 @@
+data {
+  clade1 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51"];
+  clade2 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51", "leaf_52", "leaf_53", "leaf_54", "leaf_55"];
+  clade3 = ["leaf_87", "leaf_88", "leaf_89", "leaf_90"];
+}
+model {
+  time1 ~ Uniform(lower=1.19, upper=1.21);
+  time2 ~ Uniform(lower=1.49, upper=1.51);
+  time3 ~ Uniform(lower=1.99, upper=2.01);
+  lambda ~ Uniform(lower=0.0, upper=10.0);
+  mu ~ Uniform(lower=0.0, upper=10.0);
+  tree ~ CalibratedCPP(cladeAge=[time1, time2, time3], cladeTaxa=[clade1, clade2, clade3], lambda=lambda, mu=mu, n=100, rho=0.1, stemAge=3);
+}
