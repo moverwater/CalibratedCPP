@@ -21,7 +21,7 @@ model{
 
     // fossil4: Protimaspis costalis - Cynipoidea
     tCynipoidea ~ Uniform(lower=78, upper=79);
-    taxaCynipoidea = ["Leptopilina_clavipes","balia_leucospoides","Andricus_quercuscalicis","Synergus_umbraculus","Pediaspis_aceris"];
+    taxaCynipoidea = ["Leptopilina_clavipes","Ibalia_leucospoides","Andricus_quercuscalicis","Synergus_umbraculus","Pediaspis_aceris"];
     calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaCynipoidea);
 
     // fossil5: undescribed species - Chalcidoidea
@@ -58,7 +58,7 @@ model{
     // tree prior
     tree ~ CalibratedCPP(cladeAge=[tCeraphronoidea, tBraconidae, tCynipoidea, tChalcidoidea, tChrysidoidea, tAmpulicidae, tMelittidae],
     cladeTaxa=[taxaCeraphronoidea, taxaBraconidae, taxaCynipoidea, taxaChalcidoidea, taxaChrysidoidea, taxaAmpulicidae, taxaMelittidae],
-    otherNames = otherNames, lambda=lambda, mu=mu, n=n, rho=rho, rootAge=tHymenoptera);
+    otherNames = otherNames, lambda=0.8, mu=0.1, n=n, rho=0.2, rootAge=tHymenoptera);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
