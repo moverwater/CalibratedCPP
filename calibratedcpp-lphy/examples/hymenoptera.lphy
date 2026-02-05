@@ -17,26 +17,35 @@ model{
     // fossil3: Rhetinorhyssalus morticinus - Braconidae
     tBraconidae ~ Uniform(lower=99, upper=149);
     taxaBraconidae = ["Cotesia_vestalis","Macrocentrus_marginator","Diaeretus_essigellae","Aphidius_colemani","Aleiodes_testaceus","Dacnusa_sibirica"];
+    calibratedNames = setUnion(firstSet= taxaCeraphronoidea, secondSet=taxaBraconidae);
 
     // fossil4: Protimaspis costalis - Cynipoidea
     tCynipoidea ~ Uniform(lower=78, upper=79);
     taxaCynipoidea = ["Leptopilina_clavipes","balia_leucospoides","Andricus_quercuscalicis","Synergus_umbraculus","Pediaspis_aceris"];
+    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaCynipoidea);
 
     // fossil5: undescribed species - Chalcidoidea
     tChalcidoidea ~ Uniform(lower=130, upper=180);
     taxaChalcidoidea = ["Nasonia_vitripennis","Torymus_bedeguaris","Brachymeria_minuta","Orasema_simulatrix","Diglyphus_isaea"];
+    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaChalcidoidea);
 
     // fossil6: Lancepyris opertus - Chrysidoidea
     tChrysidoidea ~ Uniform(lower=130, upper=180);
     taxaChrysidoidea = ["Chrysis_viridula","Parnopes_grandior","Elampus_spina","Cleptes_nitidulus","Cephalonomia_tarsalis","Plumarius_gradifrons"];
+    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaChrysidoidea);
 
     // fossil7: Apodolichurus sphaerocephalus - Ampulicidae
     tAmpulicidae ~ Uniform(lower=99, upper=149);
     taxaAmpulicidae = ["Dolichurus_corniculus","Ampulex_fasciata","Ampulex_compressa"];
+    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaAmpulicidae);
 
     // fossil8: Palaeomacropis eocenicus - Melittidae
     tMelittidae ~ Uniform(lower=50, upper=53);
     taxaMelittidae = ["Macropis_fulvipes","Melitta_haemorrhoidalis","Dasypoda_hirtipes"];
+    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaMelittidae);
+
+    // get names for non-calibrated tips
+    otherNames = setDifference(mainSet=D.getTaxaNames(), excludeSet=calibratedNames);
 
     // birth death rate
     diversification ~ Exp(mean=10.0);
@@ -49,7 +58,7 @@ model{
     // tree prior
     tree ~ CalibratedCPP(cladeAge=[tCeraphronoidea, tBraconidae, tCynipoidea, tChalcidoidea, tChrysidoidea, tAmpulicidae, tMelittidae],
     cladeTaxa=[taxaCeraphronoidea, taxaBraconidae, taxaCynipoidea, taxaChalcidoidea, taxaChrysidoidea, taxaAmpulicidae, taxaMelittidae],
-    lambda=lambda, mu=mu, n=n, rho=rho, rootAge=tHymenoptera);
+    otherNames = otherNames, lambda=lambda, mu=mu, n=n, rho=rho, rootAge=tHymenoptera);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
