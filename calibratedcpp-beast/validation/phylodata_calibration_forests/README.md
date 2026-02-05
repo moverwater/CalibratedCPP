@@ -35,21 +35,21 @@ All 93 constraint trees benchmark successfully with CalibratedCoalescentPointPro
 
 **Regression model** (R² = 0.99):
 ```
-time(μs) = 0.028 × complexity + 0.08 × taxa + 322
+time(μs) = 0.011 × complexity + 0.071 × taxa + 96.8
 ```
 
 Where complexity = Σ 2^k × k³ for each calibration node with k children.
 
 **Top 5 by execution time:**
-
+<!-- start of table -->
 | File | Taxa | Calibrations | Complexity | Time (μs) |
 |------|------|--------------|------------|-----------|
-| burridge-2020 (Galaxioid) | 725 | 17 | 2,726,108 | 77,000 |
-| harrington-2024 (set3) | 5,940 | 22 | 1,024,106 | 29,000 |
-| marburger-2018 (cory) | 1,105 | 7 | 43,904 | 6,000 |
-| trotta-2018 (PineRockland) | 1,080 | 50 | 19,816 | 5,100 |
-| v-2016 (Scleractinia) | 1,158 | 8 | 1,058 | 3,200 |
-
+| burridge-2020-migration-nbmn_Galaxioid_Diversification | 725 | 17 | 2,726,108 | 28,755 |
+| harrington-2024-dispersal-we1f_BEAST_divtimes_set3 | 5,940 | 22 | 1,024,106 | 11,363 |
+| trotta-2018-community-a38u_Trotta_PineRockland | 1,080 | 50 | 19,816 | 2,523 |
+| v-2016-new-g4qu_Scleractinia | 1,158 | 8 | 1,058 | 952 |
+| arbour-2021-little-vfxn_percidae_constrained_200_million | 2,097 | 7 | 70 | 593 |
+<!-- end of table -->
 ## Usage
 
 Run benchmark:

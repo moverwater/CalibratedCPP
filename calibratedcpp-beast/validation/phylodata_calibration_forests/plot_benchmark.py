@@ -1,20 +1,65 @@
 #!/usr/bin/env python3
 """
-Plot benchmark results from CalibratedCPP constraint tree benchmarks.
-
-Usage:
-    python plot_benchmark.py
+Plot benchmark results from CalibratedCPP constraint tree benchmarks
+and replace the regression/table info in README.md accurately.
 """
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 from pathlib import Path
 
 # Use script directory for relative paths
 SCRIPT_DIR = Path(__file__).parent
 CSV_PATH = SCRIPT_DIR / "benchmark_results.csv"
 PLOT_PATH = SCRIPT_DIR / "benchmark_analysis_plot.png"
+README_PATH = SCRIPT_DIR / "README.md"
+
+
+def update_readme(a, b, c, r2, top_df):
+    if not README_PATH.exists():
+        return
+
+    with open(README_PATH, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    # 1. Replace Regression section (These use specific text anchors)
+    content = re.sub(r"\(R² = \d+\.\d+\):", f"(R² = {r2:.2f}):", content)
+    
+    eq_pattern = r"time\(μs\) = [\d\.]+ × complexity \+ [\d\.]+ × taxa \+ [\d\.]+"
+    new_eq = f"time(μs) = {a:.3f} × complexity + {b:.3f} × taxa + {c:.1f}"
+    content = re.sub(eq_pattern, new_eq, content)
+
+    # 2. Build the new table string
+    table_header = "| File | Taxa | Calibrations | Complexity | Time (μs) |"
+    table_divider = "|------|------|--------------|------------|-----------|"
+    rows = []
+    for _, row in top_df.iterrows():
+        fname = str(row['file']).replace('.newick', '')
+        rows.append(f"| {fname} | {int(row['taxa']):,} | {int(row['calibrations'])} | {int(row['complexity']):,} | {row['p50_us']:,.0f} |")
+    new_table_content = f"{table_header}\n{table_divider}\n" + "\n".join(rows)
+
+    # 3. Use the HTML Comments as strict boundaries
+    start_anchor = "<!-- start of table -->"
+    end_anchor = "<!-- end of table -->"
+    
+    # This pattern finds the anchors and everything in between
+    # re.escape ensures the "!" and "-" aren't treated as regex commands
+    pattern = re.compile(f"{re.escape(start_anchor)}.*?{re.escape(end_anchor)}", re.DOTALL)
+
+    if pattern.search(content):
+        # Construct the replacement block including the anchors for next time
+        replacement_text = f"{start_anchor}\n{new_table_content}\n{end_anchor}"
+        new_content = pattern.sub(replacement_text, content)
+        
+        # Write only if we actually found a match
+        with open(README_PATH, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f"Successfully updated: {README_PATH}")
+    else:
+        print("Error: Could not find the anchors.")
+        print("The README was not modified.")
 
 
 def main():
@@ -39,8 +84,6 @@ def main():
 
     # Create figure
     fig, axes = plt.subplots(1, 3, figsize=(16, 5))
-
-    # Plot 1: Time vs Complexity (log-log)
     mask_nonzero = df['complexity'] > 0
     axes[0].scatter(df.loc[mask_nonzero, 'complexity'], df.loc[mask_nonzero, 'p50_us'],
                     alpha=0.6, s=40, label=f'complexity>0 (n={mask_nonzero.sum()})')
@@ -75,7 +118,11 @@ def main():
 
     plt.tight_layout()
     plt.savefig(PLOT_PATH, dpi=150)
-    print(f"\nSaved: {PLOT_PATH}")
+    print(f"Saved: {PLOT_PATH}")
+
+    # Prepare Top 5 and update README
+    top_5 = df.sort_values(by='p50_us', ascending=False).head(5)
+    update_readme(a, b, c, r2, top_5)
 
 
 if __name__ == "__main__":
