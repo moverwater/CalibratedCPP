@@ -6,41 +6,41 @@ data {
 }
 model{
     // the calibrations
-    // the time is all with unit Ma
+    // the time is all with unit 10Mya
     // fossil1: Triassoxyela foveolata - hymenoptera
-    tHymenoptera ~ Uniform(lower=226.4, upper=276);
+    tHymenoptera ~ Uniform(lower=22.64, upper=27.6);
 
     // fossil2: Triassoxyela foveolata - Ceraphronoidea
-    tCeraphronoidea ~ Uniform(lower=130, upper=180);
+    tCeraphronoidea ~ Uniform(lower=13.0, upper=18.0);
     taxaCeraphronoidea=["Dendrocerus_carpenteri", "Ceraphron_sp"];
 
     // fossil3: Rhetinorhyssalus morticinus - Braconidae
-    tBraconidae ~ Uniform(lower=99, upper=149);
+    tBraconidae ~ Uniform(lower=9.9, upper=14.9);
     taxaBraconidae = ["Cotesia_vestalis","Macrocentrus_marginator","Diaeretus_essigellae","Aphidius_colemani","Aleiodes_testaceus","Dacnusa_sibirica"];
     calibratedNames = setUnion(firstSet= taxaCeraphronoidea, secondSet=taxaBraconidae);
 
     // fossil4: Protimaspis costalis - Cynipoidea
-    tCynipoidea ~ Uniform(lower=78, upper=79);
+    tCynipoidea ~ Uniform(lower=7.8, upper=7.9);
     taxaCynipoidea = ["Leptopilina_clavipes","Ibalia_leucospoides","Andricus_quercuscalicis","Synergus_umbraculus","Pediaspis_aceris"];
     calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaCynipoidea);
 
     // fossil5: undescribed species - Chalcidoidea
-    tChalcidoidea ~ Uniform(lower=130, upper=180);
+    tChalcidoidea ~ Uniform(lower=13.0, upper=18.0);
     taxaChalcidoidea = ["Nasonia_vitripennis","Torymus_bedeguaris","Brachymeria_minuta","Orasema_simulatrix","Diglyphus_isaea"];
     calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaChalcidoidea);
 
     // fossil6: Lancepyris opertus - Chrysidoidea
-    tChrysidoidea ~ Uniform(lower=130, upper=180);
+    tChrysidoidea ~ Uniform(lower=13.0, upper=18.0);
     taxaChrysidoidea = ["Chrysis_viridula","Parnopes_grandior","Elampus_spina","Cleptes_nitidulus","Cephalonomia_tarsalis","Plumarius_gradifrons"];
     calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaChrysidoidea);
 
     // fossil7: Apodolichurus sphaerocephalus - Ampulicidae
-    tAmpulicidae ~ Uniform(lower=99, upper=149);
+    tAmpulicidae ~ Uniform(lower=9.9, upper=14.9);
     taxaAmpulicidae = ["Dolichurus_corniculus","Ampulex_fasciata","Ampulex_compressa"];
     calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaAmpulicidae);
 
     // fossil8: Palaeomacropis eocenicus - Melittidae
-    tMelittidae ~ Uniform(lower=50, upper=53);
+    tMelittidae ~ Uniform(lower=5.0, upper=5.3);
     taxaMelittidae = ["Macropis_fulvipes","Melitta_haemorrhoidalis","Dasypoda_hirtipes"];
     calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaMelittidae);
 
