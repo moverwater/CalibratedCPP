@@ -18,7 +18,7 @@ import java.util.regex.*;
  * No JMH dependency - just basic timing.
  *
  * Default: reads from validation/phylodata_calibration_forests/
- * Results are written to validation/phylodata_calibration_forests/benchmark_results.csv
+ * Results are written to validation/calibratedcpp/phylodata_calibration_forests/benchmark_results.csv
  *
  * Usage:
  *   java -Xss32m -cp "lib/*:target/classes" calibratedcpp.SimpleConstraintBenchmark [newick-directory] [iterations] [warmup]
@@ -27,7 +27,7 @@ import java.util.regex.*;
  */
 public class SimpleConstraintBenchmark {
 
-    private static final String DEFAULT_CONSTRAINTS_DIR = "validation/phylodata_calibration_forests";
+    private static final String DEFAULT_CONSTRAINTS_DIR = "validation/calibratedcpp/phylodata_calibration_forests";
     private static final String DEFAULT_RESULTS_FILE = "benchmark_results.csv";
     private static final Pattern ANNOTATION_PATTERN = Pattern.compile("\\[&([^\\]]+)\\]");
     private static final Pattern KEY_VALUE_PATTERN = Pattern.compile("([^=,]+)=([^,\\]]+)");
