@@ -21,45 +21,52 @@ def update_readme(a, b, c, r2, top_df):
     if not README_PATH.exists():
         return
 
-    with open(README_PATH, 'r', encoding='utf-8') as f:
-        content = f.read()
+    content = README_PATH.read_text(encoding='utf-8')
 
-    # 1. Replace Regression section (These use specific text anchors)
-    content = re.sub(r"\(R² = \d+\.\d+\):", f"(R² = {r2:.2f}):", content)
-    
-    eq_pattern = r"time\(μs\) = [\d\.]+ × complexity \+ [\d\.]+ × taxa \+ [\d\.]+"
-    new_eq = f"time(μs) = {a:.3f} × complexity + {b:.3f} × taxa + {c:.1f}"
-    content = re.sub(eq_pattern, new_eq, content)
+    # 1. Update Regression section (Simple string splitting)
+    # Target the formula line specifically
+    formula_start = "time(μs) ="
+    if formula_start in content:
+        parts = content.split(formula_start)
+        # split[0] is everything before formula, split[1] is everything after
+        # We find the end of the line in the second part
+        line_end = parts[1].find("\n")
+        new_formula = f" {a:.3f} × complexity + {b:.3f} × taxa + {c:.1f}"
+        content = parts[0] + formula_start + new_formula + parts[1][line_end:]
+
+    # Target the R2 line
+    r2_anchor = "**Regression model** (R² ="
+    if r2_anchor in content:
+        parts = content.split(r2_anchor)
+        line_end = parts[1].find("):")
+        content = parts[0] + r2_anchor + f" {r2:.2f}" + parts[1][line_end:]
 
     # 2. Build the new table string
     table_header = "| File | Taxa | Calibrations | Complexity | Time (μs) |"
     table_divider = "|------|------|--------------|------------|-----------|"
-    rows = []
-    for _, row in top_df.iterrows():
-        fname = str(row['file']).replace('.newick', '')
-        rows.append(f"| {fname} | {int(row['taxa']):,} | {int(row['calibrations'])} | {int(row['complexity']):,} | {row['p50_us']:,.0f} |")
-    new_table_content = f"{table_header}\n{table_divider}\n" + "\n".join(rows)
+    rows = [f"| {str(row['file']).replace('.newick', '')} | {int(row['taxa']):,} | {int(row['calibrations'])} | {int(row['complexity']):,} | {row['p50_us']:,.0f} |" for _, row in top_df.iterrows()]
+    new_table_body = f"{table_header}\n{table_divider}\n" + "\n".join(rows)
 
-    # 3. Use the HTML Comments as strict boundaries
+    # 3. Slice and Stitch the Table
     start_anchor = "<!-- start of table -->"
     end_anchor = "<!-- end of table -->"
     
-    # This pattern finds the anchors and everything in between
-    # re.escape ensures the "!" and "-" aren't treated as regex commands
-    pattern = re.compile(f"{re.escape(start_anchor)}.*?{re.escape(end_anchor)}", re.DOTALL)
+    start_idx = content.find(start_anchor)
+    end_idx = content.find(end_anchor)
 
-    if pattern.search(content):
-        # Construct the replacement block including the anchors for next time
-        replacement_text = f"{start_anchor}\n{new_table_content}\n{end_anchor}"
-        new_content = pattern.sub(replacement_text, content)
+    if start_idx != -1 and end_idx != -1:
+        # We keep everything up to the start anchor + the anchor itself
+        prefix = content[:start_idx + len(start_anchor)]
+        # We keep everything from the end anchor to the end of file
+        suffix = content[end_idx:]
         
-        # Write only if we actually found a match
-        with open(README_PATH, 'w', encoding='utf-8') as f:
-            f.write(new_content)
+        # Stitch it together
+        new_content = f"{prefix}\n{new_table_body}\n{suffix}"
+        
+        README_PATH.write_text(new_content, encoding='utf-8')
         print(f"Successfully updated: {README_PATH}")
     else:
-        print("Error: Could not find the anchors.")
-        print("The README was not modified.")
+        print(f"Error: Could not find '{start_anchor}' or '{end_anchor}' in README.")
 
 
 def main():
