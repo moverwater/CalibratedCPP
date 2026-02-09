@@ -1,5 +1,5 @@
 # The Calibrated Coalescent Point Process
-[![Unit/integration tests](https://github.com/moverwater/CalibratedCPP/actions/workflows/maven-tests.yml/badge.svg?branch=main)](https://github.com/moverwater/CalibratedCPP/actions/workflows/maven-tests.yml)
+[![Docker CI](https://github.com/moverwater/CalibratedCPP/actions/workflows/maven-tests.yml/badge.svg)](https://github.com/moverwater/CalibratedCPP/actions/workflows/maven-tests.yml)
 
 This is an implementation of the Calibrated Coalescent Point Process (Calibrated CPP) in BEAST2.
 
@@ -44,6 +44,7 @@ This subproject is converting Lphy simulators to XMLs for BEAST2 running:
 
 CalibratedCPP is free software.  It is distributed under the terms of version 3 of the GNU General Public License.  A copy of this license should be found in the file [COPYING](./COPYING) located in the root directory of this repository. If this file is absent for some reason, it can also be retrieved from
 https://www.gnu.org/licenses.
+
 
 
 
