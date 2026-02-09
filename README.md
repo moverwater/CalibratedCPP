@@ -1,5 +1,5 @@
 # The Calibrated Coalescent Point Process
-[![Unit/integration tests](https://github.com/moverwater/CalibratedCPP/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/moverwater/CalibratedCPP/actions/workflows/main.yml)
+[![Unit/integration tests](https://github.com/moverwater/CalibratedCPP/actions/workflows/maven-tests.yml/badge.svg?branch=main)](https://github.com/moverwater/CalibratedCPP/actions/workflows/maven-tests.yml)
 
 This is an implementation of the Calibrated Coalescent Point Process (Calibrated CPP) in BEAST2.
 
