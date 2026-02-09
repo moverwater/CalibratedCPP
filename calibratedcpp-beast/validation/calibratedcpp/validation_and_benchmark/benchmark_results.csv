@@ -1,13 +1,13 @@
 "Benchmark","Mode","Threads","Samples","Score","Score Error (99.9%)","Unit","Param: nCalibrations"
-"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,2.374863,0.018283,"us/op",1
-"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,3.386081,0.108279,"us/op",2
-"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,5.880656,0.051312,"us/op",3
-"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,14.384472,0.291729,"us/op",4
-"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,46.007517,0.263899,"us/op",5
-"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,153.443557,1.717763,"us/op",6
-"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,6.276621,0.278431,"us/op",1
-"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,227.197987,1.038359,"us/op",2
-"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,9695.074608,255.887289,"us/op",3
-"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,345345.022200,466.621853,"us/op",4
-"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,11332991.708400,292571.770289,"us/op",5
-"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,275041452.117000,1378096.659570,"us/op",6
+"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,2.471488,0.025541,"us/op",1
+"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,3.513003,0.105636,"us/op",2
+"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,6.067931,0.154251,"us/op",3
+"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,14.954470,0.234899,"us/op",4
+"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,47.057736,1.554986,"us/op",5
+"calibratedcpp.LikelihoodBenchmark.measureCPP","avgt",1,5,153.943573,0.568944,"us/op",6
+"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,6.450114,0.350638,"us/op",1
+"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,227.656876,0.984709,"us/op",2
+"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,9580.495832,46.876100,"us/op",3
+"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,342198.911067,1249.147963,"us/op",4
+"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,11440218.116600,48370.140356,"us/op",5
+"calibratedcpp.LikelihoodBenchmark.measureHeledAndDrummond","avgt",1,5,267042755.716600,3739042.457764,"us/op",6

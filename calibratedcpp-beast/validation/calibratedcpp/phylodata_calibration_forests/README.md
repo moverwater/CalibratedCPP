@@ -33,9 +33,9 @@ Annotated Newick format with BEAST-style metadata:
 
 All 93 constraint trees benchmark successfully with CalibratedCoalescentPointProcess.
 
-**Regression model** (R² = 0.99):
+**Regression model** (R² = 1.00):
 ```
-time(μs) = 0.011 × complexity + 0.082 × taxa + 111.3
+time(μs) = 0.010 × complexity + 0.049 × taxa + 55.6
 ```
 
 Where complexity = Σ 2^k × k³ for each calibration node with k children.
@@ -44,23 +44,23 @@ Where complexity = Σ 2^k × k³ for each calibration node with k children.
 <!-- start of table -->
 | File | Taxa | Calibrations | Complexity | Time (μs) |
 |------|------|--------------|------------|-----------|
-| burridge-2020-migration-nbmn_Galaxioid_Diversification | 725 | 17 | 2,726,108 | 29,129 |
-| harrington-2024-dispersal-we1f_BEAST_divtimes_set3 | 5,940 | 22 | 1,024,106 | 11,676 |
-| trotta-2018-community-a38u_Trotta_PineRockland | 1,080 | 50 | 19,816 | 3,002 |
-| v-2016-new-g4qu_Scleractinia | 1,158 | 8 | 1,058 | 1,126 |
-| marburger-2018-whole-8zqj_cory_final_bmodel | 1,105 | 7 | 43,904 | 571 |
+| burridge-2020-migration-nbmn_Galaxioid_Diversification | 725 | 17 | 2,726,108 | 27,772 |
+| harrington-2024-dispersal-we1f_BEAST_divtimes_set3 | 5,940 | 22 | 1,024,106 | 10,766 |
+| trotta-2018-community-a38u_Trotta_PineRockland | 1,080 | 50 | 19,816 | 1,589 |
+| v-2016-new-g4qu_Scleractinia | 1,158 | 8 | 1,058 | 622 |
+| marburger-2018-whole-8zqj_cory_final_bmodel | 1,105 | 7 | 43,904 | 514 |
 <!-- end of table -->
 ## Usage
 
 Run benchmark:
 ```bash
-java -Xss32m -cp "lib/*:build/classes/java/main:build/classes/java/test" \
-    calibratedcpp.SimpleConstraintBenchmark validation/phylodata_calibration_forests/
+java -Xss32m -cp "lib/*:target/classes:target/test-classes" \
+    calibratedcpp.SimpleConstraintBenchmark validation/calibratedcpp/phylodata_calibration_forests/
 ```
 
 Generate plot:
 ```bash
-python validation/phylodata_calibration_forests/plot_benchmark.py
+python validation/calibratedcpp/phylodata_calibration_forests/plot_benchmark.py
 ```
 
 ## Output Files

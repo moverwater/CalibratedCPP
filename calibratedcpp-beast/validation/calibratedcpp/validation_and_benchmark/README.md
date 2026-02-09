@@ -1,4 +1,4 @@
-# Likelihood benchmark and validation
+# Likelihood Benchmark and Validation
 
 We benchmark the computation time for the likelihood calculation of a single fully balanced tree with 128 leaves as we increase the number of cherries for which we want to condition the age. The time is compared with the [Heled and Drummond (2015)](https://doi.org/10.1093/sysbio/syu089) implementation of the 'Calibrated Birth-Death process'.
 
@@ -8,20 +8,15 @@ We also validate the likelihood computation by comparing log-likelihood values f
 
 **Likelihood Benchmark: CPP v Heled and Drummond**
 <!-- start table -->
-| Model            |   Number of Calibrations |    Time (μs) |
-|------------------|--------------------------|--------------|
-| Calibrated CPP   |                        1 |         2.37 |
-| Calibrated CPP   |                        2 |         3.39 |
-| Calibrated CPP   |                        3 |         5.88 |
-| Calibrated CPP   |                        4 |        14.38 |
-| Calibrated CPP   |                        5 |        46.01 |
-| Calibrated CPP   |                        6 |       153.44 |
-| Heled & Drummond |                        1 |         6.28 |
-| Heled & Drummond |                        2 |       227.20 |
-| Heled & Drummond |                        3 |      9695.07 |
-| Heled & Drummond |                        4 |    345345.02 |
-| Heled & Drummond |                        5 |  11332991.71 |
-| Heled & Drummond |                        6 | 275041452.12 |
+
+|   Number of Calibrations |   Time (μs) Calibrated CPP |   Time (μs) Heled & Drummond |
+|--------------------------|----------------------------|------------------------------|
+|                      1.0 |                       2.47 |                         6.45 |
+|                      2.0 |                       3.51 |                       227.66 |
+|                      3.0 |                       6.07 |                      9580.50 |
+|                      4.0 |                      14.95 |                    342198.91 |
+|                      5.0 |                      47.06 |                  11440218.12 |
+|                      6.0 |                     153.94 |                 267042755.72 |
 
 <!-- end table -->
 
@@ -31,26 +26,26 @@ We also validate the likelihood computation by comparing log-likelihood values f
 ## Usage
 
 Run benchmark:
- - Go to the [src/test/java/calibratedcpp/ directory](../../../src/test/java/calibratedcpp/) in the calibratedcpp-beast sub-project.
- - Run `LikelihoodBenchmark.java`.
+```bash
+mvn clean test-compile
+java -Xss32m -cp "$(mvn dependency:build-classpath | grep -v '\[INFO\]' | tr '\n' ':'):target/classes:target/test-classes" \
+    calibratedcpp.LikelihoodBenchmark
+```
 
 
  Run validation:
- - Go to the [src/test/java/calibratedcpp/](../../../src/test/java/calibratedcpp/) in the calibratedcpp-beast sub-project.
- - Run `CalibratedCoalescentPointProcessTest.java`.
+```bash
+mvn test-compile
+mvn test -Dtest=CalibratedCoalescentPointProcessTest#heledAndDrummondComparison
+```
 
  Generate plot:
  ```bash
-python plot_output.py
+python validation/calibratedcpp/validation_and_benchmark/plot_output.py
  ```
 
 ## Output Files
 
-Benchmark output:
  - [`benchmark_results.csv`](./benchmark_results.csv).
-
-Validation output:
  - [`validation_results.csv`](./validation_results.csv).
-
- Plot:
  - [`combined_benchmark_validation.png`](./combined_benchmark_validation.png).
