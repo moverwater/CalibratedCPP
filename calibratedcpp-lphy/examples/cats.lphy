@@ -1,0 +1,57 @@
+data{
+    D = readNexus(file="./data/cats_100Sites.nex");
+    L = D.nchar();
+    taxa = D.taxa();
+    n = ntaxa(taxa=taxa);
+}
+model{
+    // calibrations, age unit as Mya
+    // root age
+    troot ~ Uniform(lower=29, upper=35);
+
+    // Iberian lynx vs sister group, >= 5.3 million years
+    taxa1 = ["IberianLynx_Lynx_pardinus","FishingCat_Prionailurus_viverrinus","LeopardCat_Prionailurus_bengalensis","JungleCat_Felis_chaus",
+    "BlackfootedCat_Felis_nigripes","DomesticCat_Felis_catus","SandCat_Felis_margarita"];
+    // t1 ~ Exp(mean=10.6) + 5.3;
+    t1 ~ Uniform(lower=5.3, upper=10.3);
+
+    // Clouded leopard vs sister group, >= 3.8 million years
+    taxa2 = ["CloudedLeopard_Neofelis_nebulosa","SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris","Jaguar_Panthera_onca","Leopard_Panthera_pardus","Lion_Panthera_leo"];
+    // t2 ~ Exp(mean=7.6) + 3.8;
+    t2 ~ Uniform(lower=3.8, upper=8.2);
+
+    // Snow leopard vs tigers, >= 1.5 million years
+    taxa3 = ["SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris"];
+    // t3 ~ Exp(mean=3.0) + 1.5;
+    t3 ~ Uniform(lower=1.5, upper=3.7);
+
+    // other taxa names
+    otherNames = ["StripedHyena_Hyaena_hyaena", "ScimitarToothedCat_Homotherium_latidens", "SpottedHyena_Crocuta_crocuta","Caracal_Caracal_caracal","Cheetah_Acinonyx_jubatus"];
+
+    // birth death rate
+    lambda ~ LogNormal(meanlog = 0.1, sdlog = 1);
+    mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
+    rho ~ Uniform(lower=0.0, upper=1.0);
+
+    tree ~ CalibratedCPP(cladeAge=[t1, t2, t3], cladeTaxa=[taxa1, taxa2, taxa3],
+        otherNames = otherNames, lambda=lambda, mu=mu, n=n, rho=rho, rootAge=troot);
+
+    // GTR substitution model
+    π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
+    rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
+    Q = gtr(rates=rates, freq=π);
+
+    // Γ distribution for site rates
+    gamma ~ LogNormal(meanlog=0, sdlog=2);
+    siteRates ~ DiscretizeGamma(shape=gamma, ncat=4, replicates=L);
+
+    // relax clock log normal model
+    sigma ~ LogNormal(meanlog=-0.693, sdlog=0.5);
+    branchRates ~ UCLN_Mean1(uclnSigma=sigma, tree=tree);
+
+    // mutation rate
+    mRate ~ LogNormal(meanlog=-9, sdlog=5);
+
+    // simulate sequences along the tree, clamp by real data
+    D ~ PhyloCTMC(L = L, Q = Q, branchRates = branchRates, mu = mRate, tree = tree, siteRates=siteRates);
+}
