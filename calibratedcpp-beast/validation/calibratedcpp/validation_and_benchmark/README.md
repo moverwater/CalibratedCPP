@@ -25,7 +25,7 @@ We also validate the likelihood computation by comparing log-likelihood values f
 
 ## Usage
 
-Run benchmark:
+Run benchmark (takes approximately 50 minutes):
 ```bash
 mvn clean test-compile
 java -Xss32m -cp "$(mvn dependency:build-classpath | grep -v '\[INFO\]' | tr '\n' ':'):target/classes:target/test-classes" \
