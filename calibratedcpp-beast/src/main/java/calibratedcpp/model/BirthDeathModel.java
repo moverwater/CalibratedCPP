@@ -76,8 +76,16 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
 
         // Count how many of the five possible parameters were provided
         int specified = 0;
-        for (Double i : new Double[]{birthRate, deathRate, diversificationRate, reproductiveNumber, turnover}) {
-            if (i != null) specified++;
+        StringBuilder whichSpecified = new StringBuilder();
+
+        Input<?>[] rateInputs = {birthRateInput, deathRateInput, reproductiveNumberInput, diversificationRateInput, turnoverInput};
+
+        for (Input<?> input : rateInputs) {
+            if (input.get() != null) {
+                specified++;
+                if (!whichSpecified.isEmpty()) whichSpecified.append(", ");
+                whichSpecified.append(input.getName());
+            }
         }
 
         // rho is mandatory
@@ -85,9 +93,9 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
             throw new IllegalArgumentException("rho parameter must be specified.");
         }
 
-        // Exactly two parameters must be provided
         if (specified != 2) {
-            throw new IllegalArgumentException("Exactly TWO of {birthRate, deathRate, diversificationRate, reproductiveNumber, turnover} must be specified.");
+            throw new IllegalArgumentException("Exactly TWO of {birthRate, deathRate, reproductiveNumber, diversificationRate, turnover} must be specified. " +
+                    "These " + specified + " were specified: (" + whichSpecified + ")");
         }
 
         // Disallow incompatible combinations
@@ -191,9 +199,15 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
         } else if (deathRate != null && turnover != null) {
             birthRate = deathRate / turnover;
         } else if (diversificationRate != null && reproductiveNumber != null) {
+            if (Math.abs(reproductiveNumber - 1.0) < 1e-10) {
+                throw new IllegalArgumentException("Reproductive number cannot be exactly 1.0 when deriving rates from diversification.");
+            }
             deathRate = diversificationRate / (reproductiveNumber - 1);
             birthRate = deathRate * reproductiveNumber;
         } else if (diversificationRate != null && turnover != null) {
+            if (Math.abs(1.0 - turnover) < 1e-10) {
+                throw new IllegalArgumentException("Turnover cannot be exactly 1.0 when deriving rates from diversification.");
+            }
             birthRate = diversificationRate / (1 - turnover);
             deathRate = birthRate * turnover;
         } else {
