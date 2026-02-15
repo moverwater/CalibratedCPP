@@ -2,10 +2,10 @@ package calibratedcpp.lphybeast.tobeast.generators;
 
 import beast.base.core.BEASTInterface;
 import calibratedcpp.CalibratedCoalescentPointProcess;
-import calibratedcpp.model.BirthDeathModel;
-import lphy.base.evolution.birthdeath.CPPTree;
+import calibratedcpp.BirthDeathModel;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
+import calibratedcpp.lphy.tree.CPPTree;
 
 public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedCoalescentPointProcess> {
     @Override

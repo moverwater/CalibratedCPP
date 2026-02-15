@@ -25,6 +25,12 @@
             <artifactId>calibratedcpp-beast</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.github.linguaphylo</groupId>
+            <artifactId>calibratedcpp-lphy</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
