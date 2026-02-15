@@ -9,14 +9,12 @@ import calibratedcpp.model.BirthDeathModel;
 import calibration.CalibrationClade;
 import lphy.base.evolution.birthdeath.CalibratedCPPTree;
 import lphy.core.model.BasicFunction;
-import lphy.core.model.Generator;
 import lphy.core.model.Value;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static lphybeast.tobeast.TaxaUtils.getTaxonSet;
 
