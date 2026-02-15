@@ -9,7 +9,6 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Uniform;
 import beast.base.inference.parameter.RealParameter;
-import calibratedcpp.model.BirthDeathModel;
 import calibration.CalibrationClade;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
@@ -34,8 +33,7 @@ public class LikelihoodBenchmark {
     @Param({"10"})
     public int nCalibrations;
 
-    CalibratedCoalescentPointProcess cpp;
-    BirthDeathModel birthDeathModel;
+    BirthDeathModel cpp;
     CalibratedBirthDeathModel heled_and_drummond;
     Tree tree;
     List<CalibrationClade> calibrationsClades;
@@ -45,9 +43,8 @@ public class LikelihoodBenchmark {
     // We do initialization here so it doesn't count towards the execution time
     @Setup(Level.Trial)
     public void setup() {
-        cpp = new CalibratedCoalescentPointProcess();
+        cpp = new calibratedcpp.BirthDeathModel();
         heled_and_drummond = new CalibratedBirthDeathModel();
-        birthDeathModel = new BirthDeathModel();
         calibrationsClades = new ArrayList<>();
         calibrationPoints = new ArrayList<>();
         tree = new TreeParser();
@@ -92,12 +89,10 @@ public class LikelihoodBenchmark {
         RealParameter birthRate = new RealParameter("2.0");
         RealParameter rho = new RealParameter("1.0");
 
-        birthDeathModel.initByName("birthRate", birthRate,
-                "turnover", turnover,
-                "rho", rho);
-
         cpp.initByName("tree", tree,
-                "treeModel", birthDeathModel,
+                "birthRate", birthRate,
+                "turnover", turnover,
+                "rho", rho,
                 "calibrations", calibrationsClades,
                 "conditionOnRoot", true);
         heled_and_drummond.initByName("tree", tree,
@@ -129,7 +124,7 @@ public class LikelihoodBenchmark {
     public double measureHeledAndDrummond() {
         // 1. Change the parameter slightly to invalidate the cache
         // We toggle between 2.0 and 2.0000001
-        double newVal = (birthDeathModel.birthRateInput.get().getValue() > 2.0) ? 2.0 : 2.0000001;
+        double newVal = (cpp.birthRateInput.get().getValue() > 2.0) ? 2.0 : 2.0000001;
         heled_and_drummond.birthRateInput.get().setValue(newVal);
 
         // 2. Measure the calculation

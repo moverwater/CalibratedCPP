@@ -5,7 +5,6 @@ import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.parameter.RealParameter;
-import calibratedcpp.model.BirthDeathModel;
 import calibration.CalibrationClade;
 
 import java.io.*;
@@ -313,15 +312,12 @@ public class SimpleConstraintBenchmark {
         RealParameter birthRate = new RealParameter("2.0");
         RealParameter rho = new RealParameter("1.0");
 
-        BirthDeathModel birthDeathModel = new BirthDeathModel();
-        birthDeathModel.initByName("birthRate", birthRate,
-                "turnover", turnover,
-                "rho", rho);
-
         // Set up CalibratedCoalescentPointProcess
-        CalibratedCoalescentPointProcess cpp = new CalibratedCoalescentPointProcess();
+        CalibratedCoalescentPointProcess cpp = new calibratedcpp.BirthDeathModel();
         cpp.initByName("tree", tree,
-                "treeModel", birthDeathModel,
+                "birthRate", birthRate,
+                "turnover", turnover,
+                "rho", rho,
                 "calibrations", calibrationClades,
                 "conditionOnRoot", true);
 

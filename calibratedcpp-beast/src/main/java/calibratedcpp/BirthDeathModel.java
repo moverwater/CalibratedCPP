@@ -1,29 +1,16 @@
-package calibratedcpp.model;
+package calibratedcpp;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.inference.parameter.RealParameter;
 
 /**
- * Implements the node age distribution under a constant-rate birth-death process
- * for the Coalescent Point Process (CPP) representation.
- *
- * <p>This model defines how node ages are distributed in a phylogenetic tree
- * generated under a constant birth-death process, parameterized by combinations of
- * rates such as birth (λ), death (μ), diversification (λ - μ), reproductive number (λ / μ),
- * turnover (μ / λ), and sampling probability (ρ).</p>
- *
- * <p>Exactly two parameters among {birthRate, deathRate, diversificationRate,
- * reproductiveNumber, turnover} must be provided, along with rho (sampling probability).
- * The remaining parameters are derived automatically.</p>
- *
- * <p>Based on analytical derivations of CPP distributions for birth-death models.</p>
- *
  * @author Marcus Overwater
  */
-@Description("Node age distribution for the CPP representation of the birth-death process")
-public class BirthDeathModel extends CoalescentPointProcessModel {
 
+@Description("Extension of CalibratedCoalescentPointProcess, implements node age density and CDF for" +
+        "constant rate birth-death process with incomplete extant sampling.")
+public class BirthDeathModel extends CalibratedCoalescentPointProcess {
     public Input<RealParameter> birthRateInput =
             new Input<>("birthRate", "The birth rate (lambda)", (RealParameter) null);
 
@@ -65,6 +52,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
 
     @Override
     public void initAndValidate() {
+        super.initAndValidate();
 
         // Extract initial parameter values safely
         birthRate = safeGet(birthRateInput);
@@ -115,7 +103,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
      * @return log-density value
      */
     @Override
-    public double calculateLogDensity(double time) {
+    public double calculateLogNodeAgeDensity(double time) {
         double logDensity;
         double rt = diversificationRate * time;
 
@@ -142,7 +130,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
      * @return log-CDF value
      */
     @Override
-    public double calculateLogCDF(double time) {
+    public double calculateLogNodeAgeCDF(double time) {
         double logCDF;
 
         if (isCritical) {
@@ -231,7 +219,8 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
     }
 
     @Override
-    protected boolean requiresRecalculation() {
+    public boolean requiresRecalculation() {
+        super.requiresRecalculation();
         updateParameters();
         return true;
     }
@@ -248,7 +237,7 @@ public class BirthDeathModel extends CoalescentPointProcessModel {
     }
 
     @Override
-    protected void restore() {
+    public void restore() {
         updateParameters();
         super.restore();
     }

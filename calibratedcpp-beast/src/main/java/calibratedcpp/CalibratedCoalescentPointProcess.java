@@ -4,12 +4,8 @@ import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.speciation.SpeciesTreeDistribution;
 import beast.base.evolution.tree.Node;
-import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.parameter.RealParameter;
-import calibratedcpp.model.BirthDeathModel;
-import calibratedcpp.model.CoalescentPointProcessModel;
 import calibration.CalibrationClade;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
@@ -24,15 +20,12 @@ import java.util.function.IntUnaryOperator;
  */
 
 @Description("A general class of birth-death processes with incomplete extant sampling and conditioning on clade calibrations")
-public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
+public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     public Input<RealParameter> originInput =
             new Input<>("origin", "Age of the origin (time of process start)", (RealParameter) null);
 
     public Input<Boolean> conditionOnRootInput =
             new Input<>("conditionOnRoot", "Whether the model is conditioned on the root age (default: false)", false);
-
-    public Input<CoalescentPointProcessModel> cppModelInput =
-            new Input<>("treeModel", "The tree model", (CoalescentPointProcessModel) null);
 
     public Input<List<CalibrationClade>> calibrationsInput =
             new Input<>("calibrations", "Clade calibrations", new ArrayList<>());
@@ -48,7 +41,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     protected boolean conditionOnRoot;
 
     protected TreeInterface tree;
-    protected CoalescentPointProcessModel model;
     protected Double origin;
     protected double rootAge;
     protected double maxTime;
@@ -67,7 +59,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         }
 
         tree = treeInput.get();
-        model = cppModelInput.get();
         calibrations = new ArrayList<>(calibrationsInput.get());
         if (conditionOnRoot) {
             conditionOnCalibrations = true;
@@ -94,15 +85,19 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         maxTime = conditionOnRoot ? rootAge : origin;
     }
+    
+    public abstract double calculateLogNodeAgeDensity(double time);
+    
+    public abstract double calculateLogNodeAgeCDF(double time);
 
     public double calculateUnConditionedTreeLogLikelihood(TreeInterface tree) {
 
-        double logP = Math.log1p(-Math.exp(model.calculateLogCDF(maxTime)));
+        double logP = Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
         int numTaxa = tree.getLeafNodeCount();
 
         for (Node node : tree.getInternalNodes()) {
             double age = node.getHeight();
-            logP += model.calculateLogDensity(age);
+            logP += calculateLogNodeAgeDensity(age);
         }
         logP += (numTaxa - 1) * Math.log(2.0) - logFactorials[numTaxa]; // Ignore orientation and include labelling with factor of 2^{n-1}/n!
         return logP;
@@ -117,8 +112,8 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         double cladeHeight = mrca.getHeight();
         int cladeSize = calibration.taxa.getTaxonSet().size();
 
-        double logQ_t = model.calculateLogCDF(cladeHeight);
-        double logDensity = model.calculateLogDensity(cladeHeight);
+        double logQ_t = calculateLogNodeAgeCDF(cladeHeight);
+        double logDensity = calculateLogNodeAgeDensity(cladeHeight);
 
         // Base case: leaf calibration
         if (children.isEmpty()) {
@@ -142,7 +137,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 return Double.POSITIVE_INFINITY;
             }
             childCladeSizes[i] = child.taxa.getTaxonSet().size();
-            childCDFs[i] = model.calculateLogCDF(child.getCommonAncestor(tree).getHeight());
+            childCDFs[i] = calculateLogNodeAgeCDF(child.getCommonAncestor(tree).getHeight());
             logDiff[i] = logDiffExp(logQ_t, childCDFs[i]); // log(Q(t)-Q(x_i))
             if (Double.isInfinite(logDiff[i])) {
                 return Double.POSITIVE_INFINITY;
@@ -170,7 +165,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
 
         List<CalibrationNode> rootNodes = calibrationForest.getRoots();
 
-        double logQ_t = model.calculateLogCDF(maxTime);
+        double logQ_t = calculateLogNodeAgeCDF(maxTime);
 
         int numRoots = rootNodes.size();
         double[] logRootDensities = new double[numRoots];
@@ -186,7 +181,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                 return Double.POSITIVE_INFINITY;
             }
             rootCladeSizes[i] = rootNodes.get(i).taxa.getTaxonSet().size();
-            rootCDFs[i] = model.calculateLogCDF(rootNodes.get(i).getCommonAncestor(tree).getHeight());
+            rootCDFs[i] = calculateLogNodeAgeCDF(rootNodes.get(i).getCommonAncestor(tree).getHeight());
             if (Double.isInfinite(logDiff[i])) {
                 return Double.POSITIVE_INFINITY;
             }
@@ -199,7 +194,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         double interactionSum = 0.0;
         double density = 0.0;
         if (conditionOnRoot) {
-            density += model.calculateLogDensity(maxTime);
+            density += calculateLogNodeAgeDensity(maxTime);
             if (numRoots > 0) {
                 interactionSum += computeExtendedRootSum(weights, numFreeLineages);
             }
@@ -242,7 +237,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
                     }
                 }
             }
-            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) + Math.log1p(-Math.exp(model.calculateLogCDF(maxTime)));
+            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) + Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
         }
 
         return logP;
@@ -338,7 +333,7 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
         int maxMask = 1 << k;
         for (int mask = 1; mask < maxMask; mask++) {
             int bits = Integer.bitCount(mask);
-            if (bits == 1) continue; // already inited
+            if (bits == 1) continue; // already initiated
 
             int baseMask = idx.applyAsInt(mask);
 
@@ -645,7 +640,6 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     }
 
     public void updateModel() {
-        model = cppModelInput.get();
         origin = (originInput.get() != null) ? originInput.get().getValue() : null;
         rootAge = tree.getRoot().getHeight();
         maxTime = (conditionOnRoot) ? rootAge : origin;
@@ -662,31 +656,5 @@ public class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
     public void restore() {
         updateModel();
         super.restore();
-    }
-
-    public static void main(String[] args) {
-        Tree tree = new TreeParser();
-        tree.initByName("newick", "((A:2,B:2):1,C:3):0;",
-                "adjustTipHeights", false,
-                "IsLabelledNewick", true);
-
-        BirthDeathModel birthDeath = new BirthDeathModel();
-
-        birthDeath.initByName("birthRate", new RealParameter("3.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1")
-        );
-
-        boolean b;
-        b = birthDeath.birthRateInput.get().getValue() - birthDeath.deathRateInput.get().getValue() < 1e-10;
-
-        CalibratedCoalescentPointProcess cpp = new CalibratedCoalescentPointProcess();
-        cpp.initByName("tree", tree,
-                "treeModel", birthDeath,
-                "origin", new RealParameter("4.0")
-        );
-        System.out.println("tree = " + tree);
-        System.out.println("isCritical = " + b);
-        System.out.println("logP = " + cpp.calculateLogP());
     }
 }

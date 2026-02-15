@@ -4,10 +4,8 @@
 
     <service type="beast.base.core.BEASTInterface">
         <provider classname="calibratedcpp.CalibratedCoalescentPointProcess"/>
-        <provider classname="calibratedcpp.model.CoalescentPointProcessModel"/>
-        <provider classname="calibratedcpp.model.BirthDeathModel"/>
-        <provider classname="calibratedcpp.model.BirthDeathSkylineModel"/>
-        <provider classname="calibratedcpp.model.AgeDependentModel"/>
+        <provider classname="calibratedcpp.BirthDeathModel"/>
+        <provider classname="calibratedcpp.BirthDeathSkylineModel"/>
         <provider classname="calibrationprior.CalibrationPrior"/>
         <provider classname="calibrationprior.CalibrationCladePrior"/>
         <provider classname="calibration.CalibrationNode"/>

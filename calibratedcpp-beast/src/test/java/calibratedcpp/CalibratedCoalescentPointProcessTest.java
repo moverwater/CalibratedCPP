@@ -4,7 +4,6 @@ import beast.base.evolution.speciation.CalibratedBirthDeathModel;
 import beast.base.evolution.speciation.CalibrationPoint;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Uniform;
-import calibratedcpp.model.BirthDeathModel;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -27,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class CalibratedCoalescentPointProcessTest {
 
-    private CalibratedCoalescentPointProcess cpp;
+    private calibratedcpp.BirthDeathModel cpp;
     private final Tree tree;
     TaxonSet taxaABC;
     TaxonSet taxaDE;
@@ -35,7 +34,6 @@ public class CalibratedCoalescentPointProcessTest {
     TaxonSet taxaHI;
     TaxonSet taxaHIJ;
     TaxonSet taxaFGHIJ;
-    private final BirthDeathModel birthDeath;
     private final List<CalibrationClade> calibrations;
     private CalibratedCoalescentPointProcess rootConditionedCPP;
 
@@ -45,22 +43,21 @@ public class CalibratedCoalescentPointProcessTest {
                 "adjustTipHeights", false,
                 "IsLabelledNewick", true);
 
-        birthDeath = new BirthDeathModel();
-        birthDeath.initByName("birthRate", new RealParameter("3.0"),
+
+        cpp = new calibratedcpp.BirthDeathModel();
+        cpp.initByName("tree", tree,
+                "origin", new RealParameter("6.5"),
+                "birthRate", new RealParameter("3.0"),
                 "deathRate", new RealParameter("2.0"),
                 "rho", new RealParameter("0.1")
         );
 
-        cpp = new CalibratedCoalescentPointProcess();
-        cpp.initByName("tree", tree,
-                "treeModel", birthDeath,
-                "origin", new RealParameter("6.5")
-        );
-
-        rootConditionedCPP = new CalibratedCoalescentPointProcess();
+        rootConditionedCPP = new calibratedcpp.BirthDeathModel();
         rootConditionedCPP.initByName("tree", tree,
-                "treeModel", birthDeath,
-                "conditionOnRoot", true
+                "conditionOnRoot", true,
+                "birthRate", new RealParameter("3.0"),
+                "deathRate", new RealParameter("2.0"),
+                "rho", new RealParameter("0.1")
         );
 
         // Create taxa objects
@@ -164,12 +161,12 @@ public class CalibratedCoalescentPointProcessTest {
         assert cpFGHIJ != null;
         assertEquals(rootConditionedCPP.computeCalibrationDensity(tree, cpABCDE) +
                         rootConditionedCPP.computeCalibrationDensity(tree, cpFGHIJ) +
-                        Math.log(2.0) + birthDeath.calculateLogDensity(6.0) + labellings,
+                        Math.log(2.0) + rootConditionedCPP.calculateLogNodeAgeDensity(6.0) + labellings,
                 rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), 1e-4,
                 "Marginal density of the calibrations and root is incorrect.");
 
         assertEquals(cpp.computeCalibrationDensity(tree, cpABCDE) + cpp.computeCalibrationDensity(tree, cpFGHIJ) +
-                        Math.log(2.0) + birthDeath.calculateLogCDF(6.5) + Math.log1p(-Math.exp(birthDeath.calculateLogCDF(5.0) - birthDeath.calculateLogCDF(6.5))) +
+                        Math.log(2.0) + cpp.calculateLogNodeAgeCDF(6.5) + Math.log1p(-Math.exp(cpp.calculateLogNodeAgeCDF(5.0) - cpp.calculateLogNodeAgeCDF(6.5))) +
                         labellings,
                 cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest), 1e-4,
                 "MarginalDensity of the calibrations is incorrect.");
@@ -188,61 +185,65 @@ public class CalibratedCoalescentPointProcessTest {
         CalibrationNode cpABCDE = CalibrationNode.getByTaxa(calibrationNodes, taxaABCDE);
 
         assert cpHI != null;
-        assertEquals(birthDeath.calculateLogDensity(0.5),
+        assertEquals(cpp.calculateLogNodeAgeDensity(0.5),
                 cpp.computeCalibrationDensity(tree, cpHI), 1e-6, "Density for calibration HI is incorrect.");
         assert cpDE != null;
-        assertEquals(birthDeath.calculateLogDensity(1.5),
+        assertEquals(cpp.calculateLogNodeAgeDensity(1.5),
                 cpp.computeCalibrationDensity(tree, cpDE), 1e-6, "Density for calibration DE is incorrect.");
         assert cpABC != null;
-        assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0),
+        assertEquals(cpp.calculateLogNodeAgeDensity(3.0) + cpp.calculateLogNodeAgeCDF(3.0) + Math.log(2.0),
                 cpp.computeCalibrationDensity(tree, cpABC), 1e-6, "Density for calibration ABC is incorrect.");
         assert cpHIJ != null;
-        assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0)
+        assertEquals(cpp.calculateLogNodeAgeDensity(0.5) + cpp.calculateLogNodeAgeDensity(2.5) + Math.log(2.0)
                         - (Math.log(3.0)),
                 cpp.computeCalibrationDensity(tree, cpHIJ), 1e-6, "Density for calibration HIJ is incorrect.");
         assert cpABCDE != null;
-        assertEquals(birthDeath.calculateLogDensity(3.0) + birthDeath.calculateLogCDF(3.0) + Math.log(2.0) +
-                        birthDeath.calculateLogDensity(1.5) +
-                        birthDeath.calculateLogDensity(4.0) +
+        assertEquals(cpp.calculateLogNodeAgeDensity(3.0) + cpp.calculateLogNodeAgeCDF(3.0) + Math.log(2.0) +
+                        cpp.calculateLogNodeAgeDensity(1.5) +
+                        cpp.calculateLogNodeAgeDensity(4.0) +
                         2 * Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
                 cpp.computeCalibrationDensity(tree, cpABCDE), 1e-6, "Density for calibration ABCDE is incorrect.");
         assert cpFGHIJ != null;
-        assertEquals(birthDeath.calculateLogDensity(0.5) + birthDeath.calculateLogDensity(2.5) + Math.log(2.0)
+        assertEquals(cpp.calculateLogNodeAgeDensity(0.5) + cpp.calculateLogNodeAgeDensity(2.5) + Math.log(2.0)
                         - (Math.log(3.0)) + // density of HIJ
-                        birthDeath.calculateLogDensity(5.0) +
-                        Math.log(4.0 * (Math.exp(birthDeath.calculateLogCDF(5.0)) - Math.exp(birthDeath.calculateLogCDF(2.5)))
-                                + 2.0 * Math.exp(birthDeath.calculateLogCDF(5.0))) + Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
+                        cpp.calculateLogNodeAgeDensity(5.0) +
+                        Math.log(4.0 * (Math.exp(cpp.calculateLogNodeAgeCDF(5.0)) - Math.exp(cpp.calculateLogNodeAgeCDF(2.5)))
+                                + 2.0 * Math.exp(cpp.calculateLogNodeAgeCDF(5.0))) + Math.log(2.0) - (Math.log(5.0) + Math.log(4.0)),
                 cpp.computeCalibrationDensity(tree, cpFGHIJ), 1e-6, "Density for calibration FGHIJ is incorrect.");
     }
 
     @Test
     public void calculateTreeLogLikelihood() {
         CalibrationForest calibrationForest = new CalibrationForest(calibrations);
-        cpp = new CalibratedCoalescentPointProcess();
+        cpp = new calibratedcpp.BirthDeathModel();
         cpp.initByName("tree", tree,
                 "origin", new RealParameter("6.5"),
                 "calibrations", calibrations,
-                "treeModel", birthDeath);
+                "birthRate", new RealParameter("3.0"),
+                "deathRate", new RealParameter("2.0"),
+                "rho", new RealParameter("0.1"));
 
         assertEquals(cpp.calculateUnConditionedTreeLogLikelihood(tree) -
                         cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
-                        Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.5))),
+                        Math.log1p(-Math.exp(cpp.calculateLogNodeAgeCDF(6.5))),
                 cpp.calculateTreeLogLikelihood(tree), 1e-4, "Tree log likelihood incorrect.");
 
-        rootConditionedCPP = new CalibratedCoalescentPointProcess();
+        rootConditionedCPP = new calibratedcpp.BirthDeathModel();
         rootConditionedCPP.initByName("tree", tree,
                 "origin", new RealParameter("6.5"),
                 "calibrations", calibrations,
                 "conditionOnRoot", true,
                 "conditionOnCalibrations", true,
-                "treeModel", birthDeath);
+                "birthRate", new RealParameter("3.0"),
+                "deathRate", new RealParameter("2.0"),
+                "rho", new RealParameter("0.1"));
 
         assertEquals(rootConditionedCPP.calculateUnConditionedTreeLogLikelihood(tree) -
                         rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
-                        Math.log1p(-Math.exp(birthDeath.calculateLogCDF(6.0))),
+                        Math.log1p(-Math.exp(rootConditionedCPP.calculateLogNodeAgeCDF(6.0))),
                 rootConditionedCPP.calculateTreeLogLikelihood(tree), 1e-4, "Tree log likelihood incorrect.");
 
-        CalibratedCoalescentPointProcess nonmonophyleticCPP = new CalibratedCoalescentPointProcess();
+        CalibratedCoalescentPointProcess nonmonophyleticCPP = new calibratedcpp.BirthDeathModel();
         CalibrationClade badClade = new CalibrationClade();
         badClade.initByName("taxa", new TaxonSet(Arrays.asList(
                 new Taxon("A"), new Taxon("B"), new Taxon("J")
@@ -252,13 +253,14 @@ public class CalibratedCoalescentPointProcessTest {
                 "calibrations", badClade,
                 "conditionOnRoot", true,
                 "conditionOnCalibrations", true,
-                "treeModel", birthDeath);
+                "birthRate", new RealParameter("3.0"),
+                "deathRate", new RealParameter("2.0"),
+                "rho", new RealParameter("0.1"));
 
         assertEquals(Double.NEGATIVE_INFINITY, nonmonophyleticCPP.calculateTreeLogLikelihood(tree), 1e-4);
 
-        cpp = new CalibratedCoalescentPointProcess();
+        cpp = new calibratedcpp.BirthDeathModel();
         CalibratedBirthDeathModel heled_and_drummond = new CalibratedBirthDeathModel();
-        BirthDeathModel birthDeathModel = new BirthDeathModel();
         List<CalibrationClade> calibrationsClades = new ArrayList<>();
         List<CalibrationPoint> calibrationPoints = new ArrayList<>();
         Tree tree = new TreeParser();
@@ -307,12 +309,11 @@ public class CalibratedCoalescentPointProcessTest {
         RealParameter birthRate = new RealParameter("2.0");
         RealParameter rho = new RealParameter("1.0");
 
-        birthDeathModel.initByName("birthRate", birthRate,
-                "turnover", turnover,
-                "rho", rho);
 
         cpp.initByName("tree", tree,
-                "treeModel", birthDeathModel,
+                "birthRate", birthRate,
+                "turnover", turnover,
+                "rho", rho,
                 "calibrations", calibrationsClades,
                 "conditionOnRoot", true);
         heled_and_drummond.initByName("tree", tree,
@@ -327,8 +328,7 @@ public class CalibratedCoalescentPointProcessTest {
 
     @Test
     public void heledAndDrummondComparison() {
-        cpp = new CalibratedCoalescentPointProcess();
-        BirthDeathModel model = new BirthDeathModel();
+        cpp = new calibratedcpp.BirthDeathModel();
         CalibratedBirthDeathModel heled_and_drummond = new CalibratedBirthDeathModel();
         RealParameter rho = new RealParameter("1.0");
         RealParameter turnover = new RealParameter("0.0");
@@ -422,10 +422,9 @@ public class CalibratedCoalescentPointProcessTest {
         calibrationPoints.add(calibrationPoint3);
         calibrationPoints.add(calibrationPoint4);
 
-        model.initByName("birthRate", birthRate,
+        cpp.initByName("birthRate", birthRate,
                 "turnover", turnover,
-                "rho", rho);
-        cpp.initByName("treeModel", model,
+                "rho", rho,
                 "tree", tree,
                 "calibrations", calibrationClades,
                 "conditionOnRoot", true);
@@ -450,11 +449,9 @@ public class CalibratedCoalescentPointProcessTest {
                 double currentBirthRate = 1.0 + incr;
                 String birthRateValue = String.valueOf(currentBirthRate);
 
-                model.initByName("birthRate", new RealParameter(birthRateValue),
-                        "turnover", turnover,
-                        "rho", rho);
+                cpp.birthRateInput.get().setValue(currentBirthRate);
+                cpp.updateParameters();
 
-                cpp.setInputValue("treeModel", model);
                 heled_and_drummond.birthRateInput.get().setValue(currentBirthRate);
 
                 double cppVal = cpp.calculateTreeLogLikelihood(tree);

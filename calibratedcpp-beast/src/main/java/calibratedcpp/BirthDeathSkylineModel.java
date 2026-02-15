@@ -1,10 +1,11 @@
-package calibratedcpp.model;
+package calibratedcpp;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.RealParameter;
+
 import java.util.Arrays;
 import java.util.TreeSet;
 
@@ -12,11 +13,9 @@ import java.util.TreeSet;
  * @author Marcus Overwater
  */
 
-@Description("Node age distribution for the CPP representation of the birth-death process with piecewise constant rates")
-public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
-
-    public Input<TreeInterface> treeInput = new Input<>("tree", "The tree to provide root height", (TreeInterface) null);
-
+@Description("Extension of CalibratedCoalescentPointProcess, implements node age density and CDF of " +
+        "for the BDSKY model with piecewise constant birth and death rates with incomplete extant sampling.")
+public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     public Input<RealParameter> birthRateInput =
             new Input<>("birthRate", "lambda", (RealParameter) null);
     public Input<RealParameter> deathRateInput =
@@ -62,73 +61,105 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
 
     @Override
     public void initAndValidate() {
+        super.initAndValidate();
+
+        // 1. Group inputs for iterative validation
+        Input<RealParameter>[] rateInputs = new Input[]{birthRateInput, deathRateInput, reproductiveNumberInput, diversificationRateInput, turnoverInput};
+        Input<RealParameter>[] timeInputs = new Input[]{birthRateChangeTimesInput, deathRateChangeTimesInput, reproductiveNumberChangeTimesInput, diversificationRateChangeTimesInput, turnoverChangeTimesInput};
+        Input<Boolean>[] relInputs = new Input[]{birthRateTimesRelativeInput, deathRateTimesRelativeInput, reproductiveNumberTimesRelativeInput, diversificationRateTimesRelativeInput, turnoverTimesRelativeInput};
+
         relativeFlags = new boolean[5];
-        relativeFlags[0] = birthRateTimesRelativeInput.get();
-        relativeFlags[1] = deathRateTimesRelativeInput.get();
-        relativeFlags[2] = reproductiveNumberTimesRelativeInput.get();
-        relativeFlags[3] = diversificationRateTimesRelativeInput.get();
-        relativeFlags[4] = turnoverTimesRelativeInput.get();
-
-        checkDim(birthRateInput, birthRateChangeTimesInput, "birthRate");
-        checkDim(deathRateInput, deathRateChangeTimesInput, "deathRate");
-        checkDim(reproductiveNumberInput, reproductiveNumberChangeTimesInput, "reproductiveNumber");
-        checkDim(diversificationRateInput, diversificationRateChangeTimesInput, "diversificationRate");
-        checkDim(turnoverInput, turnoverChangeTimesInput, "turnover");
-
-        for (int i = 0; i < 5; i++) {
-            if (relativeFlags[i] && treeInput.get() == null) {
-                throw new IllegalArgumentException("Tree must be specified if any times are relative to tree height.");
-            }
-        }
-
-        if (reproductiveNumberInput.get() != null && turnoverInput.get() != null) {
-            throw new IllegalArgumentException("reproductiveNumber and turnover cannot be specified together. Replace with one of: birthRate, deathRate, diversificationRate.");
-        }
-
-        if (rhoInput.get() == null) {
-            throw new IllegalArgumentException("Sampling probability (rho) must be specified.");
-        }
-
-        int specified = 0;
+        int specifiedRates = 0;
         StringBuilder whichSpecified = new StringBuilder();
 
-        Input<?>[] rateInputs = {birthRateInput, deathRateInput, reproductiveNumberInput, diversificationRateInput, turnoverInput};
+        for (int i = 0; i < 5; i++) {
+            relativeFlags[i] = relInputs[i].get();
+            RealParameter rateP = rateInputs[i].get();
+            RealParameter timeP = timeInputs[i].get();
 
-        for (Input<?> input : rateInputs) {
-            if (input.get() != null) {
-                specified++;
+            if (rateP != null) {
+                // Check Dimensions
+                if (rateInputs[i].get() != null) {
+                    int rateDim = rateInputs[i].get().getDimension();
+                    int timeDim = (timeInputs[i].get() != null) ? timeInputs[i].get().getDimension() : 0;
+
+                    if (rateDim != timeDim + 1) {
+                        throw new IllegalArgumentException("Dimension mismatch for " + rateInputs[i].getName() +
+                                ": found " + rateDim + " rates but " + timeDim + " change times. " +
+                                "Number of rates must be change times + 1.");
+                    }
+                }
+
+                // Track specified rates for the "Exactly Two" check
+                specifiedRates++;
                 if (!whichSpecified.isEmpty()) whichSpecified.append(", ");
-                whichSpecified.append(input.getName());
+                whichSpecified.append(rateInputs[i].getName());
+
+                // Check Relative Constraints
+                if (relativeFlags[i]) {
+                    if (timeP != null) {
+                        for (double val : timeP.getDoubleValues()) {
+                            if (val < 0.0 || val > 1.0)
+                                throw new IllegalArgumentException("Relative time in " + timeInputs[i].getName() + " must be in [0,1]. Found: " + val);
+                        }
+                    }
+                }
             }
         }
 
-        if (specified != 2) {
-            throw new IllegalArgumentException("Exactly TWO of {birthRate, deathRate, reproductiveNumber, diversificationRate, turnover} must be specified. " +
-                    "These " + specified + " were specified: (" + whichSpecified + ")");
-        }
+        // 2. Mutual Exclusion & Requirement Checks
+        if (reproductiveNumberInput.get() != null && turnoverInput.get() != null)
+            throw new IllegalArgumentException("reproductiveNumber and turnover cannot be specified together.");
 
+        if (rhoInput.get() == null)
+            throw new IllegalArgumentException("Sampling probability (rho) must be specified.");
+
+        if (specifiedRates != 2)
+            throw new IllegalArgumentException("Exactly TWO rates must be specified. Found " + specifiedRates + " (" + whichSpecified + ")");
+
+        // 3. Handle Reverse Flags
         reverseFlags = new boolean[5];
         if (reverseTimeArraysInput.get() != null) {
             BooleanParameter flags = reverseTimeArraysInput.get();
             for (int i = 0; i < Math.min(5, flags.getDimension()); i++) reverseFlags[i] = flags.getValue(i);
         }
+
         updateIntervals();
     }
 
-    public void updateModel() { updateIntervals(); }
+    @Override
+    public double calculateTreeLogLikelihood(TreeInterface tree) {
+        if (!updateIntervals()) {
+            return Double.NEGATIVE_INFINITY;
+        }
+        return super.calculateTreeLogLikelihood(tree);
+    }
 
-    private void updateIntervals() {
+    private boolean updateIntervals() {
         rho = rhoInput.get().getValue();
-        double maxT = treeInput.get().getRoot().getHeight();
 
-        // 1. Prepare sorted normalization for ALL possible change-point sets
+        // Get tree height and origin
+        double rootHeight = treeInput.get().getRoot().getHeight();
+        double originVal = !conditionOnRoot ? originInput.get().getValue() : 0.0;
+        double maxT = conditionOnRoot ? rootHeight : originVal;
+
+        // --- CHECK 1: Root vs Origin ---
+        // If we condition on origin, the tree cannot be older than the origin.
+        if (!conditionOnRoot && rootHeight >= originVal) {
+            return false;
+        }
+
+        // --- CHECK 2: Change Times vs Origin ---
         double[] bC = getSorted(birthRateChangeTimesInput.get(), relativeFlags[0], reverseFlags[0], maxT);
         double[] dC = getSorted(deathRateChangeTimesInput.get(), relativeFlags[1], reverseFlags[1], maxT);
         double[] rC = getSorted(reproductiveNumberChangeTimesInput.get(), relativeFlags[2], reverseFlags[2], maxT);
         double[] divC = getSorted(diversificationRateChangeTimesInput.get(), relativeFlags[3], reverseFlags[3], maxT);
         double[] tC = getSorted(turnoverChangeTimesInput.get(), relativeFlags[4], reverseFlags[4], maxT);
 
-        // 2. Build the master timeline
+        if (isAnyTimeBeyondMax(maxT, bC, dC, rC, divC, tC)) {
+            return false;
+        }
+        // Build the master timeline
         TreeSet<Double> times = new TreeSet<>();
         times.add(0.0);
         for (double t : bC) times.add(t); for (double t : dC) times.add(t);
@@ -145,7 +176,7 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
         cumulativeIntegral[0] = Double.NEGATIVE_INFINITY;
         cumulativeExpR[0] = 0.0;
 
-        // 3. Rate transformation logic
+        // Rate transformation logic
         for (int j = 0; j < n; j++) {
             double t = intervalStartTimes[j];
             double vL = getVal(birthRateInput.get(), bC, t, reverseFlags[0]);
@@ -177,6 +208,7 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
                 cumulativeExpR[j+1] = rRunningSum;
             }
         }
+        return true;
     }
 
     private double calculateSegment(double l, double r_val, double dt, double expOffset) {
@@ -204,7 +236,7 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
     }
 
     @Override
-    public double calculateLogDensity(double time) {
+    public double calculateLogNodeAgeDensity(double time) {
         int m = getInterval(time);
         double dtP = time - intervalStartTimes[m];
         double logY = logSumExp(0.0, logSumExp(cumulativeIntegral[m], calculateSegment(lambda[m], r[m], dtP, cumulativeExpR[m])));
@@ -212,7 +244,7 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
     }
 
     @Override
-    public double calculateLogCDF(double time) {
+    public double calculateLogNodeAgeCDF(double time) {
         int m = getInterval(time);
         double logInt = logSumExp(cumulativeIntegral[m], calculateSegment(lambda[m], r[m], time - intervalStartTimes[m], cumulativeExpR[m]));
         return logInt - logSumExp(0.0, logInt);
@@ -223,17 +255,28 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
         return i < 0 ? Math.max(0, -i - 2) : i;
     }
 
+    private boolean isAnyTimeBeyondMax(double maxT, double[]... changePointArrays) {
+        for (double[] array : changePointArrays) {
+            if (array.length > 0 && array[array.length - 1] > maxT + 1e-10) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private double logSumExp(double a, double b) {
         if (a == Double.NEGATIVE_INFINITY) return b; if (b == Double.NEGATIVE_INFINITY) return a;
         return Math.max(a, b) + Math.log1p(Math.exp(-Math.abs(a - b)));
     }
 
     private double[] getSorted(RealParameter p, boolean rel, boolean rev, double max) {
-        if (p == null) return new double[0];
+        if (p == null || p.getDimension() == 0) return new double[0];
         double[] c = new double[p.getDimension()];
         for (int i = 0; i < c.length; i++) {
             double v = p.getValue(i);
-            c[i] = Math.max(0, rel ? (rev ? max * (1 - v) : max * v) : (rev ? max - v : v));
+            // Calculate absolute time
+            double time = rel ? (rev ? max * (1 - v) : max * v) : (rev ? max - v : v);
+            c[i] = time;
         }
         Arrays.sort(c);
         return c;
@@ -241,28 +284,30 @@ public class BirthDeathSkylineModel extends CoalescentPointProcessModel {
 
     private double getVal(RealParameter p, double[] cuts, double t, boolean rev) {
         if (p == null) return 0;
+
+        // Find how many change-points we have passed (starting from t=0)
         int idx = Arrays.binarySearch(cuts, t);
         if (idx < 0) idx = -idx - 1;
-        int pIdx = rev ? (p.getDimension() - 1 - idx) : idx;
+
+        // pIdx logic:
+        // If rev = true (Present to Root): idx 0 is the first-rate.
+        // If rev = false (Root to Present): We must flip the index.
+        int pIdx = rev ? idx : (p.getDimension() - 1 - idx);
+
+        // Safety clamp to prevent index out of bounds
         return p.getValue(Math.max(0, Math.min(pIdx, p.getDimension() - 1)));
     }
 
-    private void checkDim(Input<RealParameter> rate, Input<RealParameter> times, String name) {
-        if (rate.get() != null) {
-            int rateDim = rate.get().getDimension();
-            int timeDim = (times.get() != null) ? times.get().getDimension() : 0;
-
-            if (rateDim != timeDim + 1) {
-                throw new IllegalArgumentException("Dimension mismatch for " + name +
-                        ": found " + rateDim + " rates but " + timeDim + " change times. " +
-                        "Number of rates must be change times + 1.");
-            }
-        }
+    @Override
+    public void restore() {
+        super.restore();
+        updateIntervals();
     }
 
     @Override
-    protected boolean requiresRecalculation() {
-        updateModel();
+    public boolean requiresRecalculation() {
+        super.requiresRecalculation();
+        updateIntervals();
         return true;
     }
 }
