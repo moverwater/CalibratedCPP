@@ -6,8 +6,7 @@ import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.RealParameter;
 
-import java.util.Arrays;
-import java.util.TreeSet;
+import java.util.*;
 
 /**
  * @author Marcus Overwater
@@ -63,7 +62,6 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     public void initAndValidate() {
         super.initAndValidate();
 
-        // 1. Group inputs for iterative validation
         Input<RealParameter>[] rateInputs = new Input[]{birthRateInput, deathRateInput, reproductiveNumberInput, diversificationRateInput, turnoverInput};
         Input<RealParameter>[] timeInputs = new Input[]{birthRateChangeTimesInput, deathRateChangeTimesInput, reproductiveNumberChangeTimesInput, diversificationRateChangeTimesInput, turnoverChangeTimesInput};
         Input<Boolean>[] relInputs = new Input[]{birthRateTimesRelativeInput, deathRateTimesRelativeInput, reproductiveNumberTimesRelativeInput, diversificationRateTimesRelativeInput, turnoverTimesRelativeInput};
@@ -78,38 +76,26 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
             RealParameter timeP = timeInputs[i].get();
 
             if (rateP != null) {
-                // Check Dimensions
-                if (rateInputs[i].get() != null) {
-                    int rateDim = rateInputs[i].get().getDimension();
-                    int timeDim = (timeInputs[i].get() != null) ? timeInputs[i].get().getDimension() : 0;
-
-                    if (rateDim != timeDim + 1) {
-                        throw new IllegalArgumentException("Dimension mismatch for " + rateInputs[i].getName() +
-                                ": found " + rateDim + " rates but " + timeDim + " change times. " +
-                                "Number of rates must be change times + 1.");
-                    }
-                }
-
-                // Track specified rates for the "Exactly Two" check
                 specifiedRates++;
                 if (!whichSpecified.isEmpty()) whichSpecified.append(", ");
                 whichSpecified.append(rateInputs[i].getName());
 
-                // Check Relative Constraints
-                if (relativeFlags[i]) {
-                    if (timeP != null) {
-                        for (double val : timeP.getDoubleValues()) {
-                            if (val < 0.0 || val > 1.0)
-                                throw new IllegalArgumentException("Relative time in " + timeInputs[i].getName() + " must be in [0,1]. Found: " + val);
-                        }
+                // --- CHANGED LOGIC HERE ---
+                // Only enforce dimension check IF change times are explicitly provided.
+                // If timeP is null, we allow any dimension for rateP (implies equidistant).
+                if (timeP != null) {
+                    int rateDim = rateP.getDimension();
+                    int timeDim = timeP.getDimension();
+                    if (rateDim != timeDim + 1) {
+                        throw new IllegalArgumentException("Dimension mismatch for " + rateInputs[i].getName() +
+                                ": Explicit change times provided ("+timeDim+"), so rate dimension must be ("+(timeDim+1)+"). Found: " + rateDim);
                     }
                 }
             }
         }
 
-        // 2. Mutual Exclusion & Requirement Checks
         if (reproductiveNumberInput.get() != null && turnoverInput.get() != null)
-            throw new IllegalArgumentException("reproductiveNumber and turnover cannot be specified together.");
+            throw new IllegalArgumentException("Cannot specify both reproductiveNumber and turnover.");
 
         if (rhoInput.get() == null)
             throw new IllegalArgumentException("Sampling probability (rho) must be specified.");
@@ -117,7 +103,6 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         if (specifiedRates != 2)
             throw new IllegalArgumentException("Exactly TWO rates must be specified. Found " + specifiedRates + " (" + whichSpecified + ")");
 
-        // 3. Handle Reverse Flags
         reverseFlags = new boolean[5];
         if (reverseTimeArraysInput.get() != null) {
             BooleanParameter flags = reverseTimeArraysInput.get();
@@ -137,55 +122,52 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
 
     private boolean updateIntervals() {
         rho = rhoInput.get().getValue();
-
-        // Get tree height and origin
         double rootHeight = treeInput.get().getRoot().getHeight();
         double originVal = !conditionOnRoot ? originInput.get().getValue() : 0.0;
         double maxT = conditionOnRoot ? rootHeight : originVal;
 
-        // --- CHECK 1: Root vs Origin ---
-        // If we condition on origin, the tree cannot be older than the origin.
-        if (!conditionOnRoot && rootHeight >= originVal) {
-            return false;
-        }
+        if (!conditionOnRoot && rootHeight >= originVal) return false;
 
-        // --- CHECK 2: Change Times vs Origin ---
-        double[] bC = getSorted(birthRateChangeTimesInput.get(), relativeFlags[0], reverseFlags[0], maxT);
-        double[] dC = getSorted(deathRateChangeTimesInput.get(), relativeFlags[1], reverseFlags[1], maxT);
-        double[] rC = getSorted(reproductiveNumberChangeTimesInput.get(), relativeFlags[2], reverseFlags[2], maxT);
-        double[] divC = getSorted(diversificationRateChangeTimesInput.get(), relativeFlags[3], reverseFlags[3], maxT);
-        double[] tC = getSorted(turnoverChangeTimesInput.get(), relativeFlags[4], reverseFlags[4], maxT);
+        // 1. Process Times for each parameter individually
+        // This handles the "Equidistant" generation if inputs are null
+        // --- Internal State ---
+        // We store the processed change times for each parameter individually
+        List<Double> bTimes = processInput(birthRateInput, birthRateChangeTimesInput, relativeFlags[0], reverseFlags[0], maxT);
+        List<Double> dTimes = processInput(deathRateInput, deathRateChangeTimesInput, relativeFlags[1], reverseFlags[1], maxT);
+        List<Double> rTimes = processInput(reproductiveNumberInput, reproductiveNumberChangeTimesInput, relativeFlags[2], reverseFlags[2], maxT);
+        List<Double> divTimes = processInput(diversificationRateInput, diversificationRateChangeTimesInput, relativeFlags[3], reverseFlags[3], maxT);
+        List<Double> tTimes = processInput(turnoverInput, turnoverChangeTimesInput, relativeFlags[4], reverseFlags[4], maxT);
 
-        if (isAnyTimeBeyondMax(maxT, bC, dC, rC, divC, tC)) {
-            return false;
-        }
-        // Build the master timeline
-        TreeSet<Double> times = new TreeSet<>();
-        times.add(0.0);
-        for (double t : bC) times.add(t); for (double t : dC) times.add(t);
-        for (double t : rC) times.add(t); for (double t : divC) times.add(t);
-        for (double t : tC) times.add(t);
+        // 2. Create Master Timeline (Union of all times)
+        SortedSet<Double> timesSet = new TreeSet<>();
+        timesSet.add(0.0);
+        timesSet.addAll(bTimes); timesSet.addAll(dTimes);
+        timesSet.addAll(rTimes); timesSet.addAll(divTimes);
+        timesSet.addAll(tTimes);
 
-        intervalStartTimes = times.stream().mapToDouble(d -> d).toArray();
+        intervalStartTimes = timesSet.stream().mapToDouble(d -> d).toArray();
         int n = intervalStartTimes.length;
-        lambda = new double[n]; r = new double[n];
-        cumulativeIntegral = new double[n]; cumulativeExpR = new double[n];
+        lambda = new double[n];
+        r = new double[n];
+        cumulativeIntegral = new double[n];
+        cumulativeExpR = new double[n];
 
         double logRunningSum = Double.NEGATIVE_INFINITY;
         double rRunningSum = 0.0;
         cumulativeIntegral[0] = Double.NEGATIVE_INFINITY;
         cumulativeExpR[0] = 0.0;
 
-        // Rate transformation logic
+        // 3. Iterate through Master Intervals
         for (int j = 0; j < n; j++) {
             double t = intervalStartTimes[j];
-            double vL = getVal(birthRateInput.get(), bC, t, reverseFlags[0]);
-            double vM = getVal(deathRateInput.get(), dC, t, reverseFlags[1]);
-            double vR = getVal(reproductiveNumberInput.get(), rC, t, reverseFlags[2]);
-            double vD = getVal(diversificationRateInput.get(), divC, t, reverseFlags[3]);
-            double vT = getVal(turnoverInput.get(), tC, t, reverseFlags[4]);
 
-            // Transform user inputs to Lambda and Mu
+            // Lookup the rate for this specific time 't' using that parameter's specific time list
+            double vL = getVal(birthRateInput.get(), bTimes, t, reverseFlags[0]);
+            double vM = getVal(deathRateInput.get(), dTimes, t, reverseFlags[1]);
+            double vR = getVal(reproductiveNumberInput.get(), rTimes, t, reverseFlags[2]);
+            double vD = getVal(diversificationRateInput.get(), divTimes, t, reverseFlags[3]);
+            double vT = getVal(turnoverInput.get(), tTimes, t, reverseFlags[4]);
+
             double l = 0, m = 0;
             if (birthRateInput.get() != null && deathRateInput.get() != null) { l = vL; m = vM; }
             else if (birthRateInput.get() != null && diversificationRateInput.get() != null) { l = vL; m = vL - vD; }
@@ -211,27 +193,81 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         return true;
     }
 
+    private List<Double> processInput(Input<RealParameter> rateInput, Input<RealParameter> timeInput,
+                                      boolean relative, boolean reverse, double maxTime) {
+        List<Double> times = new ArrayList<>();
+        if (rateInput.get() == null) return times;
+
+        RealParameter rateP = rateInput.get();
+        RealParameter timeP = timeInput.get();
+
+        if (timeP != null) {
+            // --- Explicit Times ---
+            Double[] vals = timeP.getValues();
+            Arrays.sort(vals); // Ensure sorted
+            for (double v : vals) {
+                double tAbs = relative ? (reverse ? maxTime * (1.0 - v) : maxTime * v)
+                        : (reverse ? maxTime - v : v);
+                if (tAbs > 1e-10 && tAbs < maxTime - 1e-10) times.add(tAbs);
+            }
+        } else {
+            // --- Implicit Equidistant Times ---
+            // If rate has dimension K, we need K-1 cut points.
+            int numIntervals = rateP.getDimension();
+            if (numIntervals > 1) {
+                double width = maxTime / numIntervals;
+                for (int i = 1; i < numIntervals; i++) {
+                    // Equidistant splits: 1/K, 2/K, etc.
+                    // We don't care about reverse here because symmetric equidistant splits are the same reversed.
+                    times.add(width * i);
+                }
+            }
+        }
+        Collections.sort(times);
+        return times;
+    }
+
+    private double getVal(RealParameter p, List<Double> cuts, double t, boolean rev) {
+        if (p == null) return 0;
+
+        // Binary search to find which interval 't' falls into
+        int idx = Collections.binarySearch(cuts, t);
+
+        // binarySearch returns:
+        // >= 0: Exact match found. We move to the NEXT interval (right-continuous).
+        // < 0:  (-insertionPoint - 1). Insertion point is the index of the first element greater than key.
+
+        int intervalIndex;
+        if (idx >= 0) {
+            intervalIndex = idx + 1;
+        } else {
+            intervalIndex = -idx - 1;
+        }
+
+        // Map interval index to parameter array index
+        // If Reverse (Present -> Past): Rate[0] is most recent (time 0).
+        // If Forward (Past -> Present): Rate[Dim-1] is most recent.
+
+        int pIdx = rev ? intervalIndex : (p.getDimension() - 1 - intervalIndex);
+
+        // Safety clamp
+        return p.getValue(Math.max(0, Math.min(pIdx, p.getDimension() - 1)));
+    }
+
+    // --- Math Helpers (unchanged) ---
+
     private double calculateSegment(double l, double r_val, double dt, double expOffset) {
         double logTerm;
         double x = r_val * dt;
-
-        // --- CASE 1: CRITICAL (r = 0) ---
         if (Math.abs(r_val) < 1e-9) {
             logTerm = Math.log(rho) + Math.log(l) + Math.log(dt);
-        }
-
-        // --- CASE 2: SUPER-CRITICAL (r > 0) ---
-        else if (r_val > 0) {
+        } else if (r_val > 0) {
             double logDiff = Math.log(Math.expm1(x));
             logTerm = Math.log(rho) + Math.log(l) - Math.log(r_val) + logDiff;
-        }
-
-        // --- CASE 3: SUB-CRITICAL (r < 0) ---
-        else {
+        } else {
             double logDiff = Math.log(-Math.expm1(x));
             logTerm = Math.log(rho) + Math.log(l) - Math.log(-r_val) + logDiff;
         }
-
         return logTerm + expOffset;
     }
 
@@ -255,47 +291,9 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         return i < 0 ? Math.max(0, -i - 2) : i;
     }
 
-    private boolean isAnyTimeBeyondMax(double maxT, double[]... changePointArrays) {
-        for (double[] array : changePointArrays) {
-            if (array.length > 0 && array[array.length - 1] > maxT + 1e-10) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private double logSumExp(double a, double b) {
         if (a == Double.NEGATIVE_INFINITY) return b; if (b == Double.NEGATIVE_INFINITY) return a;
         return Math.max(a, b) + Math.log1p(Math.exp(-Math.abs(a - b)));
-    }
-
-    private double[] getSorted(RealParameter p, boolean rel, boolean rev, double max) {
-        if (p == null || p.getDimension() == 0) return new double[0];
-        double[] c = new double[p.getDimension()];
-        for (int i = 0; i < c.length; i++) {
-            double v = p.getValue(i);
-            // Calculate absolute time
-            double time = rel ? (rev ? max * (1 - v) : max * v) : (rev ? max - v : v);
-            c[i] = time;
-        }
-        Arrays.sort(c);
-        return c;
-    }
-
-    private double getVal(RealParameter p, double[] cuts, double t, boolean rev) {
-        if (p == null) return 0;
-
-        // Find how many change-points we have passed (starting from t=0)
-        int idx = Arrays.binarySearch(cuts, t);
-        if (idx < 0) idx = -idx - 1;
-
-        // pIdx logic:
-        // If rev = true (Present to Root): idx 0 is the first-rate.
-        // If rev = false (Root to Present): We must flip the index.
-        int pIdx = rev ? idx : (p.getDimension() - 1 - idx);
-
-        // Safety clamp to prevent index out of bounds
-        return p.getValue(Math.max(0, Math.min(pIdx, p.getDimension() - 1)));
     }
 
     @Override
