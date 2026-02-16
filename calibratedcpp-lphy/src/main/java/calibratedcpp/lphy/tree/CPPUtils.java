@@ -1,36 +1,13 @@
 package calibratedcpp.lphy.tree;
 
+import calibratedcpp.lphy.prior.Calibration;
+
 import java.util.*;
 
     /*
        The mathematical and sampling methods for CPP
     */
 public class CPPUtils {
-    public static class Clade{
-        private String[] names;
-        private double age;
-        public Clade(double age, String[] names){
-            this.age = age;
-            this.names = names;
-        }
-
-        public String[] getNames(){
-            return names;
-        }
-
-        public double getAge(){
-            return age;
-        }
-
-        public void setAge(double age){
-            this.age = age;
-        }
-
-        public void setNames(String[] names){
-            this.names = names;
-        }
-    }
-
     // ****** mathematical methods ******
     public static double CDF(double b, double d, double rho, double t) {
         double p;
@@ -202,19 +179,19 @@ public class CPPUtils {
     }
 
     // returns list of booleans if clade contains cladeCalibrations.get(i) under the partial order of set inclusion
-    public static boolean[] isSuperSetOf(Clade clade, List<Clade> cladeCalibrations) {
-        Set<String> cladeTaxa = new HashSet<>(Arrays.asList(clade.getNames()));
+    public static boolean[] isSuperSetOf(Calibration clade, List<Calibration> cladeCalibrations) {
+        Set<String> cladeTaxa = new HashSet<>(Arrays.asList(clade.getTaxa()));
 
         // Prepare result array
         boolean[] result = new boolean[cladeCalibrations.size()];
         int i = 0;
 
         // Check each calibration to see if it's a subset of cladeTaxa
-        for (Clade entry : cladeCalibrations) {
+        for (Calibration entry : cladeCalibrations) {
             // assume it is super set, unless check unique names
             boolean isSuperSet = true;
 
-            for (String taxon : entry.getNames()) {
+            for (String taxon : entry.getTaxa()) {
                 if (!cladeTaxa.contains(taxon)) {
                     isSuperSet = false;
                     break;
@@ -232,10 +209,10 @@ public class CPPUtils {
 
                 if (supersetAge < subsetAge) {
                     throw new IllegalArgumentException(
-                            "Superset clade " + Arrays.toString(clade.getNames()) +
+                            "Superset clade " + Arrays.toString(clade.getTaxa()) +
                                     " has age " + supersetAge +
                                     " which is younger than its subset calibration clade " +
-                                    Arrays.toString(cladeCalibrations.get(j).getNames()) +
+                                    Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
                                     " with age " + subsetAge +
                                     ". Please double check the clade ages."
                     );
@@ -246,17 +223,17 @@ public class CPPUtils {
         return result;
     }
     // returns list of TRUE if clade is subset of cladeCalibrations.get(i) under the partial order of set inclusion
-    public static boolean[] isSubsetOf(Clade clade, List<Clade> cladeCalibrations) {
+    public static boolean[] isSubsetOf(Calibration clade, List<Calibration> cladeCalibrations) {
         // Prepare result array
         boolean[] result = new boolean[cladeCalibrations.size()];
         int i = 0;
 
         // For each calibration, check if clade is a subset
-        for (Clade entry : cladeCalibrations) {
-            Set<String> calibrationSet = new HashSet<>(Arrays.asList(entry.getNames()));
+        for (Calibration entry : cladeCalibrations) {
+            Set<String> calibrationSet = new HashSet<>(Arrays.asList(entry.getTaxa()));
             boolean isSubset = true;
 
-            for (String taxon : clade.getNames()) {
+            for (String taxon : clade.getTaxa()) {
                 if (!calibrationSet.contains(taxon)) {
                     isSubset = false;
                     break;
@@ -276,10 +253,10 @@ public class CPPUtils {
 
                 if (subsetAge > supersetAge) {
                     throw new IllegalArgumentException(
-                            "Clade " + Arrays.toString(clade.getNames()) +
+                            "Clade " + Arrays.toString(clade.getTaxa()) +
                                     " has age " + subsetAge +
                                     " which is older than its superset calibration clade " +
-                                    Arrays.toString(cladeCalibrations.get(j).getNames()) +
+                                    Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
                                     " with age " + supersetAge +
                                     ". Please double check the clade ages."
                     );
