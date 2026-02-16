@@ -66,6 +66,7 @@ public class TruncatedLogNormal extends ParametricDistribution<Double> implement
         return new RandomVariable<>(null, result, this);
     }
 
+    @Override
     public double logDensity(Double x) {
         double maxVal = getMaxVal();
 
