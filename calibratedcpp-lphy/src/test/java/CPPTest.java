@@ -1,3 +1,4 @@
+import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.tree.CPPTree;
 import calibratedcpp.lphy.tree.CPPUtils;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
@@ -44,10 +45,11 @@ public class CPPTest {
         Value<Number> birthRate = new Value("", 0.3);
         Value<Number> deathRate = new Value("", 0.1);
         Value<Integer> n = new Value("", 5);
-        Value<String[][]> cladeTaxa = new Value<>("", new String[][]{{"1", "2", "3"}});
-        Value<Number[]> cladeMRCAAge = new Value<>("", new Number[]{2.0});
+        String[] taxa = new String[]{"1", "2", "3"};
+        double age = 2.0;
+        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa, age)});
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, cladeTaxa, cladeMRCAAge, null, null, null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null, null);
         TimeTree cppTree = cpp.sample().value();
 
         for (int i = 0; i < cppTree.getNodeCount(); i++) {
@@ -70,10 +72,11 @@ public class CPPTest {
         Value<Number> birthRate = new Value("", 0.3);
         Value<Number> deathRate = new Value("", 0.1);
         Value<Integer> n = new Value("", 5);
-        Value<String[][]> cladeTaxa = new Value<>("", new String[][]{{"1", "2", "3"}});
-        Value<Number[]> cladeMRCAAge = new Value<>("", new Number[]{2.0});
+        String[] taxa = new String[]{"1", "2", "3"};
+        double age = 2.0;
+        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa, age)});
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, cladeTaxa, cladeMRCAAge, null, new Value<>("",10), null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, new Value<>("",10), null);
         TimeTree cppTree = cpp.sample().value();
 
         for (int i = 0; i < cppTree.getNodeCount(); i++) {
@@ -99,8 +102,14 @@ public class CPPTest {
         Value<Integer> n = new Value("", 3);
         Value<String[][]> cladeTaxa = new Value<>("", new String[][]{{"1", "2", "3"},{"1","2"}});
         Value<Number[]> cladeMRCAAge = new Value<>("", new Number[]{2.0, 1.0});
+        String[] taxa1 = new String[]{"1", "2", "3"};
+        double age1 = 2.0;
+        String[] taxa2 = new String[]{"1", "2"};
+        double age2 = 1.0;
+        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)});
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, cladeTaxa, cladeMRCAAge, null, null, null);
+
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null, null);
         for (int j = 0; j < 10 ; j ++) {
             try {
                 TimeTree cppTree = cpp.sample().value();
@@ -143,10 +152,14 @@ public class CPPTest {
         Value<Number> birthRate = new Value("", 0.3);
         Value<Number> deathRate = new Value("", 0.1);
         Value<Integer> n = new Value("", 5);
-        Value<String[][]> cladeTaxa = new Value<>("", new String[][]{{"1", "2", "3"},{"1","2"}});
-        Value<Number[]> cladeMRCAAge = new Value<>("", new Number[]{2.0, 1.0});
+        String[] taxa1 = new String[]{"1", "2", "3"};
+        double age1 = 2.0;
+        String[] taxa2 = new String[]{"1", "2"};
+        double age2 = 1.0;
+        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)});
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, cladeTaxa, cladeMRCAAge, null, null, null);
+
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null, null);
         TimeTree cppTree = cpp.sample().value();
         System.out.println(cppTree);
 
