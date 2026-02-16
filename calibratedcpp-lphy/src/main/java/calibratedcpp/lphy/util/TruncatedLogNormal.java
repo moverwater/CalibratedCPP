@@ -1,4 +1,4 @@
-package util;
+package calibratedcpp.lphy.util;
 
 import lphy.base.distribution.ParametricDistribution;
 import lphy.core.model.GenerativeDistribution1D;
