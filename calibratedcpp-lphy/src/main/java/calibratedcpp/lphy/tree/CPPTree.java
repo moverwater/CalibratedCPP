@@ -214,7 +214,7 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
         else if (paramName.equals(DistributionConstants.nParamName)) n = value;
         else if (paramName.equals(TaxaConditionedTreeGenerator.taxaParamName)) taxa = value;
         else if (paramName.equals(randomStemAgeName)) randomStemAge = value;
-        else setParam(paramName, value);
+        else throw new IllegalArgumentException("Unknown parameter name: " + paramName);
     }
 
     public Value<Integer> getN(){
