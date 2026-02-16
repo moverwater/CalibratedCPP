@@ -204,18 +204,20 @@ public class CPPUtils {
         // check the ages, superset should be older
         for (int j = 0; j < result.length; j++) {
             if (result[j]) {
-                double supersetAge = clade.getAge();
-                double subsetAge = cladeCalibrations.get(j).getAge();
+                if (clade.getAge() != null) {
+                    double supersetAge = clade.getAge();
+                    double subsetAge = cladeCalibrations.get(j).getAge();
 
-                if (supersetAge < subsetAge) {
-                    throw new IllegalArgumentException(
-                            "Superset clade " + Arrays.toString(clade.getTaxa()) +
-                                    " has age " + supersetAge +
-                                    " which is younger than its subset calibration clade " +
-                                    Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
-                                    " with age " + subsetAge +
-                                    ". Please double check the clade ages."
-                    );
+                    if (supersetAge < subsetAge) {
+                        throw new IllegalArgumentException(
+                                "Superset clade " + Arrays.toString(clade.getTaxa()) +
+                                        " has age " + supersetAge +
+                                        " which is younger than its subset calibration clade " +
+                                        Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
+                                        " with age " + subsetAge +
+                                        ". Please double check the clade ages."
+                        );
+                    }
                 }
             }
         }
@@ -248,18 +250,20 @@ public class CPPUtils {
         // If there's a superset calibration, check ages: subset clade must not be older than superset
         for (int j = 0; j < result.length; j++) {
             if (result[j]) {
-                double supersetAge = cladeCalibrations.get(j).getAge();
-                double subsetAge = clade.getAge();
+                if (clade.getAge() != null) {
+                    double supersetAge = cladeCalibrations.get(j).getAge();
+                    double subsetAge = clade.getAge();
 
-                if (subsetAge > supersetAge) {
-                    throw new IllegalArgumentException(
-                            "Clade " + Arrays.toString(clade.getTaxa()) +
-                                    " has age " + subsetAge +
-                                    " which is older than its superset calibration clade " +
-                                    Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
-                                    " with age " + supersetAge +
-                                    ". Please double check the clade ages."
-                    );
+                    if (subsetAge > supersetAge) {
+                        throw new IllegalArgumentException(
+                                "Clade " + Arrays.toString(clade.getTaxa()) +
+                                        " has age " + subsetAge +
+                                        " which is older than its superset calibration clade " +
+                                        Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
+                                        " with age " + supersetAge +
+                                        ". Please double check the clade ages."
+                        );
+                    }
                 }
             }
         }
@@ -276,5 +280,40 @@ public class CPPUtils {
         double t = transform(p, birthRate, deathRate, nTaxa);
         return t;
     }
+
+    // ****** clade methods ******
+
+    public static List<Calibration> getNestedClades(Calibration clade, List<Calibration> cladeCalibrations) {
+        boolean[] isNested = isSuperSetOf(clade,cladeCalibrations);
+        List<Integer> indices = checkTrues(isNested);
+        List<Calibration> subClades = new ArrayList<>();
+        int pointer = 0;
+
+        for (Calibration entry : cladeCalibrations){
+            if (indices.contains(pointer)) {
+                subClades.add(entry);
+            }
+            pointer ++;
+        }
+        return subClades;
+    }
+
+    public static List<Calibration> getMaximalCalibrations(List<Calibration> cladeCalibrations) {
+        List<Calibration> maximalCalibrations = new ArrayList<>();
+
+        for (int i = 0; i < cladeCalibrations.size(); i++) {
+            Calibration current = cladeCalibrations.get(i);
+            // check if there's a subset of the calibrations
+            boolean[] results = isSubsetOf(current, cladeCalibrations);
+            if (checkTrues(results).size() == 1) {
+                maximalCalibrations.add(current);
+            }
+        }
+
+        return maximalCalibrations;
+    }
+
+
+
 
 }

@@ -1,5 +1,3 @@
-package birthdeath;
-
 import calibratedcpp.lphy.tree.CPPTree;
 import calibratedcpp.lphy.tree.CPPUtils;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
