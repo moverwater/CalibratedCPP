@@ -17,7 +17,7 @@ import java.util.TreeMap;
 /**
  * A Log-Normal distribution truncated at an upper bound (Right-Truncated).
  * Domain: (0, max]
- * * @author Marcus Overwater
+ * @author Marcus Overwater
  */
 public class TruncatedLogNormal extends ParametricDistribution<Double> implements GenerativeDistribution1D<Double> {
 
