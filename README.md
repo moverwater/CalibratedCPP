@@ -23,9 +23,10 @@ CalibratedCPP contains 3 subproject:
 ### calibratedcpp-beast
 
 The implementation has the following structure:
-- The abstract class CoalescentPointProcessModel has abstract methods for the density and CDF of the node age.
-- BirthDeathModel extends CoalescentPointProcessModel with node age density and CDF for the constant rate birth-death process.
-- CalibratedCoalescentPointProcess extends SpeciesTreeDistribution and takes a CoalescentPointProcessModel, a list of calibrations, and the origin age OR conditionOnRoot as inputs.
+- The abstract class `CoalescentPointProcessModel` has abstract methods `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` for the density and CDF of the node age.
+- `BirthDeathModel` extends `CoalescentPointProcessModel` and implements `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` with node age density and CDF for the constant rate birth-death process.
+- `BirthDeathSkylineModel` extends `CoalescentPointProcessModel` and implements `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` with node age density and CDF for the birth-death process with piecewise constant rates.
+- `CalibratedCoalescentPointProcess` extends `SpeciesTreeDistribution` and takes a list of `calibrations`, and the `origin` age OR `conditionOnRoot` as inputs.
 
 ### calibratedcpp-lphy
 
@@ -44,6 +45,7 @@ This subproject is converting Lphy simulators to XMLs for BEAST2 running:
 
 CalibratedCPP is free software.  It is distributed under the terms of version 3 of the GNU General Public License.  A copy of this license should be found in the file [COPYING](./COPYING) located in the root directory of this repository. If this file is absent for some reason, it can also be retrieved from
 https://www.gnu.org/licenses.
+
 
 
 
