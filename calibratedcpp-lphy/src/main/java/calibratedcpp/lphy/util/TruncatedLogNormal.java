@@ -48,7 +48,8 @@ public class TruncatedLogNormal extends ParametricDistribution<Double> implement
                 LogNormalDistribution.DEFAULT_INVERSE_ABSOLUTE_ACCURACY);
     }
 
-    @GeneratorInfo(name = "TruncatedLogNormal", verbClause = "has", narrativeName = "truncated log-normal distribution",
+    @GeneratorInfo(name = "TruncatedLogNormal", examples = {"truncLogNormal.lphy"},
+            verbClause = "has", narrativeName = "truncated log-normal distribution",
             category = GeneratorCategory.PRIOR, description = "The log-normal probability distribution truncated to the interval (0, max].")
     public RandomVariable<Double> sample() {
         double maxVal = getMaxVal();
