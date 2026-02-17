@@ -43,7 +43,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
 
         // get clade calibrations
         List<CalibrationClade> calibrations = new ArrayList<>();
-        Calibration[] calibrationsFromGenerator = generator.getCalibrations().value();
+        Calibration[] calibrationsFromGenerator = generator.getCalibrations().value().getCalibrationArray();
         for (Calibration calibration : calibrationsFromGenerator) {
             CalibrationClade calibrationClade = new CalibrationClade();
             TaxonSet taxonSet = getTaxonSet((TreeInterface) value, calibration.getTaxa());
@@ -66,7 +66,6 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         for (int i = 0; i < calibrationsFromGenerator.length; i++) {
 
         }
-
 
         CalibrationCladePrior calibrationCladePrior = new CalibrationCladePrior();
 
