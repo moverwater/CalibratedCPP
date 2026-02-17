@@ -9,12 +9,14 @@ import lphy.core.model.annotation.ParameterInfo;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.util.*;
 
 import static calibratedcpp.lphy.prior.ConditionedPriorUtils.*;
 import static calibratedcpp.lphy.tree.CPPUtils.*;
 
-public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[]> {
+public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationArray> {
     Value<String[][]> calibrationTaxa;
     Value<Number[]> upperBounds;
     Value<Number[]> lowerBounds;
@@ -56,7 +58,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
     @GeneratorInfo(name = "ConditionedMRCAPrior", examples = {"conditionedMRCAPrior.lphy"},
         description = "generate an array of calibrations with optimised parameters for the distributions on the MRCA node.")
     @Override
-    public RandomVariable<Calibration[]> sample() {
+    public RandomVariable<CalibrationArray> sample() {
         // get the parameters
         String[][] calibrationTaxa = getCalibrationTaxa().value();
         Number[] upperBounds = getUpperBounds().value();
@@ -75,14 +77,14 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
             step 1: get maximal clade calibrations, figure out who's whose parent
          */
         // build clade calibrations first
-        List<Calibration> calibrations = new ArrayList<>();
+        List<Calibration> calibrationsIn = new ArrayList<>();
         for (int i = 0; i < n; i++) {
             Calibration cali = new Calibration(calibrationTaxa[i]);
-            calibrations.add(cali);
+            calibrationsIn.add(cali);
         }
 
         // convert a simple array that telling calibrations relationship
-        int[] parent = computeParents(rootFlag, calibrations);
+        int[] parent = computeParents(rootFlag, calibrationsIn);
 
         /*
             step 2 : classify nodes, see if it is beta nodes
@@ -144,8 +146,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
             step 5: solve for beta parameters
          */
 
-        java.util.Map<String, Double> edgeAlpha = new java.util.HashMap<>();
-        java.util.Map<String, Double> edgeBeta  = new java.util.HashMap<>();
+        Map<String, Double> edgeAlpha = new HashMap<>();
+        Map<String, Double> edgeBeta  = new HashMap<>();
         extractBetaParams(nEdges, b_mean, b_var, edgeAlpha, edgeNames, edgeBeta);
 
         /*
@@ -157,14 +159,16 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
         /*
             step 7: map output
          */
-        Calibration[] calibrationOuts = new Calibration[n];
+        Calibration[] calibrations = new Calibration[n];
+
         for (int i = 0; i < n; i++) {
-            Calibration calibration = new Calibration(calibrations.get(i).getTaxa(), W[i]);
-            calibrationOuts[i] = calibration;
+            Calibration calibration = new Calibration(calibrationsIn.get(i).getTaxa(), W[i]);
+            calibrations[i] = calibration;
 
         }
+        CalibrationArray array = new CalibrationArray(calibrations);
 
-        return new RandomVariable<>("", calibrationOuts, this);
+        return new RandomVariable<>("", array, this);
     }
 
     private static void calculateNodeAges(int n, boolean rootFlag, double[] W, double[] mu, double[] sigma2, int[] parent, boolean[] is_beta_node, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta) {

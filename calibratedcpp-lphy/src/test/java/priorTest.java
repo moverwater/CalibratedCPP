@@ -49,7 +49,7 @@ public class priorTest {
         Number[] lowerBounds = new Number[]{5,2.4,2,1};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", true),
                 new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
-        Calibration[] observed = conditionedMRCAPrior.sample().value();
+        Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
         assertEquals(observed.length,calibrationNames.length);
         for (int i = 0; i < observed.length; i++) {
             if (i == 0){
@@ -75,7 +75,7 @@ public class priorTest {
         Number[] lowerBounds = new Number[]{2.4,2,1};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
                 new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
-        Calibration[] observed = conditionedMRCAPrior.sample().value();
+        Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
         assertEquals(observed.length,calibrationNames.length);
         for (int i = 0; i < observed.length; i++) {
             assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);
@@ -96,7 +96,7 @@ public class priorTest {
         Number[] lowerBounds = new Number[]{1, 1.5, 1.1};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
                 new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
-        Calibration[] observed = conditionedMRCAPrior.sample().value();
+        Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
 
         for (int i = 0; i < observed.length; i++) {
             assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);

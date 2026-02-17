@@ -1,4 +1,5 @@
 import calibratedcpp.lphy.prior.Calibration;
+import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.tree.CPPTree;
 import calibratedcpp.lphy.tree.CPPUtils;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
@@ -47,7 +48,7 @@ public class CPPTest {
         Value<Integer> n = new Value("", 5);
         String[] taxa = new String[]{"1", "2", "3"};
         double age = 2.0;
-        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa, age)});
+        Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa, age)}));
 
         CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
         TimeTree cppTree = cpp.sample().value();
@@ -75,7 +76,7 @@ public class CPPTest {
         String[] taxa = new String[]{"1", "2", "3"};
         String[] allTaxa = new String[]{"1", "2", "3","4","5"};
         double age = 2.0;
-        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa, age), new Calibration(allTaxa, 10.0)});
+        Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa, age), new Calibration(allTaxa, 10.0)}));
 
         CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
         TimeTree cppTree = cpp.sample().value();
@@ -107,7 +108,7 @@ public class CPPTest {
         double age1 = 2.0;
         String[] taxa2 = new String[]{"1", "2"};
         double age2 = 1.0;
-        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)});
+        Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)}));
 
 
         CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
@@ -157,7 +158,7 @@ public class CPPTest {
         double age1 = 2.0;
         String[] taxa2 = new String[]{"1", "2"};
         double age2 = 1.0;
-        Value<Calibration[]> calibration = new Value<>("", new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)});
+        Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)}));
 
 
         CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);

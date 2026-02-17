@@ -1,6 +1,7 @@
 package calibratedcpp.lphy.tree;
 
 import calibratedcpp.lphy.prior.Calibration;
+import calibratedcpp.lphy.prior.CalibrationArray;
 import lphy.base.distribution.DistributionConstants;
 import lphy.base.evolution.birthdeath.BirthDeathConstants;
 import lphy.base.evolution.tree.TaxaConditionedTreeGenerator;
@@ -20,7 +21,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
 
     Value<Number> birthRate;
     Value<Number> deathRate;
-    Value<Calibration[]> calibrations;
+    Value<CalibrationArray> calibrations;
     Value<Number> stemAge;
     Value<Number> rho;
     Value<String[]> otherNames;
@@ -36,7 +37,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
                              @ParameterInfo(name = BirthDeathConstants.muParamName, description = "per-lineage death rate.") Value<Number> deathRate,
                              @ParameterInfo(name = BirthDeathConstants.rhoParamName, description = "sampling probability") Value<Number> rho,
                              @ParameterInfo(name = DistributionConstants.nParamName, description = "the total number of taxa.") Value<Integer> n,
-                             @ParameterInfo(name = calibrationsName, description = "an array of calibrations generated from a MRCA prior (i.e. ConditionedMRCAPrior or MRCAPrior)") Value<Calibration[]> calibrations,
+                             @ParameterInfo(name = calibrationsName, description = "an array of calibrations generated from a MRCA prior (i.e. ConditionedMRCAPrior or MRCAPrior)") Value<CalibrationArray> calibrations,
                              @ParameterInfo(name = otherTaxaNames, description = "a string array of taxa names for non-calibrated tips", optional = true) Value<String[]> otherNames,
                              @ParameterInfo(name = stemAgeName, description = "the stem age working as condition time", optional = true) Value<Number> stemAge) {
         super(n, null, null);
@@ -65,7 +66,8 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         double deathRate = getDeathRate().value().doubleValue();
         double samplingProb = getSamplingProb().value().doubleValue();
         int n = getN().value().intValue();
-        Calibration[] calibrations = getCalibrations().value();
+        CalibrationArray calibrationArray = getCalibrations().value();
+        Calibration[] calibrations = calibrationArray.getCalibrationArray();
 
         // initialise params
         double rootAge = 0;
@@ -202,7 +204,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             CalibratedCPPTree calibratedCPPTree = new CalibratedCPPTree(getBirthRate(),
                     getDeathRate(), getSamplingProb(),
                     new Value<>("n", maximalCalibrations.get(i).getTaxa().length),
-                    new Value<>("", clades), null, null);
+                    new Value<>("", new CalibrationArray(clades)), null, null);
 
             // put clade mrca into a list waiting for assign
             TimeTree subTree = calibratedCPPTree.sample().value();
@@ -414,7 +416,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         return getParams().get(BirthDeathConstants.rhoParamName);
     }
 
-    public Value<Calibration[]> getCalibrations(){
+    public Value<CalibrationArray> getCalibrations(){
         return getParams().get(calibrationsName);
     }
 
