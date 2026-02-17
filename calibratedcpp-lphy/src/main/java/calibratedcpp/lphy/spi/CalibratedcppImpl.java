@@ -1,6 +1,6 @@
 package calibratedcpp.lphy.spi;
 
-import calibratedcpp.lphy.prior.MRCAPrior;
+import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.tree.CPPTree;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
 import calibratedcpp.lphy.util.TruncatedLogNormal;
@@ -17,7 +17,9 @@ public class CalibratedcppImpl extends LPhyBaseImpl {
     @Override
     public List<Class<? extends GenerativeDistribution>> declareDistributions() {
         return Arrays.asList(
-            CPPTree.class, CalibratedCPPTree.class, TruncatedLogNormal.class, MRCAPrior.class
+            CPPTree.class, CalibratedCPPTree.class,
+                TruncatedLogNormal.class,
+                ConditionedMRCAPrior.class
         );
     }
 

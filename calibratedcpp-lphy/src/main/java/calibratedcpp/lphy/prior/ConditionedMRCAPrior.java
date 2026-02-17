@@ -4,6 +4,7 @@ import calibratedcpp.lphy.util.TruncatedLogNormal;
 import lphy.core.model.GenerativeDistribution;
 import lphy.core.model.RandomVariable;
 import lphy.core.model.Value;
+import lphy.core.model.annotation.GeneratorInfo;
 import lphy.core.model.annotation.ParameterInfo;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
@@ -52,6 +53,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
         this.rootFlag = rootFlag;
     }
 
+    @GeneratorInfo(name = "ConditionedMRCAPrior", examples = {"conditionedMRCAPrior.lphy"},
+        description = "generate an array of calibrations with optimised parameters for the distributions on the MRCA node.")
     @Override
     public RandomVariable<Calibration[]> sample() {
         // get the parameters
@@ -83,31 +86,16 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
 
         /*
             step 2 : classify nodes, see if it is beta nodes
-            beta node is nested within a larger clade along the main branch, and they're using beta distribution
-            the node on the main branch is using lognormal
+            beta node is nested within a larger clade along the main branch
+            they're using beta*lognormal
+            if there is overlapping of bound between the child calibration and the parent then set true
+            otherwise it's still not beta node
          */
-        // initialise an array of yes/not beta node
-        boolean[] is_beta_node = new boolean[n];
-        Arrays.fill(is_beta_node, true);
-
-        for (int i = 0; i < n; i++) {
-            if (rootFlag && i==0) {
-                is_beta_node[i] = false; // root is always lognormal
-                continue;
-            }
-
-            int par = parent[i];
-            if (par != -1) {
-                // if child interval does not overlap parent, treat as new root
-                if (upperBounds[i].doubleValue() <= lowerBounds[par].doubleValue()) {
-                    is_beta_node[i] = false;
-                }
-            }
-        }
+        boolean[] is_beta_node = mapBetaNodes(n, rootFlag, parent, upperBounds, lowerBounds);
 
         /*
             step 3: compute the log-targets
-            use the methods from CalibrationPrior
+            use the methods from CalibrationPrior beast class
          */
         double[] mu = new double[n];
         double[] sigma2 = new double[n];
@@ -122,12 +110,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
             step 4: compute edges for beta nodes
          */
         // count edges <- is_beta_node and not root
-        int nEdges = 0;
-        for (int i = 0; i < n; i++) {
-            if (is_beta_node[i] && parent[i] != -1) {
-                nEdges++;
-            }
-        }
+        int nEdges = getEdgesNumber(n, is_beta_node, parent);
 
         // allocate outputs
         int[] edges = new int[nEdges];
@@ -141,19 +124,17 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
         int idx = 0;
         for (int i = 0; i < n; i++) {
             if (is_beta_node[i] && parent[i] != -1) {
-
                 int par_i = parent[i];
 
                 edges[idx] = i;
-                edgeNames[idx] = par_i + "_" + i;   // paste(parent[edges], edges, sep="_")
+                edgeNames[idx] = par_i + "_" + i;   // parent_child
 
                 double m_edge = mu[i] - mu[par_i];
                 double v_edge = sigma2[i];       // approx relative variance
 
                 b_mean[idx] = m_edge;
                 b_var[idx]  = v_edge;
-
-                A_mean[idx][idx] = 1.0;             // A_mean[idx, idx] <- 1
+                A_mean[idx][idx] = 1.0;
 
                 idx++;
             }
@@ -162,40 +143,35 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
         /*
             step 5: solve for beta parameters
          */
-        // m_hat <- solve(A_mean, b_mean)
-        double[] m_hat = new double[nEdges];
-        for (int j = 0; j < nEdges; j++) {
-            m_hat[j] = b_mean[j];   // A_mean is identity
-        }
 
-        // v_hat <- nnls(A_mean, b_var)$x
-        double[] v_hat = new double[nEdges];
-        for (int j = 0; j < nEdges; j++) {
-            v_hat[j] = b_var[j];    // A_mean is identity
-        }
-
-        // v_hat <- pmax(v_hat, 1e-6)
-        for (int j = 0; j < nEdges; j++) {
-            if (v_hat[j] < 1e-6) {
-                v_hat[j] = 1e-6;
-            }
-        }
-
-        // beta_params <- lapply(...)
         java.util.Map<String, Double> edgeAlpha = new java.util.HashMap<>();
         java.util.Map<String, Double> edgeBeta  = new java.util.HashMap<>();
-
-        for (int j = 0; j < nEdges; j++) {
-            double[] ab = invertLogMomentsToBeta(m_hat[j], v_hat[j]);
-            edgeAlpha.put(edgeNames[j], ab[0]);
-            edgeBeta.put(edgeNames[j], ab[1]);
-        }
+        extractBetaParams(nEdges, b_mean, b_var, edgeAlpha, edgeNames, edgeBeta);
 
         /*
             step 6: simulation
          */
         double[] W = new double[n];
+        calculateNodeAges(n, rootFlag, W, mu, sigma2, parent, is_beta_node, edgeAlpha, edgeBeta);
 
+        /*
+            step 7: map output
+         */
+        Calibration[] calibrationOuts = new Calibration[n];
+        for (int i = 0; i < n; i++) {
+            if (rootFlag && i ==0) {
+                Calibration calibration = new Calibration(new String[]{"root"}, W[i]);
+                calibrationOuts[i] = calibration;
+            } else {
+                Calibration calibration = new Calibration(calibrations.get(i).getTaxa(), W[i]);
+                calibrationOuts[i] = calibration;
+            }
+        }
+
+        return new RandomVariable<>("", calibrationOuts, this);
+    }
+
+    private static void calculateNodeAges(int n, boolean rootFlag, double[] W, double[] mu, double[] sigma2, int[] parent, boolean[] is_beta_node, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta) {
         for (int i = 0; i < n; i++) {
             // skip root node when rootFlag is true
             if (rootFlag && i == 0){
@@ -219,22 +195,72 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
                 BetaDistribution bd = new BetaDistribution(a, b);
                 W[i] = W[par] * bd.sample();
             } else {
-                TruncatedLogNormal truncatedLogNormal = new TruncatedLogNormal(new Value<>("",mu[i]),
+                TruncatedLogNormal truncatedLogNormal = new TruncatedLogNormal(new Value<>("", mu[i]),
                         new Value<>("", Math.sqrt(sigma2[i])), new Value<>("", W[par]));
                 W[i] = truncatedLogNormal.sample().value();
             }
         }
+    }
 
-        /*
-            step 7: map output
-         */
-        Calibration[] calibrationOuts = new Calibration[n];
-        for (int i = 0; i < n; i++) {
-            Calibration calibration = new Calibration(calibrations.get(i).getTaxa(), W[i]);
-            calibrationOuts[i] = calibration;
+    private static void extractBetaParams(int nEdges, double[] b_mean, double[] b_var, Map<String, Double> edgeAlpha, String[] edgeNames, Map<String, Double> edgeBeta) {
+        // m_hat <- solve(A_mean, b_mean)
+        double[] m_hat = new double[nEdges];
+        for (int j = 0; j < nEdges; j++) {
+            m_hat[j] = b_mean[j];   // A_mean is identity
         }
 
-        return new RandomVariable<>("", calibrationOuts, this);
+        // v_hat <- nnls(A_mean, b_var)$x
+        double[] v_hat = new double[nEdges];
+        for (int j = 0; j < nEdges; j++) {
+            v_hat[j] = b_var[j];    // A_mean is identity
+        }
+
+        // v_hat <- pmax(v_hat, 1e-6)
+        for (int j = 0; j < nEdges; j++) {
+            if (v_hat[j] < 1e-6) {
+                v_hat[j] = 1e-6;
+            }
+        }
+
+        // beta_params <- lapply(...)
+
+
+        for (int j = 0; j < nEdges; j++) {
+            double[] ab = invertLogMomentsToBeta(m_hat[j], v_hat[j]);
+            edgeAlpha.put(edgeNames[j], ab[0]);
+            edgeBeta.put(edgeNames[j], ab[1]);
+        }
+    }
+
+    private static int getEdgesNumber(int n, boolean[] is_beta_node, int[] parent) {
+        int nEdges = 0;
+        for (int i = 0; i < n; i++) {
+            if (is_beta_node[i] && parent[i] != -1) {
+                nEdges++;
+            }
+        }
+        return nEdges;
+    }
+
+    public static boolean[] mapBetaNodes(int n, boolean rootFlag, int[] parent, Number[] upperBounds, Number[] lowerBounds) {
+        boolean[] is_beta_node = new boolean[n];
+        Arrays.fill(is_beta_node, true);
+
+        for (int i = 0; i < n; i++) {
+            if (rootFlag && i==0) {
+                is_beta_node[i] = false; // root is always lognormal
+                continue;
+            }
+
+            int par = parent[i];
+            if (par != -1) {
+                // if child interval does not overlap parent, treat as new root
+                if (upperBounds[i].doubleValue() <= lowerBounds[par].doubleValue()) {
+                    is_beta_node[i] = false;
+                }
+            }
+        }
+        return is_beta_node;
     }
 
     // public for unit test
