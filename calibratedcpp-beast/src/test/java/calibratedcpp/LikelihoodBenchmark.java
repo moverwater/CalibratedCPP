@@ -152,7 +152,7 @@ public class LikelihoodBenchmark {
                 // Pass the sequence 1..50 to the "nCalibrations" field
                 .param("nCalibrations", calibrationCounts)
                 .resultFormat(ResultFormatType.CSV)
-                .result("validation/calibratedcpp/validation_and_benchmark/benchmark_results.csv")
+                .result("calibratedcpp-beast/validation/calibratedcpp/validation_and_benchmark/benchmark_results.csv")
                 .build();
 
         new Runner(opt).run();
