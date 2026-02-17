@@ -8,54 +8,42 @@ model{
     // the calibrations
     // the time is all with unit 10Mya
     // fossil1: Triassoxyela foveolata - hymenoptera
-    tHymenoptera ~ Uniform(lower=22.64, upper=27.6);
+    allTaxa = D.getTaxaNames();
 
     // fossil2: Triassoxyela foveolata - Ceraphronoidea
-    tCeraphronoidea ~ Uniform(lower=13.0, upper=18.0);
     taxaCeraphronoidea=["Dendrocerus_carpenteri", "Ceraphron_sp"];
 
     // fossil3: Rhetinorhyssalus morticinus - Braconidae
-    tBraconidae ~ Uniform(lower=9.9, upper=14.9);
     taxaBraconidae = ["Cotesia_vestalis","Macrocentrus_marginator","Diaeretus_essigellae","Aphidius_colemani","Aleiodes_testaceus","Dacnusa_sibirica"];
-    calibratedNames = setUnion(firstSet= taxaCeraphronoidea, secondSet=taxaBraconidae);
 
     // fossil4: Protimaspis costalis - Cynipoidea
-    tCynipoidea ~ Uniform(lower=7.8, upper=7.9);
     taxaCynipoidea = ["Leptopilina_clavipes","Ibalia_leucospoides","Andricus_quercuscalicis","Synergus_umbraculus","Pediaspis_aceris"];
-    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaCynipoidea);
 
     // fossil5: undescribed species - Chalcidoidea
-    tChalcidoidea ~ Uniform(lower=13.0, upper=18.0);
     taxaChalcidoidea = ["Nasonia_vitripennis","Torymus_bedeguaris","Brachymeria_minuta","Orasema_simulatrix","Diglyphus_isaea"];
-    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaChalcidoidea);
 
     // fossil6: Lancepyris opertus - Chrysidoidea
-    tChrysidoidea ~ Uniform(lower=13.0, upper=18.0);
     taxaChrysidoidea = ["Chrysis_viridula","Parnopes_grandior","Elampus_spina","Cleptes_nitidulus","Cephalonomia_tarsalis","Plumarius_gradifrons"];
-    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaChrysidoidea);
 
     // fossil7: Apodolichurus sphaerocephalus - Ampulicidae
-    tAmpulicidae ~ Uniform(lower=9.9, upper=14.9);
     taxaAmpulicidae = ["Dolichurus_corniculus","Ampulex_fasciata","Ampulex_compressa"];
-    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaAmpulicidae);
 
     // fossil8: Palaeomacropis eocenicus - Melittidae
-    tMelittidae ~ Uniform(lower=5.0, upper=5.3);
     taxaMelittidae = ["Macropis_fulvipes","Melitta_haemorrhoidalis","Dasypoda_hirtipes"];
-    calibratedNames = setUnion(firstSet= calibratedNames, secondSet=taxaMelittidae);
-
-    // get names for non-calibrated tips
-    otherNames = setDifference(mainSet=D.getTaxaNames(), excludeSet=calibratedNames);
 
     // birth death rate
     lambda ~ LogNormal(meanlog = 0.1, sdlog = 1);
     mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
     rho ~ Uniform(lower=0.0, upper=1.0);
 
+    upperBounds = [27.6, 18, 14.9, 7.9, 18, 18, 9.9, 5.3] ;
+    lowerBounds = [22.64, 13, 9.9, 7.8, 13, 13, 14.9, 5];
+
     // tree prior
-    tree ~ CalibratedCPP(cladeAge=[tCeraphronoidea, tBraconidae, tCynipoidea, tChalcidoidea, tChrysidoidea, tAmpulicidae, tMelittidae],
-    cladeTaxa=[taxaCeraphronoidea, taxaBraconidae, taxaCynipoidea, taxaChalcidoidea, taxaChrysidoidea, taxaAmpulicidae, taxaMelittidae],
-    otherNames = otherNames, lambda=lambda, mu=mu, n=n, rho=rho, rootAge=tHymenoptera);
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[allTaxa,taxaCeraphronoidea, taxaBraconidae, taxaCynipoidea, taxaChalcidoidea, taxaChrysidoidea, taxaAmpulicidae, taxaMelittidae],
+    upperBounds=upperBounds, lowerBounds=lowerBounds, rootFlag=true);
+
+    tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=n, rho=rho);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);

@@ -35,12 +35,12 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
             @ParameterInfo(name = coverageName, description = "the confidential level that the amount of probability mass expected to be retained after truncation, default 0.9", optional = true) Value<Number> coverage
     ) {
         // check illegal arguments
-        if (calibrationTaxa == null || calibrationTaxa.value() == null || calibrationTaxa.value().length < 2)
-            throw new IllegalArgumentException("The calibrations must be more than two");
-        if (upperBounds == null || upperBounds.value() == null || upperBounds.value().length < 2)
-            throw new IllegalArgumentException("The upper bounds must be more than two");
-        if (lowerBounds == null || lowerBounds.value() == null || lowerBounds.value().length < 2)
-            throw new IllegalArgumentException("The lower bounds must be more than two");
+        if (calibrationTaxa == null || calibrationTaxa.value() == null || calibrationTaxa.value().length < 1)
+            throw new IllegalArgumentException("The calibrations must be equal or more than one");
+        if (upperBounds == null || upperBounds.value() == null || upperBounds.value().length < 1)
+            throw new IllegalArgumentException("The upper bounds must be equal or more than one");
+        if (lowerBounds == null || lowerBounds.value() == null || lowerBounds.value().length < 1)
+            throw new IllegalArgumentException("The lower bounds must be equal or more than one");
 
         if (calibrationTaxa.value().length != upperBounds.value().length || upperBounds.value().length != lowerBounds.value().length) {
            throw new IllegalArgumentException("The calibrations, upper bounds, and lower bounds must have the same length");
@@ -159,47 +159,70 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
          */
         Calibration[] calibrationOuts = new Calibration[n];
         for (int i = 0; i < n; i++) {
-            if (rootFlag && i ==0) {
-                Calibration calibration = new Calibration(new String[]{"root"}, W[i]);
-                calibrationOuts[i] = calibration;
-            } else {
-                Calibration calibration = new Calibration(calibrations.get(i).getTaxa(), W[i]);
-                calibrationOuts[i] = calibration;
-            }
+            Calibration calibration = new Calibration(calibrations.get(i).getTaxa(), W[i]);
+            calibrationOuts[i] = calibration;
+
         }
 
         return new RandomVariable<>("", calibrationOuts, this);
     }
 
     private static void calculateNodeAges(int n, boolean rootFlag, double[] W, double[] mu, double[] sigma2, int[] parent, boolean[] is_beta_node, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta) {
+        // mark unassigned
         for (int i = 0; i < n; i++) {
-            // skip root node when rootFlag is true
-            if (rootFlag && i == 0){
-                // if rootFlag is true, simulate root at index 0
-                NormalDistribution nd = new NormalDistribution(0, 1);
-                W[0] = Math.exp(mu[0] + Math.sqrt(sigma2[0]) * nd.sample());
-            }
-
-            int par = parent[i];
-            if (par == -1) {
-                NormalDistribution nd = new NormalDistribution(0, 1);
-                W[i] = Math.exp(mu[i] + Math.sqrt(sigma2[i]) * nd.sample());
-                continue;
-            }
-
-            if (is_beta_node[i]) {
-                String key = par + "_" + i;
-                double a = edgeAlpha.get(key);
-                double b = edgeBeta.get(key);
-
-                BetaDistribution bd = new BetaDistribution(a, b);
-                W[i] = W[par] * bd.sample();
-            } else {
-                TruncatedLogNormal truncatedLogNormal = new TruncatedLogNormal(new Value<>("", mu[i]),
-                        new Value<>("", Math.sqrt(sigma2[i])), new Value<>("", W[par]));
-                W[i] = truncatedLogNormal.sample().value();
-            }
+            W[i] = Double.NaN;
         }
+
+        boolean[] inStack = new boolean[n];
+
+        for (int i = 0; i < n; i++) {
+            calculateByOrder(i, rootFlag, W, mu, sigma2, parent, is_beta_node, edgeAlpha, edgeBeta, inStack);
+        }
+    }
+
+    private static void calculateByOrder(int i, boolean rootFlag, double[] W, double[] mu, double[] sigma2, int[] parent, boolean[] isBetaNode, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta, boolean[] inStack) {
+        // already assigned
+        if (Double.isFinite(W[i])) {
+            return;
+        }
+
+        // detect cycle
+        if (inStack[i]) {
+            throw new IllegalStateException("Cycle detected at node " + i);
+        }
+
+        inStack[i] = true;
+
+        int p = parent[i];
+
+        NormalDistribution nd = new NormalDistribution(0, 1);
+
+        // root or no parent → plain lognormal
+        if (p == -1 || (rootFlag && i == 0)) {
+            W[i] = Math.exp(mu[i] + Math.sqrt(sigma2[i]) * nd.sample());
+            inStack[i] = false;
+            return;
+        }
+
+        // ensure parent computed first
+        calculateByOrder(p, rootFlag, W, mu, sigma2, parent, isBetaNode, edgeAlpha, edgeBeta, inStack);
+
+        if (!Double.isFinite(W[p]) || W[p] <= 0.0) {
+            throw new IllegalStateException("Parent age invalid: parent=" + p);
+        }
+
+        if (!isBetaNode[i]) {
+            TruncatedLogNormal tln = new TruncatedLogNormal(new Value<>("", mu[i]), new Value<>("", Math.sqrt(sigma2[i])), new Value<>("", W[p]));
+            W[i] = tln.sample().value();
+        } else {
+            String key = p + "_" + i;
+            double a = edgeAlpha.get(key);
+            double b = edgeBeta.get(key);
+            BetaDistribution bd = new BetaDistribution(a, b);
+            W[i] = W[p] * bd.sample();
+        }
+
+        inStack[i] = false;
     }
 
     private static void extractBetaParams(int nEdges, double[] b_mean, double[] b_var, Map<String, Double> edgeAlpha, String[] edgeNames, Map<String, Double> edgeBeta) {
@@ -258,6 +281,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
                 if (upperBounds[i].doubleValue() <= lowerBounds[par].doubleValue()) {
                     is_beta_node[i] = false;
                 }
+            } else {
+                is_beta_node[i] = false;
             }
         }
         return is_beta_node;

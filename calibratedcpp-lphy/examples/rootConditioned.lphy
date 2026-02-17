@@ -1,16 +1,15 @@
 data{
-    n = 40;
+    n = 5;
     L = 100;
 }
 model{
     lambda ~ LogNormal(meanlog = -3.02, sdlog = 0.15);
 
-    rootAge ~ LogNormal(meanlog = 4.21, sdlog = 0.15);
-    cladeAge ~ LogNormal(meanlog = 1.84, sdlog = 0.12);
-
     cladeTaxa = ["leaf_1", "leaf_2", "leaf_3"];
+    allTaxa = ["leaf_1", "leaf_2", "leaf_3", "leaf_4", "leaf_5"];
 
-    tree ~ CalibratedCPP(lambda=lambda, mu=0, rho=1, n=n, cladeTaxa = [cladeTaxa], cladeAge=[cladeAge], rootAge=rootAge);
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[allTaxa,cladeTaxa], rootFlag=true, upperBounds=[0.6,0.3], lowerBounds=[0.4,0.2]);
+    tree ~ CalibratedCPP(lambda=lambda, mu=0, rho=1, n=n, calibrations=calibrations);
 
     // GTR
     π ~ Dirichlet(conc=[3.0,3.0,3.0,3.0]);

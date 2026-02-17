@@ -53,7 +53,7 @@ public class priorTest {
         assertEquals(observed.length,calibrationNames.length);
         for (int i = 0; i < observed.length; i++) {
             if (i == 0){
-                assertEquals("root", observed[i].getTaxa()[0]);
+                assertEquals(5, observed[i].getTaxa().length);
                 assertTrue (observed[i].getAge() > 5 && observed[i].getAge() < 6);
             } else {
                 assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);
@@ -85,6 +85,28 @@ public class priorTest {
                 assertTrue (observed[i].getAge() > 2 && observed[i].getAge() < observed[i-1].getAge());
             } else {
                 assertTrue (observed[i].getAge() > 1 && observed[i].getAge() < 2.5);
+            }
+        }
+    }
+
+    @Test
+    void inferenceTest() {
+        String[][] calibrationNames = new String[][]{new String[]{"1","2","3"}, new String[]{"1","2","3","4"}, new String[]{"6","7"}};
+        Number[] upperBounds = new Number[]{1.5, 1.9, 1.5};
+        Number[] lowerBounds = new Number[]{1, 1.5, 1.1};
+        ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
+                new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
+        Calibration[] observed = conditionedMRCAPrior.sample().value();
+
+        for (int i = 0; i < observed.length; i++) {
+            assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);
+            if (i == 0){
+                System.out.println(observed[i].getAge());
+                assertTrue (observed[i].getAge() >1 && observed[i].getAge() < 1.5);
+            } else if (i == 1){
+                assertTrue (observed[i].getAge() < 1.9 && observed[i].getAge() > observed[i-1].getAge());
+            } else {
+                assertTrue (observed[i].getAge() > 1.1 && observed[i].getAge() < 1.5);
             }
         }
     }

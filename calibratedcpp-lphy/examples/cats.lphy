@@ -6,35 +6,32 @@ data{
 }
 model{
     // calibrations, age unit as Mya
-    // root age
-    troot ~ Uniform(lower=29, upper=35);
+    taxaAll = ["IberianLynx_Lynx_pardinus","FishingCat_Prionailurus_viverrinus","LeopardCat_Prionailurus_bengalensis","JungleCat_Felis_chaus",
+                   "BlackfootedCat_Felis_nigripes","DomesticCat_Felis_catus","SandCat_Felis_margarita", "CloudedLeopard_Neofelis_nebulosa","SnowLeopard_Panthera_uncia",
+                   "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris","Jaguar_Panthera_onca","Leopard_Panthera_pardus","Lion_Panthera_leo",
+                   "StripedHyena_Hyaena_hyaena", "ScimitarToothedCat_Homotherium_latidens", "SpottedHyena_Crocuta_crocuta","Caracal_Caracal_caracal","Cheetah_Acinonyx_jubatus"];
 
     // Iberian lynx vs sister group, >= 5.3 million years
     taxa1 = ["IberianLynx_Lynx_pardinus","FishingCat_Prionailurus_viverrinus","LeopardCat_Prionailurus_bengalensis","JungleCat_Felis_chaus",
     "BlackfootedCat_Felis_nigripes","DomesticCat_Felis_catus","SandCat_Felis_margarita"];
-    // t1 ~ Exp(mean=10.6) + 5.3;
-    t1 ~ Uniform(lower=5.3, upper=10.3);
 
     // Clouded leopard vs sister group, >= 3.8 million years
     taxa2 = ["CloudedLeopard_Neofelis_nebulosa","SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris","Jaguar_Panthera_onca","Leopard_Panthera_pardus","Lion_Panthera_leo"];
-    // t2 ~ Exp(mean=7.6) + 3.8;
-    t2 ~ Uniform(lower=3.8, upper=8.2);
 
     // Snow leopard vs tigers, >= 1.5 million years
     taxa3 = ["SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris"];
-    // t3 ~ Exp(mean=3.0) + 1.5;
-    t3 ~ Uniform(lower=1.5, upper=3.7);
-
-    // other taxa names
-    otherNames = ["StripedHyena_Hyaena_hyaena", "ScimitarToothedCat_Homotherium_latidens", "SpottedHyena_Crocuta_crocuta","Caracal_Caracal_caracal","Cheetah_Acinonyx_jubatus"];
 
     // birth death rate
     lambda ~ LogNormal(meanlog = 0.1, sdlog = 1);
     mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
     rho ~ Uniform(lower=0.0, upper=1.0);
 
-    tree ~ CalibratedCPP(cladeAge=[t1, t2, t3], cladeTaxa=[taxa1, taxa2, taxa3],
-        otherNames = otherNames, lambda=lambda, mu=mu, n=n, rho=rho, rootAge=troot);
+    calibrationTaxa = [taxaAll, taxa1, taxa2, taxa3];
+    upperBounds = [35, 10.3, 8.8, 6.5 ];
+    lowerBounds = [29, 5.3, 3.8, 1.5];
+
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa = calibrationTaxa, upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
+    tree ~ CalibratedCPP(calibrations = calibrations,lambda=lambda, mu=mu, n=n, rho=rho);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);

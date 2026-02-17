@@ -18,7 +18,6 @@ import static calibratedcpp.lphy.tree.CPPUtils.*;
 
 public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements GenerativeDistribution<TimeTree> {
 
-    Value<Number> rootAge;
     Value<Number> birthRate;
     Value<Number> deathRate;
     Value<Calibration[]> calibrations;
@@ -75,12 +74,6 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         List<String> backUpNames = new ArrayList<>();
 
         // step1: get valid clade calibrations
-        // follow the calibrations passed in, if no root calibration specified then use this function's
-        if (calibrations[0].getTaxa()[0].equals("root")){
-            rootConditioned = true;
-            rootAge = calibrations[0].getAge();
-        }
-
         List<Calibration> cladeCalibrations = new ArrayList<>(Arrays.stream(calibrations).toList());
 
         // sort it with decreasing order
@@ -89,22 +82,17 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         // if root calibration is already in clade calibration
         if (cladeCalibrations.get(0).getTaxa().length == n){
             rootConditioned = true;
-            // if calibration root is conflict with given rootAge
-            if (rootAge != 0 &&  cladeCalibrations.get(0).getAge() != rootAge){
-                throw new IllegalArgumentException("The calibrated root age should be the same as the root age!");
+            rootAge = cladeCalibrations.get(0).getAge();
+            // if only one root calibration, then return cpp
+            if (cladeCalibrations.size() == 1){
+                CPPTree cpp = new CPPTree(getBirthRate(), getDeathRate(), getSamplingProb(),
+                        new Value<>("", cladeCalibrations.get(0).getTaxa()), getN(), new Value<>("", cladeCalibrations.get(0).getAge()), null);
+                tree = cpp.sample().value();
+                return new RandomVariable<>("", tree, this);
             } else {
-                rootAge = cladeCalibrations.get(0).getAge();
-                // if only one root calibration, then return cpp
-                if (cladeCalibrations.size() == 1){
-                    CPPTree cpp = new CPPTree(getBirthRate(), getDeathRate(), getSamplingProb(),
-                            new Value<>("", cladeCalibrations.get(0).getTaxa()), getN(), new Value<>("", cladeCalibrations.get(0).getAge()), null);
-                    tree = cpp.sample().value();
-                    return new RandomVariable<>("", tree, this);
-                } else {
-                    // else remove the root calibration from cladeCalibrations
-                    backUpNames.addAll(Arrays.asList(cladeCalibrations.get(0).getTaxa()));
-                    cladeCalibrations.remove(cladeCalibrations.get(0));
-                }
+                // else remove the root calibration from cladeCalibrations
+                backUpNames.addAll(Arrays.asList(cladeCalibrations.get(0).getTaxa()));
+                cladeCalibrations.remove(cladeCalibrations.get(0));
             }
         }
 
