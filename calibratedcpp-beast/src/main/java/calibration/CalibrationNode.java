@@ -26,9 +26,9 @@ public class CalibrationNode extends BEASTObject {
 
     public boolean isRoot;        // true if start of independent subtree
 
-    // Cached leaf map to avoid O(n) lookup per taxon
-    // (BEAST's getTaxonIndex is O(n), HashMap is O(1))
-    private static final WeakHashMap<TreeInterface, Map<String, Node>> leafMapCache = new WeakHashMap<>();
+    // Cached leaf map: taxon name -> node number (not Node objects, which get swapped during MCMC store/restore)
+    // Leaf node numbers are stable since nodes are stored in parallel arrays.
+    private static final WeakHashMap<TreeInterface, Map<String, Integer>> leafMapCache = new WeakHashMap<>();
 
     public CalibrationNode(CalibrationClade calibration) {
         this.calibration = calibration;
@@ -60,21 +60,21 @@ public class CalibrationNode extends BEASTObject {
 
     // --- Utility ---
     public Node getCommonAncestor(TreeInterface tree) {
-        // Cache leaf map per tree - O(1) lookup vs BEAST's O(n) getTaxonIndex
-        Map<String, Node> leafMap = leafMapCache.get(tree);
+        // Cache node numbers per tree - O(1) lookup vs BEAST's O(n) getTaxonIndex
+        Map<String, Integer> leafMap = leafMapCache.get(tree);
         if (leafMap == null) {
             leafMap = new HashMap<>();
             for (Node n : tree.getExternalNodes()) {
-                leafMap.put(n.getID(), n);
+                leafMap.put(n.getID(), n.getNr());
             }
             leafMapCache.put(tree, leafMap);
         }
 
         List<Node> nodes = new ArrayList<>();
         for (Taxon t : this.taxa.getTaxonSet()) {
-            Node n = leafMap.get(t.getID());
-            if (n != null) {
-                nodes.add(n);
+            Integer nr = leafMap.get(t.getID());
+            if (nr != null) {
+                nodes.add(tree.getNode(nr));
             }
         }
 
