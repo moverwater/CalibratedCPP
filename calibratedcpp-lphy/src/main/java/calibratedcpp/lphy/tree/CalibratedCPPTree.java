@@ -77,7 +77,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         List<String> backUpNames = new ArrayList<>();
 
         // step1: get valid clade calibrations
-        if (calibrations[0].getTaxa().equals("root")){
+        if (calibrations[0].getTaxa()[0].equals("root")){
             rootConditioned = true;
             rootAge = calibrations[0].getAge();
         }
