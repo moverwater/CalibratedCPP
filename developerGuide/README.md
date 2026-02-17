@@ -34,11 +34,6 @@ Then you can find all `jar` files in the `target` folder for each subproject.
 
 The following can run as long as CalibratedCPP Beast2 package is correctly installed.
 
-### Lphy Studio
-<a href="./figures/studio.png">
-<img src="./figures/studio.png"/>
-</a>
-
 #### Lphy Simulation
 <a href="./figures/Slphy.png">
 <img src="./figures/Slphy.png"/>
