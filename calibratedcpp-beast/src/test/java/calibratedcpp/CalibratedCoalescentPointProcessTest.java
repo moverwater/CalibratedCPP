@@ -379,6 +379,9 @@ public class CalibratedCoalescentPointProcessTest {
         CalibrationClade calibration3 = new CalibrationClade();
         calibration3.initByName("taxa", taxonSet3);
 
+        CalibrationClade calibration4 = new CalibrationClade();
+        calibration4.initByName("taxa", taxonSet);
+
         ParametricDistribution distr1 = new Uniform();
         distr1.initByName("lower", 1.0,
                 "upper", 2.0);
@@ -415,6 +418,7 @@ public class CalibratedCoalescentPointProcessTest {
         calibrationClades.add(calibration1);
         calibrationClades.add(calibration2);
         calibrationClades.add(calibration3);
+        calibrationClades.add(calibration4);
 
         List<CalibrationPoint> calibrationPoints = new ArrayList<>();
         calibrationPoints.add(calibrationPoint1);

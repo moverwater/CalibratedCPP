@@ -50,28 +50,34 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
     public void initAndValidate() {
         super.initAndValidate();
 
+        tree = treeInput.get();
+        calibrations = new ArrayList<>(calibrationsInput.get());
+        conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
+        int nTaxa = tree.getLeafNodeCount();
+
+        conditionOnRoot = conditionOnRootInput.get();
+
+        for (CalibrationClade clade: calibrations) {
+            if (clade.getTaxa().getTaxonCount() == nTaxa) {
+                conditionOnRoot = true;
+                calibrations.remove(clade);
+                break;
+            }
+        }
+
         RealParameter originParam = originInput.get();
         origin = (originParam != null) ? originParam.getValue() : null;
-        conditionOnRoot = conditionOnRootInput.get();
 
         if (origin == null && !conditionOnRoot) {
             throw new IllegalArgumentException("You must either provide an origin age or set conditionOnRoot=true.");
         }
 
-        tree = treeInput.get();
-        calibrations = new ArrayList<>(calibrationsInput.get());
-        if (conditionOnRoot) {
-            conditionOnCalibrations = true;
-        } else {
-            conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
-        }
-        int nTaxa = tree.getLeafNodeCount();
         logFactorials = new double[nTaxa + 1];
         logFactorials[0] = 0.0;
         for (int i = 1; i <= nTaxa; i++) {
             logFactorials[i] = logFactorials[i - 1] + Math.log(i);
         }
-
+// TODO: make consistent with conditioning on root
         if (conditionOnCalibrations) {
             calibrationForest = new CalibrationForest(calibrations);
             calibrationNodes = calibrationForest.getAllNodes();
@@ -222,6 +228,10 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         logP = 0.0;
 
         logP += calculateUnConditionedTreeLogLikelihood(tree);
+
+        if (conditionOnRoot && !conditionOnCalibrations) {
+            logP -= calculateLogNodeAgeDensity(maxTime) + Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
+        }
 
         if (conditionOnCalibrations) {
             for (CalibrationNode c : calibrationNodes) {
@@ -648,7 +658,6 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         origin = (originInput.get() != null) ? originInput.get().getValue() : null;
         rootAge = tree.getRoot().getHeight();
         maxTime = (conditionOnRoot) ? rootAge : origin;
-        calibrations = calibrationsInput.get();
     }
 
     @Override
