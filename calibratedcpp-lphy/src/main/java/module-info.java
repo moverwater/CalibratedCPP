@@ -8,5 +8,4 @@ module calibratedcpp.lphy {
 
     uses lphy.core.spi.Extension;
     provides lphy.core.spi.Extension with calibratedcpp.lphy.spi.CalibratedcppImpl;
-
 }

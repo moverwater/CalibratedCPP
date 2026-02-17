@@ -17,9 +17,7 @@ public class CalibratedcppImpl extends LPhyBaseImpl {
     @Override
     public List<Class<? extends GenerativeDistribution>> declareDistributions() {
         return Arrays.asList(
-            CPPTree.class, CalibratedCPPTree.class,
-                TruncatedLogNormal.class,
-                ConditionedMRCAPrior.class
+            CPPTree.class, CalibratedCPPTree.class, TruncatedLogNormal.class, ConditionedMRCAPrior.class
         );
     }
 

@@ -10,6 +10,7 @@
 
     <!-- add lphybeast ext below  -->
     <service type="lphybeast.spi.LPhyBEASTExt">
-        <provider classname="calibratedcpp.lphybeast.spi.CalibratedCPPImpl"/>
+        <provider classname="calibratedcpp.lphybeast.spi.LBcalibratedcppImpl"/>
     </service>
+
 </package>

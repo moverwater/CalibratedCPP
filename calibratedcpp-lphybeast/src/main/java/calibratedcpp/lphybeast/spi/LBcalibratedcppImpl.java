@@ -1,6 +1,8 @@
 package calibratedcpp.lphybeast.spi;
 
 import beast.base.evolution.datatype.DataType;
+import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
+import calibratedcpp.lphy.util.TruncatedLogNormal;
 import calibratedcpp.lphybeast.tobeast.generators.CPPToBEAST;
 import calibratedcpp.lphybeast.tobeast.generators.CalibratedCPPToBEAST;
 import jebl.evolution.sequences.SequenceType;
@@ -12,10 +14,13 @@ import lphybeast.spi.LPhyBEASTExt;
 import java.util.List;
 import java.util.Map;
 
-public class CalibratedCPPImpl implements LPhyBEASTExt {
+public class LBcalibratedcppImpl implements LPhyBEASTExt {
     @Override
     public List<Class<? extends GeneratorToBEAST>> getGeneratorToBEASTs() {
-        return List.of(CalibratedCPPToBEAST.class, CPPToBEAST.class);
+        return List.of(
+                CalibratedCPPToBEAST.class, CPPToBEAST.class
+                //CalibratedCPPToBEAST_broken.class, CPPToBEAST.class
+        );
     }
 
     @Override
@@ -25,7 +30,9 @@ public class CalibratedCPPImpl implements LPhyBEASTExt {
 
     @Override
     public List<Class<? extends Generator>> getExcludedGenerator() {
-        return List.of();
+        return List.of(
+                TruncatedLogNormal.class, ConditionedMRCAPrior.class
+        );
     }
 
     @Override
