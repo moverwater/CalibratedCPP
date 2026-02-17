@@ -327,6 +327,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
         map.put(calibrationTaxaName, calibrationTaxa);
         map.put(upperBoundName, upperBounds);
         map.put(lowerBoundName, lowerBounds);
+        if (rootFlag != null) map.put(rootFlagName, rootFlag);
         if (coverage != null) map.put(coverageName, coverage);
         return map;
     }
@@ -334,6 +335,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<Calibration[
     @Override
     public void setParam(String paramName, Value value) {
         if (paramName.equals(calibrationTaxaName)) calibrationTaxa = value;
+        else if (paramName.equals(rootFlagName)) rootFlag = value;
         else if (paramName.equals(upperBoundName)) upperBounds = value;
         else if (paramName.equals(lowerBoundName)) lowerBounds = value;
         else if (paramName.equals(coverageName)) coverage = value;
