@@ -219,10 +219,9 @@ public class BirthDeathModel extends CalibratedCoalescentPointProcess {
     }
 
     @Override
-    public boolean requiresRecalculation() {
-        super.requiresRecalculation();
+    public void updateModel() {
+        super.updateModel();
         updateParameters();
-        return true;
     }
 
     /**
@@ -234,11 +233,5 @@ public class BirthDeathModel extends CalibratedCoalescentPointProcess {
     private Double safeGet(Input<RealParameter> input) {
         RealParameter param = input.get();
         return (param != null) ? param.getValue() : null;
-    }
-
-    @Override
-    public void restore() {
-        updateParameters();
-        super.restore();
     }
 }

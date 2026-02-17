@@ -213,6 +213,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
 
     @Override
     public double calculateTreeLogLikelihood(TreeInterface tree) {
+        updateModel();
 
         if (!conditionOnRoot && origin < rootAge) {
             return Double.NEGATIVE_INFINITY;
@@ -237,7 +238,11 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
                     }
                 }
             }
-            logP -= calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) + Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
+            double marginalDensityOfCalibrations = calculateMarginalLogDensityOfCalibrations(tree, calibrationForest);
+            if (marginalDensityOfCalibrations == Double.NEGATIVE_INFINITY) {
+                return Double.NEGATIVE_INFINITY;
+            }
+            logP -=  marginalDensityOfCalibrations + Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
         }
 
         return logP;
@@ -648,13 +653,6 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
 
     @Override
     public boolean requiresRecalculation() {
-        updateModel();
         return true;
-    }
-
-    @Override
-    public void restore() {
-        updateModel();
-        super.restore();
     }
 }
