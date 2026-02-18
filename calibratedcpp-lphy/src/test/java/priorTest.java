@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class priorTest {
     @Test
-    void testMaoBetaArray_nonOverlap() {
-        Number[] upperBounds = new Number[]{7,4.5,3,3,4};
-        Number[] lowerBounds = new Number[]{5,4,2,1,2};
+    void testMapBetaArray_nonOverlap() {
+        Double[] upperBounds = new Double[]{7.0,4.5, 3.0, 3.0, 4.0};
+        Double[] lowerBounds = new Double[]{5.0, 4.0, 2.0, 1.0, 2.0};
         int[] parent = new int[]{-1,0,1,1,0};
         boolean rootFlag = true;
 
@@ -26,9 +26,9 @@ public class priorTest {
     }
 
     @Test
-    void testMaoBetaArray_withOverlap() {
-        Number[] upperBounds = new Number[]{7,4.5,3,4.2,4};
-        Number[] lowerBounds = new Number[]{5,4,2,1,2};
+    void testMapBetaArray_withOverlap() {
+        Double[] upperBounds = new Double[]{7.0,4.5, 3.0, 4.1, 4.0};
+        Double[] lowerBounds = new Double[]{5.0, 4.0, 2.0, 1.0, 2.0};
         int[] parent = new int[]{-1,0,1,1,0};
         boolean rootFlag = true;
 
@@ -36,8 +36,8 @@ public class priorTest {
         boolean[] actual = mapBetaNodes(parent.length, rootFlag,parent,upperBounds,lowerBounds);
 
         for (int i = 0; i < actual.length; i++) {
-//            System.out.println(actual[i]);
-//            System.out.println(expect[i]);
+//            System.out.println("actual: " + actual[i]);
+//            System.out.println("expect: " + expect[i]);
             assertEquals(expect[i],actual[i]);
         }
     }
@@ -45,8 +45,8 @@ public class priorTest {
     @Test
     void outputArray() {
         String[][] calibrationNames = new String[][]{new String[]{"1","2","3","4","5"}, new String[]{"1","2","3","4"}, new String[]{"1","2"}, new String[]{"3","4"}};
-        Number[] upperBounds = new Number[]{6,4,3,2.5};
-        Number[] lowerBounds = new Number[]{5,2.4,2,1};
+        Double[] upperBounds = new Double[]{6.0, 4.0, 3.0,2.5};
+        Double[] lowerBounds = new Double[]{5.0,2.4, 2.0, 1.0};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", true),
                 new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
         Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
@@ -71,8 +71,8 @@ public class priorTest {
     @Test
     void outputArrayNoRoot() {
         String[][] calibrationNames = new String[][]{new String[]{"1","2","3","4"}, new String[]{"1","2"}, new String[]{"3","4"}};
-        Number[] upperBounds = new Number[]{4,3,2.5};
-        Number[] lowerBounds = new Number[]{2.4,2,1};
+        Double[] upperBounds = new Double[]{4.0, 3.0,2.5};
+        Double[] lowerBounds = new Double[]{2.4, 2.0, 1.0};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
                 new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
         Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
@@ -92,8 +92,8 @@ public class priorTest {
     @Test
     void inferenceTest() {
         String[][] calibrationNames = new String[][]{new String[]{"1","2","3"}, new String[]{"1","2","3","4"}, new String[]{"6","7"}};
-        Number[] upperBounds = new Number[]{1.5, 1.9, 1.5};
-        Number[] lowerBounds = new Number[]{1, 1.5, 1.1};
+        Double[] upperBounds = new Double[]{1.5, 1.9, 1.5};
+        Double[] lowerBounds = new Double[]{1.0, 1.5, 1.1};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
                 new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
         Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
