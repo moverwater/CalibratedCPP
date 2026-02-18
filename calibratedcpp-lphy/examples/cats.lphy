@@ -27,8 +27,8 @@ model{
     rho ~ Uniform(lower=0.0, upper=1.0);
 
     calibrationTaxa = [taxaAll, taxa1, taxa2, taxa3];
-    upperBounds = [35, 10.3, 8.8, 6.5 ];
-    lowerBounds = [29, 5.3, 3.8, 1.5];
+    upperBounds = [35.0, 10.3, 8.8, 6.5 ];
+    lowerBounds = [29.0, 5.3, 3.8, 1.5];
 
     calibrations ~ ConditionedMRCAPrior(calibrationTaxa = calibrationTaxa, upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
     tree ~ CalibratedCPP(calibrations = calibrations,lambda=lambda, mu=mu, n=n, rho=rho);

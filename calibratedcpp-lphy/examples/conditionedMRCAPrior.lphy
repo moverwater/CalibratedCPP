@@ -5,6 +5,6 @@ data {
   clade4 = ["3","4"];
 }
 model {
-  calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2, clade3, clade4], rootFlag=true, upperBounds=[6,4,3,2.5], lowerBounds=[5,2.4,2,1]);
+  calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2, clade3, clade4], rootFlag=true, upperBounds=[6,4,3.0,2.5], lowerBounds=[5,2.4,2.0,1.0]);
   tree ~ CalibratedCPP(calibrations=calibrations, lambda=2, mu=0.1, n=100, rho=0.1);
 }

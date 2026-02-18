@@ -13,27 +13,18 @@ public class CPPToBEAST implements GeneratorToBEAST<CPPTree, BirthDeathModel> {
         cpp.setInputValue("tree", value);
 
         // set origin and condition on root
-        // TODO: make it reasonable to let stem age random
         if (generator.getRootAge() != null) {
             cpp.setInputValue("conditionOnRoot", true);
-            if (generator.getRootAge().value().doubleValue() == generator.getConditionAge()) {
-                cpp.setInputValue("origin", context.getAsRealParameter(generator.getRootAge()));
-            } else {
-                cpp.setInputValue("origin", generator.getConditionAge());
-            }
+            cpp.setInputValue("origin", context.getAsRealParameter(generator.getRootAge()));
         } else {
             cpp.setInputValue("origin", generator.getConditionAge());
             cpp.setInputValue("conditionOnRoot", false);
         }
 
         // get tree model
-        BirthDeathModel treeModel = new BirthDeathModel();
-        treeModel.setInputValue("birthRate", context.getAsRealParameter(generator.getBirthRate()));
-        treeModel.setInputValue("deathRate", context.getAsRealParameter(generator.getDeathRate()));
-        treeModel.setInputValue("rho", context.getAsRealParameter(generator.getSamplingProbability()));
-        treeModel.initAndValidate();
-
-        cpp.setInputValue("treeModel", treeModel);
+        cpp.setInputValue("birthRate", context.getAsRealParameter(generator.getBirthRate()));
+        cpp.setInputValue("deathRate", context.getAsRealParameter(generator.getDeathRate()));
+        cpp.setInputValue("rho", context.getAsRealParameter(generator.getSamplingProbability()));
 
         cpp.initAndValidate();
         return cpp;

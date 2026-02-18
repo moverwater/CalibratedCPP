@@ -1,6 +1,7 @@
 package calibratedcpp.lphybeast.spi;
 
 import beast.base.evolution.datatype.DataType;
+import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.util.TruncatedLogNormal;

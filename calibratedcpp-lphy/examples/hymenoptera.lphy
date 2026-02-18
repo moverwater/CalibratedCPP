@@ -36,8 +36,8 @@ model{
     mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
     rho ~ Uniform(lower=0.0, upper=1.0);
 
-    upperBounds = [27.6, 18, 14.9, 7.9, 18, 18, 9.9, 5.3] ;
-    lowerBounds = [22.64, 13, 9.9, 7.8, 13, 13, 14.9, 5];
+    upperBounds = [27.6, 18.0, 14.9, 7.9, 18.0, 18.0, 9.9, 5.3] ;
+    lowerBounds = [22.64, 13.0, 9.9, 7.8, 13.0, 13.0, 14.9, 5.0];
 
     // tree prior
     calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[allTaxa,taxaCeraphronoidea, taxaBraconidae, taxaCynipoidea, taxaChalcidoidea, taxaChrysidoidea, taxaAmpulicidae, taxaMelittidae],

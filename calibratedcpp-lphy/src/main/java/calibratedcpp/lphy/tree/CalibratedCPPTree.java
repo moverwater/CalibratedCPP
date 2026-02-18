@@ -65,7 +65,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         double birthRate = getBirthRate().value().doubleValue();
         double deathRate = getDeathRate().value().doubleValue();
         double samplingProb = getSamplingProb().value().doubleValue();
-        int n = getN().value().intValue();
+        int n = getN().value();
         CalibrationArray calibrationArray = getCalibrations().value();
         Calibration[] calibrations = calibrationArray.getCalibrationArray();
 

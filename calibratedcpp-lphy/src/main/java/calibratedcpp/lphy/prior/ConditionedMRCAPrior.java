@@ -18,8 +18,8 @@ import static calibratedcpp.lphy.tree.CPPUtils.*;
 
 public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationArray> {
     Value<String[][]> calibrationTaxa;
-    Value<Number[]> upperBounds;
-    Value<Number[]> lowerBounds;
+    Value<Double[]> upperBounds;
+    Value<Double[]> lowerBounds;
     Value<Number> coverage;
     Value<Boolean> rootFlag;
 
@@ -32,8 +32,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
     public ConditionedMRCAPrior(
             @ParameterInfo(name = calibrationTaxaName, description = "the array of calibration names, the upper and lower bounds should in this order, root calibration should be put at the first") Value<String[][]> calibrationTaxa,
             @ParameterInfo(name = rootFlagName, description = "if root is also calibrated, default no", optional = true) Value<Boolean> rootFlag,
-            @ParameterInfo(name = upperBoundName, description = "the array of the upper bounds of the corresponding calibration, if root is calibrated then put it at the first value") Value<Number[]> upperBounds,
-            @ParameterInfo(name = lowerBoundName, description = "the array of the lower bounds of the corresponding calibration, if root is calibrated then put it at the first value") Value<Number[]> lowerBounds,
+            @ParameterInfo(name = upperBoundName, description = "the double array of the upper bounds of the corresponding calibration, if root is calibrated then put it at the first value") Value<Double[]> upperBounds,
+            @ParameterInfo(name = lowerBoundName, description = "the double array of the lower bounds of the corresponding calibration, if root is calibrated then put it at the first value") Value<Double[]> lowerBounds,
             @ParameterInfo(name = coverageName, description = "the confidential level that the amount of probability mass expected to be retained after truncation, default 0.9", optional = true) Value<Number> coverage
     ) {
         // check illegal arguments
@@ -61,8 +61,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
     public RandomVariable<CalibrationArray> sample() {
         // get the parameters
         String[][] calibrationTaxa = getCalibrationTaxa().value();
-        Number[] upperBounds = getUpperBounds().value();
-        Number[] lowerBounds = getLowerBounds().value();
+        Double[] upperBounds = getUpperBounds().value();
+        Double[] lowerBounds = getLowerBounds().value();
         double coverage = 0.9;
         if (getCoverage() != null) {
             coverage = getCoverage().value().doubleValue();
@@ -102,8 +102,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         double[] mu = new double[n];
         double[] sigma2 = new double[n];
         for (int i = 0; i < n; i++) {
-            double lo = lowerBounds[i].doubleValue();
-            double hi = upperBounds[i].doubleValue();
+            double lo = lowerBounds[i];
+            double hi = upperBounds[i];
             mu[i]     = computeLogTargetsMu(lo, hi, coverage);
             sigma2[i] = computeLogTargetsSigma2(lo, hi, coverage);
         }
@@ -269,7 +269,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         return nEdges;
     }
 
-    public static boolean[] mapBetaNodes(int n, boolean rootFlag, int[] parent, Number[] upperBounds, Number[] lowerBounds) {
+    public static boolean[] mapBetaNodes(int n, boolean rootFlag, int[] parent, Double[] upperBounds, Double[] lowerBounds) {
         boolean[] is_beta_node = new boolean[n];
         Arrays.fill(is_beta_node, true);
 
@@ -282,7 +282,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
             int par = parent[i];
             if (par != -1) {
                 // if child interval does not overlap parent, treat as new root
-                if (upperBounds[i].doubleValue() <= lowerBounds[par].doubleValue()) {
+                if (upperBounds[i] <= lowerBounds[par]) {
                     is_beta_node[i] = false;
                 }
             } else {
@@ -374,10 +374,10 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
     public Value<String[][]> getCalibrationTaxa() {
         return calibrationTaxa;
     }
-    public Value<Number[]> getUpperBounds() {
+    public Value<Double[]> getUpperBounds() {
         return upperBounds;
     }
-    public Value<Number[]> getLowerBounds() {
+    public Value<Double[]> getLowerBounds() {
         return lowerBounds;
     }
     public Value<Number> getCoverage() {
