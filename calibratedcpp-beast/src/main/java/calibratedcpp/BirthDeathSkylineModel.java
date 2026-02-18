@@ -30,8 +30,6 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
 
     protected double[] intervalStartTimes, lambda, r, cumulativeIntegral, cumulativeExpR;
     protected double rho;
-    private boolean[] reverseFlags;
-    private boolean[] relativeFlags;
 
     @Override
     public void initAndValidate() {
@@ -42,9 +40,6 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
                 birthRateInput, deathRateInput, reproductiveNumberInput,
                 diversificationRateInput, turnoverInput
         };
-
-        relativeFlags = new boolean[5];
-        reverseFlags = new boolean[5];
 
         int specifiedRates = 0;
         StringBuilder whichSpecified = new StringBuilder();
@@ -58,10 +53,7 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
                 RealParameter rateP = sp.ratesInput.get();
                 RealParameter timeP = sp.changeTimesInput.get();
 
-                relativeFlags[i] = sp.isRelative;
-                reverseFlags[i] = sp.isReverse;
-
-                if (rateP != null) {
+                  if (rateP != null) {
                     specifiedRates++;
                     if (!whichSpecified.isEmpty()) whichSpecified.append(", ");
                     whichSpecified.append(skylineInputs[i].getName());
@@ -75,10 +67,6 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
                         }
                     }
                 }
-            } else {
-                // Handle defaults if parameter is missing (optional)
-                relativeFlags[i] = false;
-                reverseFlags[i] = false;
             }
         }
 
@@ -268,7 +256,7 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         return getVal(sp.ratesInput.get(), times, t);
     }
 
-    // --- Math Helpers (unchanged) ---
+    // --- Math Helpers ---
 
     private double calculateSegment(double l, double r_val, double dt, double expOffset) {
         double logTerm;
@@ -308,18 +296,5 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     private double logSumExp(double a, double b) {
         if (a == Double.NEGATIVE_INFINITY) return b; if (b == Double.NEGATIVE_INFINITY) return a;
         return Math.max(a, b) + Math.log1p(Math.exp(-Math.abs(a - b)));
-    }
-
-    @Override
-    public void restore() {
-        super.restore();
-        updateIntervals();
-    }
-
-    @Override
-    public boolean requiresRecalculation() {
-        super.requiresRecalculation();
-        updateIntervals();
-        return true;
     }
 }
