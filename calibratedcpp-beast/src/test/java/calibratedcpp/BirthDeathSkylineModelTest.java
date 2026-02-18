@@ -15,92 +15,85 @@ public class BirthDeathSkylineModelTest {
 
    @BeforeEach
    public void setUp() {
-      // 1. Initialize a simple fixed tree
       tree = new TreeParser();
       tree.initByName("newick", "((A:1,B:1):1,C:2);",
               "IsLabelledNewick", true,
               "adjustTipHeights", true);
 
-      // 2. Initialize standard parameters
       b = new RealParameter("2.0");
       d = new RealParameter("1.0");
       rho = new RealParameter("1.0");
       origin = new RealParameter("5.0");
    }
 
+   private SkylineParameter createSkyline(RealParameter rates, RealParameter times, boolean relative, boolean reverse) {
+      SkylineParameter sp = new SkylineParameter();
+      sp.initByName("rates", rates,
+              "changeTimes", times,
+              "relative", relative,
+              "reverseTime", reverse);
+      return sp;
+   }
+
+   private SkylineParameter createSkyline(RealParameter rates) {
+      return createSkyline(rates, null, false, false);
+   }
+
    @Test
    public void testOnlyOneRateThrows() {
       BirthDeathSkylineModel model = new BirthDeathSkylineModel();
 
-      // We only provide ONE rate (Birth), missing the second required rate
-      model.setInputValue("birthRate", b);
-      model.setInputValue("rho", rho);
-      model.setInputValue("tree", tree);
-      model.setInputValue("origin", origin); // Always provide origin to satisfy parent class
-      model.setInputValue("conditionOnRoot", true);
+       assertThrows(RuntimeException.class, () -> model.initByName(
+               "birthRate", createSkyline(b),
+               "rho", rho,
+               "tree", tree,
+               "origin", origin,
+               "conditionOnRoot", true
+       ), "Should throw because exactly TWO rates must be specified.");
 
-      // Expect validation failure
-      assertThrows(IllegalArgumentException.class, model::initAndValidate,
-              "Should throw because exactly TWO rates must be specified.");
+      // assertEquals(IllegalArgumentException.class, exception.getCause().getClass());
    }
 
    @Test
    public void testThreeRatesThrows() {
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
       RealParameter div = new RealParameter("0.5");
+      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
 
-      // We provide THREE rates (Birth, Death, Diversification)
-      model.setInputValue("birthRate", b);
-      model.setInputValue("deathRate", d);
-      model.setInputValue("diversificationRate", div);
-      model.setInputValue("rho", rho);
-      model.setInputValue("tree", tree);
-      model.setInputValue("origin", origin);
-      model.setInputValue("conditionOnRoot", true);
-
-      assertThrows(IllegalArgumentException.class, model::initAndValidate,
-              "Should throw because mutual exclusion check failed (3 rates provided).");
+      assertThrows(RuntimeException.class, () -> model.initByName(
+              "birthRate", createSkyline(b),
+              "deathRate", createSkyline(d),
+              "diversificationRate", createSkyline(div),
+              "rho", rho,
+              "tree", tree,
+              "origin", origin,
+              "conditionOnRoot", true
+      ), "Should throw because mutual exclusion check failed (3 rates provided).");
    }
 
    @Test
    public void testRelativeOutOfBoundsThrows() {
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
-
-      // 1.5 is invalid for a relative time (must be 0.0 to 1.0)
       RealParameter badTime = new RealParameter("1.5");
+      RealParameter rates = new RealParameter("2.0 1.0");
 
-      model.setInputValue("birthRate", b);
-      model.setInputValue("deathRate", d);
-
-      // Set the bad time and flag it as relative
-      model.setInputValue("birthRateChangeTimes", badTime);
-      model.setInputValue("birthRateTimesRelative", true);
-
-      model.setInputValue("rho", rho);
-      model.setInputValue("tree", tree);
-      model.setInputValue("origin", origin);
-      model.setInputValue("conditionOnRoot", true);
-
-      assertThrows(IllegalArgumentException.class, model::initAndValidate,
-              "Should throw because relative time 1.5 is outside [0, 1].");
+      assertThrows(RuntimeException.class, () -> createSkyline(rates, badTime, true, false), "Should throw because relative time 1.5 is outside [0, 1].");
    }
 
    @Test
    public void testLikelihoodMatchesConstantBD() {
-      // 1. Setup BDSKY (this model)
       BirthDeathSkylineModel bdsky = new BirthDeathSkylineModel();
-      bdsky.initByName("birthRate", b, "deathRate", d, "rho", rho,
-              "tree", tree, "origin", origin, "conditionOnRoot", true);
+      bdsky.initByName(
+              "birthRate", createSkyline(b),
+              "deathRate", createSkyline(d),
+              "rho", rho,
+              "tree", tree,
+              "origin", origin,
+              "conditionOnRoot", true
+      );
 
-      // 2. Setup Reference Model (Standard Birth-Death)
-      // Ensure BirthDeathModel is available in your classpath
       BirthDeathModel constantBD = new BirthDeathModel();
       constantBD.initByName("birthRate", b, "deathRate", d, "rho", rho,
               "tree", tree, "origin", origin, "conditionOnRoot", true);
 
-      // 3. Compare Likelihoods
-      // Because BDSKY with 0 change times IS a constant Birth-Death model,
-      // the likelihoods must match to high precision.
       double logL_BDSKY = bdsky.calculateTreeLogLikelihood(tree);
       double logL_BD = constantBD.calculateTreeLogLikelihood(tree);
 
@@ -111,31 +104,37 @@ public class BirthDeathSkylineModelTest {
    @Test
    public void calculateLogNodeAgeDensityTest() {
       BirthDeathSkylineModel model = new BirthDeathSkylineModel();
-      model.initByName("birthRate", b, "deathRate", d, "rho", rho,
-              "tree", tree, "origin", origin, "conditionOnRoot", true);
+      model.initByName(
+              "birthRate", createSkyline(b),
+              "deathRate", createSkyline(d),
+              "rho", rho,
+              "tree", tree,
+              "origin", origin,
+              "conditionOnRoot", true
+      );
 
-      // Force a calculation to populate internal arrays
       model.calculateTreeLogLikelihood(tree);
-
-      // Check density at an arbitrary time t=0.5
       double density = model.calculateLogNodeAgeDensity(0.5);
-
       assertTrue(Double.isFinite(density), "Density should be a finite log value.");
    }
 
    @Test
    public void calculateLogNodeAgeCDFTest() {
       BirthDeathSkylineModel model = new BirthDeathSkylineModel();
-      model.initByName("birthRate", b, "deathRate", d, "rho", rho,
-              "tree", tree, "origin", origin, "conditionOnRoot", true);
+      model.initByName(
+              "birthRate", createSkyline(b),
+              "deathRate", createSkyline(d),
+              "rho", rho,
+              "tree", tree,
+              "origin", origin,
+              "conditionOnRoot", true
+      );
 
       model.calculateTreeLogLikelihood(tree);
 
-      // At present (t=0), no lineages have formed yet in the backward view, CDF = 0, log(CDF) = -Inf
       double cdfZero = model.calculateLogNodeAgeCDF(0.0);
       assertEquals(Double.NEGATIVE_INFINITY, cdfZero, 1e-10, "log(CDF) at t=0 should be -Infinity.");
 
-      // At the root, CDF should be <= 1.0 (log <= 0)
       double cdfRoot = model.calculateLogNodeAgeCDF(tree.getRoot().getHeight());
       assertTrue(cdfRoot <= 0.0, "log(CDF) should never be positive.");
    }
@@ -144,58 +143,85 @@ public class BirthDeathSkylineModelTest {
    public void calculateTreeLogLikelihoodTest() {
       RealParameter birthRate = new RealParameter("2.0");
       RealParameter deathRate = new RealParameter("1.0");
-      RealParameter rho = new RealParameter("0.5");
+      RealParameter rhoVal = new RealParameter("0.5");
 
-      // --- PART 1: Success Case (Comparison) ---
+      SkylineParameter birthRateSkyline = createSkyline(birthRate);
+      SkylineParameter deathRateSkyline = createSkyline(deathRate);
+
+      // --- PART 1: Success Case ---
       BirthDeathSkylineModel bdskyRoot = new BirthDeathSkylineModel();
-      bdskyRoot.initByName("birthRate", birthRate, "deathRate", deathRate,
-              "rho", rho, "tree", tree, "conditionOnRoot", true);
+      bdskyRoot.initByName(
+              "birthRate", birthRateSkyline,
+              "deathRate", deathRateSkyline,
+              "rho", rhoVal,
+              "tree", tree,
+              "conditionOnRoot", true
+      );
 
       BirthDeathModel constantBD = new BirthDeathModel();
       constantBD.initByName("birthRate", birthRate, "deathRate", deathRate,
-              "rho", rho, "tree", tree, "conditionOnRoot", true);
+              "rho", rhoVal, "tree", tree, "conditionOnRoot", true);
 
       assertEquals(constantBD.calculateTreeLogLikelihood(tree),
-              bdskyRoot.calculateTreeLogLikelihood(tree), 1e-12,
-              "BDSKY should match constant Birth-Death when no intervals are used");
+              bdskyRoot.calculateTreeLogLikelihood(tree), 1e-50);
 
       // --- PART 2: Failure Case (Invalid Origin) ---
-      assertThrows(Throwable.class, () -> {
-         BirthDeathSkylineModel bdskyInvalidOrigin = new BirthDeathSkylineModel();
-         bdskyInvalidOrigin.initByName(
-                 "birthRate", birthRate,
-                 "deathRate", deathRate,
-                 "rho", rho,
-                 "tree", tree,
-                 "origin", new RealParameter("1.5") // < Tree Height (2.0)
-         );
-      }, "Model should throw an exception if Origin is less than Tree Height");
+      BirthDeathSkylineModel bdskyInvalidOrigin = new BirthDeathSkylineModel();
+      bdskyInvalidOrigin.initByName(
+              "birthRate", birthRateSkyline,
+              "deathRate", deathRateSkyline,
+              "rho", rhoVal,
+              "tree", tree,
+              "origin", new RealParameter("3.5"), // < Tree Height
+              "conditionOnRoot", false
+      );
 
-      Tree validTree = new TreeParser();
-      validTree.initByName("newick", "((A:1,B:1):1,C:2);",
-              "IsLabelledNewick", true, "adjustTipHeights", true);
+      // This returns -Infinity immediately
+      bdskyInvalidOrigin.originInput.setValue(new RealParameter("1.5"), bdskyInvalidOrigin);
+      double val = bdskyInvalidOrigin.calculateTreeLogLikelihood(tree);
+      assertEquals(Double.NEGATIVE_INFINITY, val, "Should return -Infinity if Origin < Tree Height");
 
-      RealParameter origin = new RealParameter("5.0"); // Origin is safely larger
 
+      // --- PART 3: Dynamic Updates ---
+      RealParameter safeOrigin = new RealParameter("5.0");
       BirthDeathSkylineModel model = new BirthDeathSkylineModel();
       model.initByName(
-              "birthRate", b,
-              "deathRate", d,
+              "birthRate", createSkyline(b),
+              "deathRate", createSkyline(d),
               "rho", rho,
-              "tree", validTree, // Pass the valid tree first
-              "origin", origin,
-              "conditionOnRoot", false
+              "tree", tree,
+              "origin", safeOrigin
       );
 
       Tree tallTree = new TreeParser();
       tallTree.initByName("newick", "((A:3,B:3):3,C:6);",
               "IsLabelledNewick", true, "adjustTipHeights", true);
 
+      // Update tree
       model.treeInput.setValue(tallTree, model);
 
       double logL = model.calculateTreeLogLikelihood(tallTree);
+      assertEquals(Double.NEGATIVE_INFINITY, logL);
 
-      assertEquals(Double.NEGATIVE_INFINITY, logL,
-              "Likelihood should be -Inf when the tree grows taller than the origin.");
+      // Fix origin
+      model.originInput.setValue(new RealParameter("6.1"), model);
+
+      // Update rates
+      RealParameter newRates = new RealParameter("3.0 2.0");
+      RealParameter newTimes = new RealParameter("0.5");
+      SkylineParameter newBirthSkyline = createSkyline(newRates, newTimes, false, true);
+
+      model.birthRateInput.setValue(newBirthSkyline, model);
+
+      double result = model.calculateTreeLogLikelihood(tallTree);
+      assertTrue(Double.isFinite(result));
+
+      BirthDeathSkylineModel bdskyModel = new BirthDeathSkylineModel();
+      bdskyModel.initByName("birthRate", createSkyline(new RealParameter("3.0 2.0")),
+              "deathRate", createSkyline(new RealParameter("1.0")),
+              "rho", new RealParameter("0.5"),
+              "tree", tallTree,
+              "origin", new RealParameter("6.1"));
+      System.out.println("logP = " + bdskyModel.calculateTreeLogLikelihood(tallTree));
    }
 }

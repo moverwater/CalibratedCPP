@@ -3,7 +3,6 @@ package calibratedcpp;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.RealParameter;
 
 import java.util.*;
@@ -15,43 +14,19 @@ import java.util.*;
 @Description("Extension of CalibratedCoalescentPointProcess, implements node age density and CDF of " +
         "for the BDSKY model with piecewise constant birth and death rates with incomplete extant sampling.")
 public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
-    public Input<RealParameter> birthRateInput =
-            new Input<>("birthRate", "lambda", (RealParameter) null);
-    public Input<RealParameter> deathRateInput =
-            new Input<>("deathRate", "mu", (RealParameter) null);
-    public Input<RealParameter> reproductiveNumberInput =
-            new Input<>("reproductiveNumber", "R = lambda / mu", (RealParameter) null);
-    public Input<RealParameter> diversificationRateInput =
-            new Input<>("diversificationRate", "r = lambda - mu", (RealParameter) null);
-    public Input<RealParameter> turnoverInput =
-            new Input<>("turnover", "epsilon = mu / lambda", (RealParameter) null);
-    public Input<RealParameter> rhoInput =
-            new Input<>("rho", "Sampling probability (rho)", (RealParameter) null);
+    public Input<SkylineParameter> birthRateInput =
+            new Input<>("birthRate", "Skyline parameter for the birthRate (λ)", (SkylineParameter) null);
+    public Input<SkylineParameter> deathRateInput =
+            new Input<>("deathRate", "Skyline parameter for the deathRate (µ)", (SkylineParameter) null);
+    public Input<SkylineParameter> diversificationRateInput =
+            new Input<>("diversificationRate", "Skyline parameter for the diversificationRate (λ - µ)", (SkylineParameter) null);
+    public Input<SkylineParameter> reproductiveNumberInput =
+            new Input<>("reproductiveNumber", "Skyline parameter for the reproductiveNumber (λ/µ)", (SkylineParameter) null);
+    public Input<SkylineParameter> turnoverInput =
+            new Input<>("turnover", "Skyline parameter for the turnover (µ/λ)", (SkylineParameter) null);
+    public Input<RealParameter> samplingProbabilityInput =
+            new Input<>("rho", "Sampling probability (⍴)", RealParameter.class);
 
-    public Input<RealParameter> birthRateChangeTimesInput =
-            new Input<>("birthRateChangeTimes", "Change times for lambda", (RealParameter) null);
-    public Input<RealParameter> deathRateChangeTimesInput =
-            new Input<>("deathRateChangeTimes", "Change times for mu", (RealParameter) null);
-    public Input<RealParameter> reproductiveNumberChangeTimesInput =
-            new Input<>("reproductiveNumberChangeTimes", "Change times for R", (RealParameter) null);
-    public Input<RealParameter> diversificationRateChangeTimesInput =
-            new Input<>("diversificationRateChangeTimes", "Change times for r", (RealParameter) null);
-    public Input<RealParameter> turnoverChangeTimesInput =
-            new Input<>("turnoverChangeTimes", "Change times for turnover", (RealParameter) null);
-
-    public Input<Boolean> birthRateTimesRelativeInput =
-            new Input<>("birthRateTimesRelative", "Relative to height", false);
-    public Input<Boolean> deathRateTimesRelativeInput =
-            new Input<>("deathRateTimesRelative", "Relative to height", false);
-    public Input<Boolean> reproductiveNumberTimesRelativeInput =
-            new Input<>("reproductiveNumberTimesRelative", "Relative", false);
-    public Input<Boolean> diversificationRateTimesRelativeInput =
-            new Input<>("diversificationRateTimesRelative", "Relative", false);
-    public Input<Boolean> turnoverTimesRelativeInput =
-            new Input<>("turnoverTimesRelative", "Relative", false);
-
-    public Input<BooleanParameter> reverseTimeArraysInput =
-            new Input<>("reverseTimeArrays", "True if parameter values are specified from present to root: [birthRate, deathRate, reproductionNumber, diversificationRate, turnover]", (BooleanParameter) null);
 
     protected double[] intervalStartTimes, lambda, r, cumulativeIntegral, cumulativeExpR;
     protected double rho;
@@ -62,52 +37,59 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     public void initAndValidate() {
         super.initAndValidate();
 
-        Input<RealParameter>[] rateInputs = new Input[]{birthRateInput, deathRateInput, reproductiveNumberInput, diversificationRateInput, turnoverInput};
-        Input<RealParameter>[] timeInputs = new Input[]{birthRateChangeTimesInput, deathRateChangeTimesInput, reproductiveNumberChangeTimesInput, diversificationRateChangeTimesInput, turnoverChangeTimesInput};
-        Input<Boolean>[] relInputs = new Input[]{birthRateTimesRelativeInput, deathRateTimesRelativeInput, reproductiveNumberTimesRelativeInput, diversificationRateTimesRelativeInput, turnoverTimesRelativeInput};
+        // 1. Store the PARENT inputs in the array, not the children yet.
+        Input<SkylineParameter>[] skylineInputs = new Input[]{
+                birthRateInput, deathRateInput, reproductiveNumberInput,
+                diversificationRateInput, turnoverInput
+        };
 
         relativeFlags = new boolean[5];
+        reverseFlags = new boolean[5];
+
         int specifiedRates = 0;
         StringBuilder whichSpecified = new StringBuilder();
 
         for (int i = 0; i < 5; i++) {
-            relativeFlags[i] = relInputs[i].get();
-            RealParameter rateP = rateInputs[i].get();
-            RealParameter timeP = timeInputs[i].get();
+            SkylineParameter sp = skylineInputs[i].get();
 
-            if (rateP != null) {
-                specifiedRates++;
-                if (!whichSpecified.isEmpty()) whichSpecified.append(", ");
-                whichSpecified.append(rateInputs[i].getName());
+            // Check if the SkylineParameter itself exists
+            if (sp != null) {
+                // Now it is safe to access fields
+                RealParameter rateP = sp.ratesInput.get();
+                RealParameter timeP = sp.changeTimesInput.get();
 
-                // --- CHANGED LOGIC HERE ---
-                // Only enforce dimension check IF change times are explicitly provided.
-                // If timeP is null, we allow any dimension for rateP (implies equidistant).
-                if (timeP != null) {
-                    int rateDim = rateP.getDimension();
-                    int timeDim = timeP.getDimension();
-                    if (rateDim != timeDim + 1) {
-                        throw new IllegalArgumentException("Dimension mismatch for " + rateInputs[i].getName() +
-                                ": Explicit change times provided ("+timeDim+"), so rate dimension must be ("+(timeDim+1)+"). Found: " + rateDim);
+                relativeFlags[i] = sp.isRelative;
+                reverseFlags[i] = sp.isReverse;
+
+                if (rateP != null) {
+                    specifiedRates++;
+                    if (!whichSpecified.isEmpty()) whichSpecified.append(", ");
+                    whichSpecified.append(skylineInputs[i].getName());
+
+                    if (timeP != null) {
+                        int rateDim = rateP.getDimension();
+                        int timeDim = timeP.getDimension();
+                        if (rateDim != timeDim + 1) {
+                            throw new IllegalArgumentException("Dimension mismatch for " + skylineInputs[i].getName() +
+                                    ": Explicit change times provided (" + timeDim + "), so rate dimension must be (" + (timeDim + 1) + "). Found: " + rateDim);
+                        }
                     }
                 }
+            } else {
+                // Handle defaults if parameter is missing (optional)
+                relativeFlags[i] = false;
+                reverseFlags[i] = false;
             }
         }
 
         if (reproductiveNumberInput.get() != null && turnoverInput.get() != null)
             throw new IllegalArgumentException("Cannot specify both reproductiveNumber and turnover.");
 
-        if (rhoInput.get() == null)
+        if (samplingProbabilityInput.get() == null)
             throw new IllegalArgumentException("Sampling probability (rho) must be specified.");
 
         if (specifiedRates != 2)
             throw new IllegalArgumentException("Exactly TWO rates must be specified. Found " + specifiedRates + " (" + whichSpecified + ")");
-
-        reverseFlags = new boolean[5];
-        if (reverseTimeArraysInput.get() != null) {
-            BooleanParameter flags = reverseTimeArraysInput.get();
-            for (int i = 0; i < Math.min(5, flags.getDimension()); i++) reverseFlags[i] = flags.getValue(i);
-        }
 
         updateIntervals();
     }
@@ -121,22 +103,21 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     }
 
     private boolean updateIntervals() {
-        rho = rhoInput.get().getValue();
+        super.updateModel();
+
+        rho = samplingProbabilityInput.get().getValue();
         double rootHeight = treeInput.get().getRoot().getHeight();
         double originVal = !conditionOnRoot ? originInput.get().getValue() : 0.0;
-        double maxT = conditionOnRoot ? rootHeight : originVal;
+        double maxT = maxTime;
 
         if (!conditionOnRoot && rootHeight >= originVal) return false;
 
-        // 1. Process Times for each parameter individually
-        // This handles the "Equidistant" generation if inputs are null
-        // --- Internal State ---
-        // We store the processed change times for each parameter individually
-        List<Double> bTimes = processInput(birthRateInput, birthRateChangeTimesInput, relativeFlags[0], reverseFlags[0], maxT);
-        List<Double> dTimes = processInput(deathRateInput, deathRateChangeTimesInput, relativeFlags[1], reverseFlags[1], maxT);
-        List<Double> rTimes = processInput(reproductiveNumberInput, reproductiveNumberChangeTimesInput, relativeFlags[2], reverseFlags[2], maxT);
-        List<Double> divTimes = processInput(diversificationRateInput, diversificationRateChangeTimesInput, relativeFlags[3], reverseFlags[3], maxT);
-        List<Double> tTimes = processInput(turnoverInput, turnoverChangeTimesInput, relativeFlags[4], reverseFlags[4], maxT);
+        // 1. Process Times safely
+        List<Double> bTimes = processSafe(birthRateInput, maxT);
+        List<Double> dTimes = processSafe(deathRateInput, maxT);
+        List<Double> rTimes = processSafe(reproductiveNumberInput, maxT);
+        List<Double> divTimes = processSafe(diversificationRateInput, maxT);
+        List<Double> tTimes = processSafe(turnoverInput, maxT);
 
         // 2. Create Master Timeline (Union of all times)
         SortedSet<Double> timesSet = new TreeSet<>();
@@ -157,18 +138,18 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         cumulativeIntegral[0] = Double.NEGATIVE_INFINITY;
         cumulativeExpR[0] = 0.0;
 
-        // 3. Iterate through Master Intervals
         for (int j = 0; j < n; j++) {
             double t = intervalStartTimes[j];
 
-            // Lookup the rate for this specific time 't' using that parameter's specific time list
-            double vL = getVal(birthRateInput.get(), bTimes, t, reverseFlags[0]);
-            double vM = getVal(deathRateInput.get(), dTimes, t, reverseFlags[1]);
-            double vR = getVal(reproductiveNumberInput.get(), rTimes, t, reverseFlags[2]);
-            double vD = getVal(diversificationRateInput.get(), divTimes, t, reverseFlags[3]);
-            double vT = getVal(turnoverInput.get(), tTimes, t, reverseFlags[4]);
+            // 2. Get Values Safely
+            double vL = getValSafe(birthRateInput, bTimes, t);
+            double vM = getValSafe(deathRateInput, dTimes, t);
+            double vR = getValSafe(reproductiveNumberInput, rTimes, t);
+            double vD = getValSafe(diversificationRateInput, divTimes, t);
+            double vT = getValSafe(turnoverInput, tTimes, t);
 
             double l = 0, m = 0;
+
             if (birthRateInput.get() != null && deathRateInput.get() != null) { l = vL; m = vM; }
             else if (birthRateInput.get() != null && diversificationRateInput.get() != null) { l = vL; m = vL - vD; }
             else if (birthRateInput.get() != null && reproductiveNumberInput.get() != null) { l = vL; m = vL / vR; }
@@ -178,6 +159,8 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
             else if (deathRateInput.get() != null && reproductiveNumberInput.get() != null) { m = vM; l = m * vR;}
             else if (diversificationRateInput.get() != null && reproductiveNumberInput.get() != null) { m = vD / (vR - 1.0); l = m * vR; }
             else if (diversificationRateInput.get() != null && turnoverInput.get() != null) { l = vD / (1.0 - vT); m = l * vT; }
+
+            if (l < 0.0 || m < 0.0) return false;
 
             lambda[j] = l;
             r[j] = l - m;
@@ -193,6 +176,11 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         return true;
     }
 
+    /**
+     * Processes input times, converting them all to "Age" (Time from Present).
+     * * @param reverse If TRUE: Input is already Age (Distance from Present).
+     * If FALSE: Input is Distance from Root (needs conversion).
+     */
     private List<Double> processInput(Input<RealParameter> rateInput, Input<RealParameter> timeInput,
                                       boolean relative, boolean reverse, double maxTime) {
         List<Double> times = new ArrayList<>();
@@ -202,23 +190,32 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         RealParameter timeP = timeInput.get();
 
         if (timeP != null) {
-            // --- Explicit Times ---
+            // --- Explicit Change Times ---
             Double[] vals = timeP.getValues();
-            Arrays.sort(vals); // Ensure sorted
+            Arrays.sort(vals);
             for (double v : vals) {
-                double tAbs = relative ? (reverse ? maxTime * (1.0 - v) : maxTime * v)
-                        : (reverse ? maxTime - v : v);
-                if (tAbs > 1e-10 && tAbs < maxTime - 1e-10) times.add(tAbs);
+                double tAge;
+                if (relative) {
+                    // relative [0,1]
+                    // If reverse=TRUE (Age): v=0 is Present. Age = v * maxTime.
+                    // If reverse=FALSE (FromRoot): v=0 is Root. Age = maxTime * (1-v).
+                    tAge = reverse ? (v * maxTime) : (maxTime * (1.0 - v));
+                } else {
+                    // Absolute
+                    // If reverse=TRUE (Age): Input v is Age.
+                    // If reverse=FALSE (FromRoot): Input v is time since root. Age = maxTime - v.
+                    tAge = reverse ? v : (maxTime - v);
+                }
+
+                if (tAge > 1e-10 && tAge < maxTime - 1e-10) times.add(tAge);
             }
         } else {
             // --- Implicit Equidistant Times ---
-            // If rate has dimension K, we need K-1 cut points.
+            // If explicit times are missing, we assume equidistant intervals over maxTime.
             int numIntervals = rateP.getDimension();
             if (numIntervals > 1) {
                 double width = maxTime / numIntervals;
                 for (int i = 1; i < numIntervals; i++) {
-                    // Equidistant splits: 1/K, 2/K, etc.
-                    // We don't care about reverse here because symmetric equidistant splits are the same reversed.
                     times.add(width * i);
                 }
             }
@@ -227,31 +224,48 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
         return times;
     }
 
-    private double getVal(RealParameter p, List<Double> cuts, double t, boolean rev) {
+    /**
+     * Retrieves the rate value for a given time t.
+     * Enforces Rates: Root -> Present.
+     * * @param t The current time (Age).
+     */
+    private double getVal(RealParameter p, List<Double> cuts, double t) {
         if (p == null) return 0;
 
-        // Binary search to find which interval 't' falls into
+        // Find which time interval 't' falls into based on the cuts (which are Ages).
+        // If t is in [0, t1], index is 0.
         int idx = Collections.binarySearch(cuts, t);
+        int intervalIndex = (idx >= 0) ? idx + 1 : -idx - 1;
 
-        // binarySearch returns:
-        // >= 0: Exact match found. We move to the NEXT interval (right-continuous).
-        // < 0:  (-insertionPoint - 1). Insertion point is the index of the first element greater than key.
+        // ORIENTATION LOGIC:
+        // We know 'cuts' are Ages (0 -> Max).
+        // intervalIndex 0 corresponds to the time immediately near Present (Age 0).
+        //
+        // Requirement: Rates are specified Root-to-Present.
+        // Therefore:
+        //   Rate[0]     = Root (Oldest)
+        //   Rate[Last]  = Present (Youngest)
+        //
+        // So, if we are at intervalIndex 0 (Present), we need the LAST rate index.
+        // If we are at intervalIndex Max (Root), we need the FIRST rate index.
 
-        int intervalIndex;
-        if (idx >= 0) {
-            intervalIndex = idx + 1;
-        } else {
-            intervalIndex = -idx - 1;
-        }
+        int pIdx = p.getDimension() - 1 - intervalIndex;
 
-        // Map interval index to parameter array index
-        // If Reverse (Present -> Past): Rate[0] is most recent (time 0).
-        // If Forward (Past -> Present): Rate[Dim-1] is most recent.
-
-        int pIdx = rev ? intervalIndex : (p.getDimension() - 1 - intervalIndex);
-
-        // Safety clamp
         return p.getValue(Math.max(0, Math.min(pIdx, p.getDimension() - 1)));
+    }
+
+    // Helper to extract times without crashing on null inputs
+    private List<Double> processSafe(Input<SkylineParameter> input, double maxT) {
+        SkylineParameter sp = input.get();
+        if (sp == null) return new ArrayList<>();
+        return processInput(sp.ratesInput, sp.changeTimesInput, sp.isRelative, sp.isReverse, maxT);
+    }
+
+    // Helper to get value without crashing on null inputs
+    private double getValSafe(Input<SkylineParameter> input, List<Double> times, double t) {
+        SkylineParameter sp = input.get();
+        if (sp == null || sp.ratesInput.get() == null) return 0.0;
+        return getVal(sp.ratesInput.get(), times, t);
     }
 
     // --- Math Helpers (unchanged) ---
