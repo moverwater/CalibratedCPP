@@ -20,7 +20,7 @@ The birth-death model takes as inputs any TWO of birth-rate $(\lambda)$, death-r
 
 ## `BirthDeathSkylineModel`
 
-The birth-death skyline model takes as inputs any TWO of birth-rate $(\lambda)$, death-rate $(\mu)$, diversification rate $(d)$, reproductive number $(R)$, and turnover $(\tau)$ as `SkylineParameter` objects; and the sampling probability $(\rho)$ as a `RealParameter` in the interval $[0,1]$. 
+The birth-death skyline model takes as inputs any TWO of the time dependent piecewise constant parameters: birth-rate $(\lambda(t))$, death-rate $(\mu(t))$, diversification rate $(d(t))$, effective reproductive number $(R_e(t))$, and turnover $(\tau(t))$ as `SkylineParameter` objects; and the sampling probability $(\rho)$ as a `RealParameter` in the interval $[0,1]$.
 
 `SkylineParameter` objects take as inputs:
 - Rates as `RealParameter` objects where rates are ordered from root to tips.
