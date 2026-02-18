@@ -4,6 +4,7 @@ import lphy.core.logger.TextFileFormatted;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 public class CalibrationArray implements TextFileFormatted {
@@ -47,5 +48,10 @@ public class CalibrationArray implements TextFileFormatted {
     @Override
     public String getFileType() {
         return "_calibrations.log";
+    }
+
+    @Override
+    public String toString() {
+        return "Calibrations"; // the name on lphyStudio
     }
 }

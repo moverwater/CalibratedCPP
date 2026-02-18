@@ -31,7 +31,7 @@
         <module>../LPhyBeast/</module>
         <module>calibratedcpp-beast</module>
         <module>calibratedcpp-lphy</module>
-        <!--<module>calibratedcpp-lphy-studio</module> -->
+        <module>calibratedcpp-lphy-studio</module>
         <module>calibratedcpp-lphybeast</module>
     </modules>
 
