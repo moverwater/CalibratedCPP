@@ -11,8 +11,6 @@ import calibration.CalibrationClade;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
 import calibrationprior.CalibrationCladePrior;
 import calibrationprior.CalibrationPrior;
-import lphy.core.model.BasicFunction;
-import lphy.core.model.GenerativeDistribution;
 import lphy.core.model.Value;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
@@ -30,6 +28,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         model.setInputValue("tree", value);
         boolean rootConditioned = generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
+        model.setInputValue("conditionOnCalibrations", true); // users should change this in XML
 
         // if it is not root conditioned, then set the stem age
         // if there is root calibration, then it will be set in initAndValidate

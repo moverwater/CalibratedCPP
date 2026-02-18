@@ -32,14 +32,16 @@ The implementation has the following structure:
 
 The Lphy simulator is currently implemented within LinguaPhylo as a generative method called `CalibratedCPP`:
 - The simulator takes birth rate, death rate, sampling probability for the birth-death process.
-- Number of taxa, clade calibration tip names, corresponding clade calibration ages are taken for constructing calibrations, other leaf names are optional to pass in.
-- Root age can be passed in for root conditioned, stem age can also be passed in. Both of them are optional.
+- Calibration information is taken from the output of `ConditionedMRCAPrior`, other leaf names are optional to pass in.
+- Stem age can be passed in if there is no root calibration, but if root calibration and stemAge are both specified, the tree will still be root conditioned.
 
 ### calibratedcpp-lphybeast
 
 This subproject is converting Lphy simulators to XMLs for BEAST2 running:
-- The simulator set conditionOnCalibrations as false for default, users should modify in the output XML if needs it to turn on.
-- Construct CalibrationClades with taxa set for the clade and an age parameter with its prior distribution if it's not constant.
+- The simulator set conditionOnCalibrations as true for default, users should manually modify this flag in the output XML to make it turn off.
+- Construct BirthDeathModel with birth death parameters and conditions on the origin of the tree.
+- Set calibrations in CalibrationPrior, taking upper and lower bounds of the calibration nodes that passed to ConditionedMRCAPrior.
+- 
 
 ## License
 
