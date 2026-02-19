@@ -35,6 +35,11 @@ The Lphy simulator is currently implemented within LinguaPhylo as a generative m
 - Calibration information is taken from the output of `ConditionedMRCAPrior`, other leaf names are optional to pass in.
 - Stem age can be passed in if there is no root calibration, but if root calibration and stemAge are both specified, the tree will still be root conditioned.
 
+### calibratedcpp-lphy-studio
+
+The Lphy studio is a visualiser that users can type in Lphy scripts directly or load local lphy scripts.
+Calibrations can be viewed as calibration taxa names and the sampled ages.
+
 ### calibratedcpp-lphybeast
 
 This subproject is converting Lphy simulators to XMLs for BEAST2 running:
