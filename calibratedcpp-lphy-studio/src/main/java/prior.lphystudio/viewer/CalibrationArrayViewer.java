@@ -8,6 +8,7 @@ import javax.swing.*;
 
 public class CalibrationArrayViewer implements Viewer {
     public CalibrationArrayViewer() {}
+
     @Override
     public boolean match(Object value) {
         return value instanceof CalibrationArray||

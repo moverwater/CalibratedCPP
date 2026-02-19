@@ -52,6 +52,22 @@ public class CalibrationArray implements TextFileFormatted {
 
     @Override
     public String toString() {
-        return "Calibrations"; // the name on lphyStudio
+        StringBuilder builder = new StringBuilder();
+        builder.append("CalibrationArray").append("\n");
+        builder.append("Calibration Taxa\tAge").append("\n");
+        for (Calibration calibration : array) {
+            String[] taxaNames = calibration.getTaxa();
+            for (int i = 0; i < taxaNames.length; i++) {
+                builder.append(taxaNames[i]);
+                if (i < taxaNames.length - 1) {
+                    builder.append(",");
+                } else {
+                    builder.append("\t");
+                }
+            }
+            builder.append(calibration.getAge()).append("\n");
+        }
+
+        return builder.toString(); // the content shown in LphyStudio
     }
 }
