@@ -1,8 +1,8 @@
 package calibratedcpp;
 
-import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.inference.CalculationNode;
 import beast.base.inference.parameter.RealParameter;
 
 /**
@@ -10,7 +10,7 @@ import beast.base.inference.parameter.RealParameter;
  */
 
 @Description("Input for rate parameters in BirthDeathSkylineModel.")
-public class SkylineParameter extends BEASTObject {
+public class SkylineParameter extends CalculationNode {
     public Input<RealParameter> valuesInput =
             new Input<>("values", "Value of the rates specified from root to present.", Input.Validate.REQUIRED);
     public Input<RealParameter> changeTimesInput =

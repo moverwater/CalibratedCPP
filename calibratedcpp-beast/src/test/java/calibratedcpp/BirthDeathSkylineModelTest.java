@@ -28,7 +28,7 @@ public class BirthDeathSkylineModelTest {
 
    private SkylineParameter createSkyline(RealParameter rates, RealParameter times, boolean relative, boolean reverse) {
       SkylineParameter sp = new SkylineParameter();
-      sp.initByName("rates", rates,
+      sp.initByName("values", rates,
               "changeTimes", times,
               "relative", relative,
               "reverseTime", reverse);
