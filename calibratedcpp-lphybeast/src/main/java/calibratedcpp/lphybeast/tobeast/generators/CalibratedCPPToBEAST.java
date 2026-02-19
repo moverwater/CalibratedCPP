@@ -4,7 +4,7 @@ import beast.base.core.BEASTInterface;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.parameter.RealParameter;
-import calibratedcpp.BirthDeathSkylineModel;
+import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
@@ -21,11 +21,11 @@ import java.util.List;
 
 import static lphybeast.tobeast.TaxaUtils.getTaxonSet;
 
-public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, BirthDeathSkylineModel> {
+public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, CalibratedBirthDeathSkylineModel> {
     List<TaxonSet> taxonSets = new ArrayList<>();
     @Override
-    public BirthDeathSkylineModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
-        BirthDeathSkylineModel model = new BirthDeathSkylineModel();
+    public CalibratedBirthDeathSkylineModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
+        CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
         model.setInputValue("tree", value);
         boolean rootConditioned = generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
@@ -122,7 +122,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
     }
 
     @Override
-    public Class<BirthDeathSkylineModel> getBEASTClass() {
-        return BirthDeathSkylineModel.class;
+    public Class<CalibratedBirthDeathSkylineModel> getBEASTClass() {
+        return CalibratedBirthDeathSkylineModel.class;
     }
 }

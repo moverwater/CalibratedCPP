@@ -7,18 +7,18 @@ Birth-death models are typically parameterised by a per-lineage birth-rate $(\la
 
 We can specify any two of these parameters together except for turnover $(\tau)$ and the reproductive number $(R)$.
 
-Both `BirthDeathModel` and `BirthDeathSkylineModel` extend `CalibratedCoalescentPointProcess` which itself extends `SpeciesTreeDistribution`. The  inputs of a `CalibratedCoalescentPointProcess` object are:
+Both `CalibratedBirthDeathModel` and `CalibratedBirthDeathSkylineModel` extend `CalibratedCoalescentPointProcess` which itself extends `SpeciesTreeDistribution`. The  inputs of a `CalibratedCoalescentPointProcess` object are:
 - `origin`: A `RealParameter` for the start time of the process. This is optional.
 - `conditionOnRoot`: A `Boolean` which is true the process is conditioned on the root height. Either `origin` must be provided or `conditionOnRoot` should be set to true.
 - `tree`: A phylogenetic tree.
 - `calibrations`: A list of `CalibrationClade` objects which consists of a `TaxonSet` on which we want to condition being monophyletic and the TMRCA of the clade. Note: providing the all the taxa in the tree as a `calibration` is equivalent to setting `conditionOnRoot=true`.
 - `conditionOnCalibrations`: A `Boolean` which is `true` if we want to condition on the `calibrations` provided and `false` otherwise. Default is `true`.
 
-## `BirthDeathModel`
+## `CalibratedBirthDeathModel`
 
 The birth-death model takes as inputs any TWO of birth-rate $(\lambda)$, death-rate $(\mu)$, diversification rate $(d)$, reproductive number $(R)$, and turnover $(\tau)$ as `RealParameter` objects; and the sampling probability $(\rho)$ as a `RealParameter` in the interval $[0,1]$.
 
-## `BirthDeathSkylineModel`
+## `CalibratedBirthDeathSkylineModel`
 
 The birth-death skyline model takes as inputs any TWO of the time dependent piecewise constant parameters: birth-rate $(\lambda(t))$, death-rate $(\mu(t))$, diversification rate $(d(t))$, effective reproductive number $(R_e(t))$, and turnover $(\tau(t))$ as `SkylineParameter` objects; and the sampling probability $(\rho)$ as a `RealParameter` in the interval $[0,1]$.
 

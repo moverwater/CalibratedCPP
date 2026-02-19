@@ -1,15 +1,15 @@
 package calibratedcpp.lphybeast.tobeast.generators;
 
 import beast.base.core.BEASTInterface;
-import calibratedcpp.BirthDeathModel;
+import calibratedcpp.CalibratedBirthDeathModel;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
 import calibratedcpp.lphy.tree.CPPTree;
 
-public class CPPToBEAST implements GeneratorToBEAST<CPPTree, BirthDeathModel> {
+public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeathModel> {
     @Override
-    public BirthDeathModel generatorToBEAST(CPPTree generator, BEASTInterface value, BEASTContext context) {
-        BirthDeathModel cpp = new BirthDeathModel();
+    public CalibratedBirthDeathModel generatorToBEAST(CPPTree generator, BEASTInterface value, BEASTContext context) {
+        CalibratedBirthDeathModel cpp = new CalibratedBirthDeathModel();
         cpp.setInputValue("tree", value);
 
         // set origin and condition on root
@@ -36,7 +36,7 @@ public class CPPToBEAST implements GeneratorToBEAST<CPPTree, BirthDeathModel> {
     }
 
     @Override
-    public Class<BirthDeathModel> getBEASTClass() {
-        return BirthDeathModel.class;
+    public Class<CalibratedBirthDeathModel> getBEASTClass() {
+        return CalibratedBirthDeathModel.class;
     }
 }

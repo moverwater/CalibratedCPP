@@ -7,33 +7,33 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class BirthDeathModelTest {
+public class CalibratedBirthDeathModelTest {
 
-    private final BirthDeathModel birthDeathModelSuperCrit;
-    private final BirthDeathModel birthDeathModelSubCrit;
-    private final BirthDeathModel birthDeathModelCrit;
+    private final CalibratedBirthDeathModel birthDeathModelSuperCrit;
+    private final CalibratedBirthDeathModel birthDeathModelSubCrit;
+    private final CalibratedBirthDeathModel birthDeathModelCrit;
 
-    public BirthDeathModelTest() {
+    public CalibratedBirthDeathModelTest() {
         Tree tree = new TreeParser();
         tree.initByName("newick", "((A:1,B:1):1,C:2);",
                 "IsLabelledNewick", true,
                 "adjustTipHeights", true);
 
-        birthDeathModelSuperCrit = new BirthDeathModel();
+        birthDeathModelSuperCrit = new CalibratedBirthDeathModel();
         birthDeathModelSuperCrit.initByName("tree", tree,
                 "conditionOnRoot", true,
                 "birthRate", new RealParameter("2.0"),
                 "deathRate", new RealParameter("1.0"),
                 "rho", new RealParameter("0.1"));
 
-        birthDeathModelSubCrit = new BirthDeathModel();
+        birthDeathModelSubCrit = new CalibratedBirthDeathModel();
         birthDeathModelSubCrit.initByName("tree", tree,
                 "conditionOnRoot", true,
                 "birthRate", new RealParameter("1.0"),
                 "deathRate", new RealParameter("2.0"),
                 "rho", new RealParameter("0.1"));
 
-        birthDeathModelCrit = new BirthDeathModel();
+        birthDeathModelCrit = new CalibratedBirthDeathModel();
         birthDeathModelCrit.initByName("tree", tree,
                 "conditionOnRoot", true,
                 "birthRate", new RealParameter("1.0"),

@@ -13,7 +13,7 @@ import java.util.*;
 
 @Description("Extension of CalibratedCoalescentPointProcess, implements node age density and CDF of " +
         "for the BDSKY model with piecewise constant birth and death rates with incomplete extant sampling.")
-public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
+public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     public Input<SkylineParameter> birthRateInput =
             new Input<>("birthRate", "Skyline parameter for the birthRate (λ)", (SkylineParameter) null);
     public Input<SkylineParameter> deathRateInput =

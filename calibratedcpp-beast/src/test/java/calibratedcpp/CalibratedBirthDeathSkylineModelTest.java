@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class BirthDeathSkylineModelTest {
+public class CalibratedBirthDeathSkylineModelTest {
 
    private Tree tree;
    private RealParameter b, d, rho, origin;
@@ -41,7 +41,7 @@ public class BirthDeathSkylineModelTest {
 
    @Test
    public void testOnlyOneRateThrows() {
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
 
        assertThrows(RuntimeException.class, () -> model.initByName(
                "birthRate", createSkyline(b),
@@ -57,7 +57,7 @@ public class BirthDeathSkylineModelTest {
    @Test
    public void testThreeRatesThrows() {
       RealParameter div = new RealParameter("0.5");
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
 
       assertThrows(RuntimeException.class, () -> model.initByName(
               "birthRate", createSkyline(b),
@@ -80,7 +80,7 @@ public class BirthDeathSkylineModelTest {
 
    @Test
    public void testLikelihoodMatchesConstantBD() {
-      BirthDeathSkylineModel bdsky = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel bdsky = new CalibratedBirthDeathSkylineModel();
       bdsky.initByName(
               "birthRate", createSkyline(b),
               "deathRate", createSkyline(d),
@@ -90,7 +90,7 @@ public class BirthDeathSkylineModelTest {
               "conditionOnRoot", true
       );
 
-      BirthDeathModel constantBD = new BirthDeathModel();
+      CalibratedBirthDeathModel constantBD = new CalibratedBirthDeathModel();
       constantBD.initByName("birthRate", b, "deathRate", d, "rho", rho,
               "tree", tree, "origin", origin, "conditionOnRoot", true);
 
@@ -103,7 +103,7 @@ public class BirthDeathSkylineModelTest {
 
    @Test
    public void calculateLogNodeAgeDensityTest() {
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
       model.initByName(
               "birthRate", createSkyline(b),
               "deathRate", createSkyline(d),
@@ -120,7 +120,7 @@ public class BirthDeathSkylineModelTest {
 
    @Test
    public void calculateLogNodeAgeCDFTest() {
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
       model.initByName(
               "birthRate", createSkyline(b),
               "deathRate", createSkyline(d),
@@ -149,7 +149,7 @@ public class BirthDeathSkylineModelTest {
       SkylineParameter deathRateSkyline = createSkyline(deathRate);
 
       // --- PART 1: Success Case ---
-      BirthDeathSkylineModel bdskyRoot = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel bdskyRoot = new CalibratedBirthDeathSkylineModel();
       bdskyRoot.initByName(
               "birthRate", birthRateSkyline,
               "deathRate", deathRateSkyline,
@@ -158,7 +158,7 @@ public class BirthDeathSkylineModelTest {
               "conditionOnRoot", true
       );
 
-      BirthDeathModel constantBD = new BirthDeathModel();
+      CalibratedBirthDeathModel constantBD = new CalibratedBirthDeathModel();
       constantBD.initByName("birthRate", birthRate, "deathRate", deathRate,
               "rho", rhoVal, "tree", tree, "conditionOnRoot", true);
 
@@ -166,7 +166,7 @@ public class BirthDeathSkylineModelTest {
               bdskyRoot.calculateTreeLogLikelihood(tree), 1e-50);
 
       // --- PART 2: Failure Case (Invalid Origin) ---
-      BirthDeathSkylineModel bdskyInvalidOrigin = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel bdskyInvalidOrigin = new CalibratedBirthDeathSkylineModel();
       bdskyInvalidOrigin.initByName(
               "birthRate", birthRateSkyline,
               "deathRate", deathRateSkyline,
@@ -184,7 +184,7 @@ public class BirthDeathSkylineModelTest {
 
       // --- PART 3: Dynamic Updates ---
       RealParameter safeOrigin = new RealParameter("5.0");
-      BirthDeathSkylineModel model = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
       model.initByName(
               "birthRate", createSkyline(b),
               "deathRate", createSkyline(d),
@@ -216,7 +216,7 @@ public class BirthDeathSkylineModelTest {
       double result = model.calculateTreeLogLikelihood(tallTree);
       assertTrue(Double.isFinite(result));
 
-      BirthDeathSkylineModel bdskyModel = new BirthDeathSkylineModel();
+      CalibratedBirthDeathSkylineModel bdskyModel = new CalibratedBirthDeathSkylineModel();
       bdskyModel.initByName("birthRate", createSkyline(new RealParameter("3.0 2.0")),
               "deathRate", createSkyline(new RealParameter("1.0")),
               "rho", new RealParameter("0.5"),

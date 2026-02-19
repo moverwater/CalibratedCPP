@@ -313,7 +313,7 @@ public class SimpleConstraintBenchmark {
         RealParameter rho = new RealParameter("1.0");
 
         // Set up CalibratedCoalescentPointProcess
-        CalibratedCoalescentPointProcess cpp = new calibratedcpp.BirthDeathModel();
+        CalibratedCoalescentPointProcess cpp = new CalibratedBirthDeathModel();
         cpp.initByName("tree", tree,
                 "birthRate", birthRate,
                 "turnover", turnover,

@@ -2,7 +2,6 @@ package calibratedcpp;
 
 import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
-import beast.base.evolution.speciation.CalibratedBirthDeathModel;
 import beast.base.evolution.speciation.CalibrationPoint;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
@@ -33,8 +32,8 @@ public class LikelihoodBenchmark {
     @Param({"10"})
     public int nCalibrations;
 
-    BirthDeathModel cpp;
-    CalibratedBirthDeathModel heled_and_drummond;
+    CalibratedBirthDeathModel cpp;
+    beast.base.evolution.speciation.CalibratedBirthDeathModel heled_and_drummond;
     Tree tree;
     List<CalibrationClade> calibrationsClades;
     List<CalibrationPoint> calibrationPoints;
@@ -43,8 +42,8 @@ public class LikelihoodBenchmark {
     // We do initialization here so it doesn't count towards the execution time
     @Setup(Level.Trial)
     public void setup() {
-        cpp = new calibratedcpp.BirthDeathModel();
-        heled_and_drummond = new CalibratedBirthDeathModel();
+        cpp = new CalibratedBirthDeathModel();
+        heled_and_drummond = new beast.base.evolution.speciation.CalibratedBirthDeathModel();
         calibrationsClades = new ArrayList<>();
         calibrationPoints = new ArrayList<>();
         tree = new TreeParser();

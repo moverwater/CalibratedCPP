@@ -24,8 +24,8 @@ CalibratedCPP contains 3 subproject:
 
 The implementation has the following structure:
 - The abstract class `CoalescentPointProcessModel` has abstract methods `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` for the density and CDF of the node age. This class extends `SpeciesTreeDistribution` and takes a list of `calibrations`, and the `origin` age OR `conditionOnRoot` as inputs.
-- `BirthDeathModel` extends `CoalescentPointProcessModel` and implements `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` with node age density and CDF for the constant rate birth-death process.
-- `BirthDeathSkylineModel` extends `CoalescentPointProcessModel` and implements `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` with node age density and CDF for the birth-death process with piecewise constant rates.
+- `CalibratedBirthDeathModel` extends `CoalescentPointProcessModel` and implements `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` with node age density and CDF for the constant rate birth-death process.
+- `CalibratedBirthDeathSkylineModel` extends `CoalescentPointProcessModel` and implements `calculateNodeAgeDensity()` and `calculateNodeAgeCDF()` with node age density and CDF for the birth-death process with piecewise constant rates.
 - `CalibratedCoalescentPointProcess` extends `SpeciesTreeDistribution` and takes a list of `calibrations`, and the `origin` age OR `conditionOnRoot` as inputs.
 
 ### calibratedcpp-lphy

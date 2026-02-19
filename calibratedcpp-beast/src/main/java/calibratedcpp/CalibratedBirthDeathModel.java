@@ -10,7 +10,7 @@ import beast.base.inference.parameter.RealParameter;
 
 @Description("Extension of CalibratedCoalescentPointProcess, implements node age density and CDF for" +
         "constant rate birth-death process with incomplete extant sampling.")
-public class BirthDeathModel extends CalibratedCoalescentPointProcess {
+public class CalibratedBirthDeathModel extends CalibratedCoalescentPointProcess {
     public Input<RealParameter> birthRateInput =
             new Input<>("birthRate", "The birth rate (lambda)", (RealParameter) null);
 
