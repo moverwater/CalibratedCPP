@@ -30,8 +30,8 @@ public class BirthDeathSkylineModelTest {
       SkylineParameter sp = new SkylineParameter();
       sp.initByName("values", rates,
               "changeTimes", times,
-              "relative", relative,
-              "reverseTime", reverse);
+              "timesAreRelative", relative,
+              "timesAreAges", reverse);
       return sp;
    }
 
