@@ -23,7 +23,11 @@ The birth-death model takes as inputs any TWO of birth-rate $(\lambda)$, death-r
 The birth-death skyline model takes as inputs any TWO of the time dependent piecewise constant parameters: birth-rate $(\lambda(t))$, death-rate $(\mu(t))$, diversification rate $(d(t))$, effective reproductive number $(R_e(t))$, and turnover $(\tau(t))$ as `SkylineParameter` objects; and the sampling probability $(\rho)$ as a `RealParameter` in the interval $[0,1]$.
 
 `SkylineParameter` objects take as inputs:
-- Rates as `RealParameter` objects where rates are ordered from root to tips.
-- Optionally, change times can be specified as `RealParameter`objects. If this is not provided, the rates are spread evenly over the age of the tree (origin/root height).
-- Reverse is a `Boolean` which is `true` if the change times are given as ages before the present. The default is `false`.  
-- Relative is a `Boolean` which is `true` if the change times are given as relative to the age of the tree (origin/root height). The default is `false`.
+- `values`: A `RealParameter` object specifying the value of the parameter in each time interval ordered from root to tips.
+- `changeTimes`: Optional, change times can be specified as `RealParameter`objects. If this is not provided, the rates are spread evenly over the age of the tree (origin/root height).
+- `timesAreAges`: A `Boolean` which is `true` if the change times are given as ages before the present. The default is `false`.  
+- `timesAreRelative`: A `Boolean` which is `true` if the change times are given as relative to the age of the tree (origin/root height). The default is `false`.
+
+## Validation
+
+In the [`validation`](./validation) directory we validate the `BirthDeathModel` against the Heled and Drummond implementation of the Calibrated Birth-Death process and benchmark the performance. We also benchmark the likelihood calculation time on 93 real calibration analyses available on [phylodata](https://pypi.org/project/phylodata/).

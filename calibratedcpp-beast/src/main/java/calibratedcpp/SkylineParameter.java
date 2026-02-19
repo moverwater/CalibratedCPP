@@ -11,30 +11,30 @@ import beast.base.inference.parameter.RealParameter;
 
 @Description("Input for rate parameters in BirthDeathSkylineModel.")
 public class SkylineParameter extends BEASTObject {
-    public Input<RealParameter> ratesInput =
-            new Input<>("rates", "Value of the rates specified from root to present.", Input.Validate.REQUIRED);
+    public Input<RealParameter> valuesInput =
+            new Input<>("values", "Value of the rates specified from root to present.", Input.Validate.REQUIRED);
     public Input<RealParameter> changeTimesInput =
             new Input<>("changeTimes", "Value of the change times.", Input.Validate.OPTIONAL);
-    public Input<Boolean> relativeInput =
-            new Input<>("relative", "Boolean whether change times are relative to root height/origin. Default: false", false);
-    public Input<Boolean> reverseTimeInput =
-            new Input<>("reverseTime", "Boolean: true if change times are specified from present to root. Default: false", false);
+    public Input<Boolean> timesAreRelativeInput =
+            new Input<>("timesAreRelative", "Boolean whether change times are relative to root height/origin. Default: false", false);
+    public Input<Boolean> timesAreAgesInput =
+            new Input<>("timesAreAges", "Boolean: true if change times are specified from present to root. Default: false", false);
 
     public boolean isRelative;
     public boolean isReverse;
 
     @Override
     public void initAndValidate() {
-        isReverse = reverseTimeInput.get();
-        isRelative = relativeInput.get();
+        isReverse = timesAreAgesInput.get();
+        isRelative = timesAreRelativeInput.get();
 
-        if (ratesInput.get() != null) {
-            for (Double rate : ratesInput.get().getValues()){
-                if (rate < 0.0) throw new IllegalArgumentException("The rate " + ratesInput.get().getID() + " must be a non-negative number.");
+        if (valuesInput.get() != null) {
+            for (Double rate : valuesInput.get().getValues()){
+                if (rate < 0.0) throw new IllegalArgumentException("The rate " + valuesInput.get().getID() + " must be a non-negative number.");
             }
         }
         if (changeTimesInput.get() != null) {
-            if (changeTimesInput.get().getDimension() != ratesInput.get().getDimension() - 1) {
+            if (changeTimesInput.get().getDimension() != valuesInput.get().getDimension() - 1) {
                 throw new IllegalArgumentException("Change times of " + this.getID() + " should have dimension equal to the number of rates minus one.");
             }
             for (Double time : changeTimesInput.get().getValues()){

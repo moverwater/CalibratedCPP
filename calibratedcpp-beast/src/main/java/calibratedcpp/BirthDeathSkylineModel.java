@@ -50,7 +50,7 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
             // Check if the SkylineParameter itself exists
             if (sp != null) {
                 // Now it is safe to access fields
-                RealParameter rateP = sp.ratesInput.get();
+                RealParameter rateP = sp.valuesInput.get();
                 RealParameter timeP = sp.changeTimesInput.get();
 
                   if (rateP != null) {
@@ -250,14 +250,14 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     private List<Double> processSafe(Input<SkylineParameter> input, double maxT) {
         SkylineParameter sp = input.get();
         if (sp == null) return new ArrayList<>();
-        return processInput(sp.ratesInput, sp.changeTimesInput, sp.isRelative, sp.isReverse, maxT);
+        return processInput(sp.valuesInput, sp.changeTimesInput, sp.isRelative, sp.isReverse, maxT);
     }
 
     // Helper to get value without crashing on null inputs
     private double getValSafe(Input<SkylineParameter> input, List<Double> times, double t) {
         SkylineParameter sp = input.get();
-        if (sp == null || sp.ratesInput.get() == null) return 0.0;
-        return getVal(sp.ratesInput.get(), times, t);
+        if (sp == null || sp.valuesInput.get() == null) return 0.0;
+        return getVal(sp.valuesInput.get(), times, t);
     }
 
     // --- Math Helpers ---
