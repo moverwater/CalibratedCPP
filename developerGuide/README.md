@@ -69,3 +69,16 @@ The structure inside the BEAST2 library path should look like this:
 <a href="./figures/beastLib.png">
 <img src="./figures/beastLib.png"/>
 </a>
+
+### Code with BEAST package
+Zulu 17 with package `JDK FX`should be used as the SDK of the whole project. 
+Clone beast2 and beastFX repositories in your working directory:
+```angular2html
+git clone https://github.com/CompEvol/beast2.git
+git clone https://github.com/CompEvol/BeastFX.git
+```
+Add both of them in `project structure - modules`, then go to `calibratedcpp-beast` click `dependencies`.
+Add `beast2` and `beastFX` modules as dependencies, then click `Apply` on the bottom  right to use.
+
+If IDE throws error saying need to specify output path, then you can go to the `project structure - module`, and go into that module which throws an error.
+Go into `Path` and change the compiler output using their own module's output, and specify that with an absolute path.

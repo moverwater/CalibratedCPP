@@ -44,7 +44,7 @@ Calibrations can be viewed as calibration taxa names and the sampled ages.
 
 This subproject is converting Lphy simulators to XMLs for BEAST2 running:
 - The simulator set conditionOnCalibrations as true for default, users should manually modify this flag in the output XML to make it turn off.
-- Construct BirthDeathModel with birth death parameters and conditions on the origin of the tree.
+- Construct BirthDeathSkylineModel with birth death parameters and conditions on the origin of the tree. The birth and death rates are SkylineParameter, which allow users to specify how times varies. Default false as BEAST2 model, users can manually change the XML to turn them on.
 - Set calibrations in CalibrationPrior, taking upper and lower bounds of the calibration nodes that passed to ConditionedMRCAPrior.
 
 ## License

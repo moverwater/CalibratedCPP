@@ -4,7 +4,8 @@ import beast.base.core.BEASTInterface;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.parameter.RealParameter;
-import calibratedcpp.BirthDeathModel;
+import calibratedcpp.BirthDeathSkylineModel;
+import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibration.CalibrationClade;
@@ -20,11 +21,11 @@ import java.util.List;
 
 import static lphybeast.tobeast.TaxaUtils.getTaxonSet;
 
-public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, BirthDeathModel> {
+public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, BirthDeathSkylineModel> {
     List<TaxonSet> taxonSets = new ArrayList<>();
     @Override
-    public BirthDeathModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
-        BirthDeathModel model = new BirthDeathModel();
+    public BirthDeathSkylineModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
+        BirthDeathSkylineModel model = new BirthDeathSkylineModel();
         model.setInputValue("tree", value);
         boolean rootConditioned = generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
@@ -38,8 +39,15 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         }
 
         // get tree model
-        model.setInputValue("birthRate", context.getAsRealParameter(generator.getBirthRate()));
-        model.setInputValue("deathRate", context.getAsRealParameter(generator.getDeathRate()));
+        SkylineParameter b = new SkylineParameter();
+        b.setInputValue("values", context.getAsRealParameter(generator.getBirthRate()));
+        b.initAndValidate();
+        model.setInputValue("birthRate", b);
+
+        SkylineParameter d = new SkylineParameter();
+        d.setInputValue("values", context.getAsRealParameter(generator.getDeathRate()));
+        model.setInputValue("deathRate", d);
+
         model.setInputValue("rho", context.getAsRealParameter(generator.getSamplingProb()));
 
         // get clade calibrations
@@ -114,7 +122,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
     }
 
     @Override
-    public Class<BirthDeathModel> getBEASTClass() {
-        return BirthDeathModel.class;
+    public Class<BirthDeathSkylineModel> getBEASTClass() {
+        return BirthDeathSkylineModel.class;
     }
 }
