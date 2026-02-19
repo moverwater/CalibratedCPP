@@ -25,7 +25,7 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
     public Input<SkylineParameter> turnoverInput =
             new Input<>("turnover", "Skyline parameter for the turnover (µ/λ)", (SkylineParameter) null);
     public Input<RealParameter> samplingProbabilityInput =
-            new Input<>("rho", "Sampling probability (⍴)", RealParameter.class);
+            new Input<>("rho", "Sampling probability (⍴)", (RealParameter) null);
 
 
     protected double[] intervalStartTimes, lambda, r, cumulativeIntegral, cumulativeExpR;
@@ -68,6 +68,10 @@ public class BirthDeathSkylineModel extends CalibratedCoalescentPointProcess {
                     }
                 }
             }
+        }
+
+        if (samplingProbabilityInput.get() == null) {
+            throw new IllegalArgumentException("rho parameter must be specified.");
         }
 
         if (reproductiveNumberInput.get() != null && turnoverInput.get() != null)
