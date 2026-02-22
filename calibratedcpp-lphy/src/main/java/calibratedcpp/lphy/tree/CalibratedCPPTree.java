@@ -312,6 +312,17 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             // build relationship
             TimeTreeNode child_left = nodeList.get(j - 1);
             TimeTreeNode child_right = nodeList.get(j);
+            double biggerChildAge;
+            if (child_left.getAge() > child_right.getAge()) {
+                biggerChildAge = child_left.getAge();
+            } else{
+                biggerChildAge = child_right.getAge();
+            }
+
+            while (times.get(j) <= biggerChildAge) {
+                double time = sampleTimes(birthRate, deathRate,samplingProb, biggerChildAge, conditionAge, 1)[0];
+                times.set(j, time);
+            }
 
             TimeTreeNode parent = new TimeTreeNode(times.get(j));
             parent.addChild(child_left);
