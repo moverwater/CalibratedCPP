@@ -9,8 +9,6 @@ import lphy.core.model.annotation.ParameterInfo;
 import org.apache.commons.math3.distribution.BetaDistribution;
 import org.apache.commons.math3.distribution.NormalDistribution;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
 import java.util.*;
 
 import static calibratedcpp.lphy.prior.ConditionedPriorUtils.*;

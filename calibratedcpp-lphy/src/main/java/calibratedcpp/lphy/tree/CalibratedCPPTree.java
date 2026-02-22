@@ -128,7 +128,6 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         }
         int[] l = new int[m];
         List<Double> times = new ArrayList<>(Collections.nCopies(m, 0.0));
-        List<Double> nodeAges = new ArrayList<>(Collections.nCopies(m, 0.0));
         List<TimeTreeNode> nodeList = new ArrayList<>((Collections.nCopies(m, null)));
 
         // step3: calculate condition age (root or stem age)
@@ -177,7 +176,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             // step2: get sampled element
             // calculate weights
             double w = CDF(birthRate, deathRate, samplingProb, conditionAge) -
-                    CDF(birthRate, deathRate, samplingProb, cladeCalibrations.get(i).getAge());
+                    CDF(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge());
             // calculate score s for each node
             int[] s = calculateScore(A, m, times);
             // calculate weight for each node
@@ -209,21 +208,26 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             // put clade mrca into a list waiting for assign
             TimeTree subTree = calibratedCPPTree.sample().value();
             nodeList.set(l[i], subTree.getRoot());
+            times.set(l[i], subTree.getRoot().getAge());
 
             // step4: assign unresolved node times for l[i]
             // once done, remove l[i] from list A
             // deal with the nodes have l[i] still 0
             if (times.get(l[i]) == 0) {
-                double time = sampleTimes(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge(), conditionAge, 1)[0];
+                double time = -1.0;
+                while (Double.isNaN(time) || time == -1.0 || Double.isInfinite(time)) {
+                    time =sampleTimes(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge(), conditionAge, 1)[0];
+                }
                 times.set(l[i],time);
             }
 
             if (l[i] < m -1  && times.get(l[i] + 1) == 0 ) {
-                double time = sampleTimes(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge(), conditionAge, 1)[0];
+                double time = -1.0;
+                while (Double.isNaN(time) || time == -1.0 || Double.isInfinite(time)) {
+                    time =sampleTimes(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge(), conditionAge, 1)[0];
+                }
                 times.set(l[i] + 1, time);
             }
-
-            nodeAges.set(l[i], maximalCalibrations.get(i).getAge());
 
             // remove corresponding node in A
             A.remove(Integer.valueOf(l[i]));
@@ -306,7 +310,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             }
 
             // build relationship
-            TimeTreeNode child_left = nodeList.get(j-1);
+            TimeTreeNode child_left = nodeList.get(j - 1);
             TimeTreeNode child_right = nodeList.get(j);
 
             TimeTreeNode parent = new TimeTreeNode(times.get(j));
@@ -316,23 +320,19 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             child_left.setParent(parent);
             child_right.setParent(parent);
 
-            // give ages
-            child_left.setAge(nodeAges.get(j-1));
-            child_right.setAge(nodeAges.get(j));
-
             // adjust indices
-            nodeList.set(j-1, parent);
+            nodeList.set(j - 1, parent);
             nodeList.remove(j);
-
-            // set parent node to time of current node
-            nodeAges.set(j-1, times.get(j));
 
             // remove the time and age of the second node
             times.remove(j);
-            nodeAges.remove(j);
         }
 
         tree.setRoot(nodeList.get(0), true);
+        if (!rootConditioned && conditionAge != nodeList.get(0).getAge()) {
+            tree.getRoot().setRootStem(times.get(0));
+        }
+
         return new RandomVariable<>("CPPTree", tree, this);
     }
 
