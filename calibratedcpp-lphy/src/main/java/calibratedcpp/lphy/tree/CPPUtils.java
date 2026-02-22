@@ -29,7 +29,16 @@ public class CPPUtils {
     }
 
     public static double inverseCDF(double b, double d, double rho, double p) {
-        double t = Math.log(1 + ((b - d) * p) / (b * rho * (1 - p))) / (b - d);
+        double r = b - d;
+        double A = rho * b;
+        double t;
+
+        if (Math.abs(r) < 1e-10) {
+            t = p / (A * (1.0 - p));
+        } else {
+            t = Math.log(1 + ((b - d) * p) / (b * rho * (1 - p))) / (b - d);
+        }
+
         return t;
     }
 
@@ -50,13 +59,28 @@ public class CPPUtils {
         return density;
     }
 
-    public static double Qdist(double birthRate, double deathRate, double t, int nSims){
-        double p = birthRate *( 1 - Math.exp(- (birthRate - deathRate) * t))/(birthRate - deathRate * Math.exp(-(birthRate - deathRate)* t));
+    public static double Qdist(double b, double d, double t, int nSims){
+        double p;
+        double r = b - d;
+        if (Math.abs(r) < 1e-10) {
+            p = (b * t) / (1 + b * t);
+        } else if (r > 0) {
+            p = b * (1 - Math.exp(-r * t)) / (b - d * Math.exp(-r * t));
+        } else {
+            p = b * (Math.exp(r * t) - 1) / (b* Math.exp(r * t) -d );
+        }
         return Math.pow(p, nSims);
     }
 
-    public static double transform(double p, double birthRate, double deathRate, int nSims) {
-        double t = Math.log((deathRate * Math.pow(p, (double) 1 / nSims) - birthRate) / (birthRate * (Math.pow(p, (double) 1 / nSims) - 1))) / (birthRate - deathRate);
+    public static double transform(double p, double b, double d, int nSims) {
+        double t;
+        double r = b - d;
+        double u = Math.pow(p, 1.0/nSims);
+        if (Math.abs(r) < 1e-10) {
+            t = u / (b * (1 - u));
+        } else {
+           t = Math.log((d * Math.pow(p, (double) 1 / nSims) - b) / (b * (Math.pow(p, (double) 1 / nSims) - 1))) / r;
+        }
         return t;
     }
 
