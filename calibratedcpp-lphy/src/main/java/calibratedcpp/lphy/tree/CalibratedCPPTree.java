@@ -146,7 +146,14 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             if (getStemAge()!= null) {
                 conditionAge = getStemAge().value().doubleValue();
             } else {
-                conditionAge = simRandomStem(birthRate, deathRate, maximalCalibrations.get(0).getAge(), n);
+                int idx = 0;
+                while (Double.isNaN(conditionAge) || Double.isInfinite(conditionAge) || conditionAge == 0.0) {
+                    conditionAge = simRandomStem(birthRate, deathRate, maximalCalibrations.get(0).getAge(), n);
+                    idx++;
+                    if (idx > 200){
+                        throw new RuntimeException("The stem age cannot be sampled because of the bad parameter combination. Please provide a stemAge.");
+                    }
+                }
             }
         }
 
