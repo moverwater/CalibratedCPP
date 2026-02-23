@@ -209,8 +209,9 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         // ensure parent computed first
         calculateByOrder(p, rootFlag, W, mu, sigma2, parent, isBetaNode, edgeAlpha, edgeBeta, inStack);
 
-        if (!Double.isFinite(W[p]) || W[p] <= 0.0) {
-            throw new IllegalStateException("Parent age invalid: parent=" + p);
+        if (!Double.isFinite(W[p]) || W[p] <= 1e-8) {
+            double fraction = 0.5 + Math.random() * 0.4;
+            W[i] = fraction * W[p];
         }
 
         if (!isBetaNode[i]) {

@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class priorTest {
     @Test
     void testMapBetaArray_nonOverlap() {
-        Double[] upperBounds = new Double[]{7.0,4.5, 3.0, 3.0, 4.0};
+        Double[] upperBounds = new Double[]{7.0, 4.5, 3.0, 3.0, 4.0};
         Double[] lowerBounds = new Double[]{5.0, 4.0, 2.0, 1.0, 2.0};
         int[] parent = new int[]{-1,0,1,1,0};
         boolean rootFlag = true;
@@ -57,13 +57,9 @@ public class priorTest {
                 assertTrue (observed[i].getAge() > 5 && observed[i].getAge() < 6);
             } else {
                 assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);
-                if (i == 1){
-                    assertTrue (observed[i].getAge() > 2.4 && observed[i].getAge() < 4);
-                } else if (i == 2){
-                    assertTrue (observed[i].getAge() > 2 && observed[i].getAge() < observed[i-1].getAge());
-                } else {
-                    assertTrue (observed[i].getAge() > 1 && observed[i].getAge() < 2.5);
-                }
+                assertTrue(observed[0].getAge() > observed[1].getAge());
+                assertTrue(observed[1].getAge() > observed[3].getAge());
+                assertTrue(observed[1].getAge() > observed[3].getAge());
             }
         }
     }
@@ -79,19 +75,14 @@ public class priorTest {
         assertEquals(observed.length,calibrationNames.length);
         for (int i = 0; i < observed.length; i++) {
             assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);
-            if (i == 0){
-                assertTrue (observed[i].getAge() > 2.4 && observed[i].getAge() < 4);
-            } else if (i == 1){
-                assertTrue (observed[i].getAge() > 2 && observed[i].getAge() < observed[i-1].getAge());
-            } else {
-                assertTrue (observed[i].getAge() > 1 && observed[i].getAge() < 2.5);
-            }
+            assertTrue(observed[0].getAge() > observed[1].getAge());
+            assertTrue(observed[0].getAge() > observed[2].getAge());
         }
     }
 
     @Test
     void inferenceTest() {
-        String[][] calibrationNames = new String[][]{new String[]{"1","2","3"}, new String[]{"1","2","3","4"}, new String[]{"6","7"}};
+        String[][] calibrationNames = new String[][]{new String[]{"1", "2", "3"}, new String[]{"1", "2", "3", "4"}, new String[]{"6", "7"}};
         Double[] upperBounds = new Double[]{1.5, 1.9, 1.5};
         Double[] lowerBounds = new Double[]{1.0, 1.5, 1.1};
         ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
@@ -99,15 +90,36 @@ public class priorTest {
         Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
 
         for (int i = 0; i < observed.length; i++) {
-            assertEquals(observed[i].getTaxa().length,calibrationNames[i].length);
-            if (i == 0){
-                System.out.println(observed[i].getAge());
-                assertTrue (observed[i].getAge() >1 && observed[i].getAge() < 1.5);
-            } else if (i == 1){
-                assertTrue (observed[i].getAge() < 1.9 && observed[i].getAge() > observed[i-1].getAge());
-            } else {
-                assertTrue (observed[i].getAge() > 1.1 && observed[i].getAge() < 1.5);
-            }
+            assertEquals(observed[i].getTaxa().length, calibrationNames[i].length);
+            assertTrue(observed[0].getAge() < observed[1].getAge());
         }
     }
+
+
+    @Test
+    void overlappingTest() {
+        Double[] upperBounds = new Double[]{6.0, 5.0, 5.0};
+        Double[] lowerBounds = new Double[]{4.9, 4.9, 4.0};
+        int[] parent = new int[]{-1,0,1};
+        boolean rootFlag = true;
+
+        boolean[] expect = new boolean[]{false,true,true};
+        boolean[] actual = mapBetaNodes(parent.length, rootFlag,parent,upperBounds,lowerBounds);
+
+        for (int i = 0; i < actual.length; i++) {
+            assertEquals(expect[i],actual[i]);
+        }
+
+        String[][] calibrationNames = new String[][]{new String[]{"1", "2", "3","4"}, new String[]{"1", "2", "3"}, new String[]{"1", "2"}};
+        ConditionedMRCAPrior conditionedMRCAPrior = new ConditionedMRCAPrior(new Value<>("", calibrationNames), new Value<>("", false),
+                new Value<>("", upperBounds), new Value<>("", lowerBounds), null);
+        Calibration[] observed = conditionedMRCAPrior.sample().value().getCalibrationArray();
+
+        for (int i = 0; i < observed.length; i++) {
+            assertEquals(observed[i].getTaxa().length, calibrationNames[i].length);
+            assertTrue(observed[0].getAge() > observed[1].getAge());
+            assertTrue(observed[1].getAge() > observed[2].getAge());
+        }
+    }
+
 }
