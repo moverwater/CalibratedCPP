@@ -212,28 +212,20 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
                     new Value<>("n", maximalCalibrations.get(i).getTaxa().length),
                     new Value<>("", new CalibrationArray(clades)), null, null);
 
-            // put clade mrca into a list waiting for assign
+            // put clade into nodeList
             TimeTree subTree = calibratedCPPTree.sample().value();
             nodeList.set(l[i], subTree.getRoot());
-            times.set(l[i], subTree.getRoot().getAge());
+            double cladeAge = maximalCalibrations.get(i).getAge();
 
-            // step4: assign unresolved node times for l[i]
-            // once done, remove l[i] from list A
-            // deal with the nodes have l[i] still 0
-            if (times.get(l[i]) == 0) {
-                double time = -1.0;
-                while (Double.isNaN(time) || time == -1.0 || Double.isInfinite(time)) {
-                    time =sampleTimes(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge(), conditionAge, 1)[0];
-                }
-                times.set(l[i],time);
+            // sample times at l[i] and l[i]+1 conditioned to be older than the clade age,
+            // unless already set by a taller calibration (which is already old enough).
+            // times[0] is skipped as it will be set to conditionAge later.
+            if (l[i] > 0 && times.get(l[i]) == 0) {
+                times.set(l[i], sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0]);
             }
 
-            if (l[i] < m -1  && times.get(l[i] + 1) == 0 ) {
-                double time = -1.0;
-                while (Double.isNaN(time) || time == -1.0 || Double.isInfinite(time)) {
-                    time =sampleTimes(birthRate, deathRate, samplingProb, maximalCalibrations.get(i).getAge(), conditionAge, 1)[0];
-                }
-                times.set(l[i] + 1, time);
+            if (l[i] < m - 1 && times.get(l[i] + 1) == 0) {
+                times.set(l[i] + 1, sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0]);
             }
 
             // remove corresponding node in A
@@ -319,17 +311,6 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             // build relationship
             TimeTreeNode child_left = nodeList.get(j - 1);
             TimeTreeNode child_right = nodeList.get(j);
-            double biggerChildAge;
-            if (child_left.getAge() > child_right.getAge()) {
-                biggerChildAge = child_left.getAge();
-            } else{
-                biggerChildAge = child_right.getAge();
-            }
-
-            while (times.get(j) <= biggerChildAge) {
-                double time = sampleTimes(birthRate, deathRate,samplingProb, biggerChildAge, conditionAge, 1)[0];
-                times.set(j, time);
-            }
 
             TimeTreeNode parent = new TimeTreeNode(times.get(j));
             parent.addChild(child_left);

@@ -186,6 +186,55 @@ public class CPPTest {
     }
 
     @Test
+    void testSingleCalibration8Taxa() {
+        Value<Number> samplingProb = new Value<>("", 0.5);
+        Value<Number> birthRate = new Value<>("", 0.3);
+        Value<Number> deathRate = new Value<>("", 0.1);
+        Value<Integer> n = new Value<>("", 8);
+
+        // one calibrated clade of 4 taxa, 4 uncalibrated taxa outside
+        String[] cladeTaxa = new String[]{"a", "b", "c", "d"};
+        double cladeAge = 2.0;
+        Value<CalibrationArray> calibration = new Value<>("",
+                new CalibrationArray(new Calibration[]{new Calibration(cladeTaxa, cladeAge)}));
+
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
+
+        for (int iter = 0; iter < 100; iter++) {
+            TimeTree tree = cpp.sample().value();
+            System.out.println("Iteration " + iter + ": " + tree);
+
+            assertEquals(8, tree.getLeafNodes().size(), "Should have 8 leaves");
+
+            // check every internal node is older than its children
+            for (int i = 0; i < tree.getNodeCount(); i++) {
+                TimeTreeNode node = tree.getNodeByIndex(i);
+                for (TimeTreeNode child : node.getChildren()) {
+                    assertTrue(node.getAge() > child.getAge(),
+                            "Parent age " + node.getAge() + " must be > child age " + child.getAge()
+                                    + " at iteration " + iter + "\nTree: " + tree);
+                }
+            }
+
+            // check the calibrated clade exists with correct age and taxa
+            for (int i = 0; i < tree.getNodeCount(); i++) {
+                TimeTreeNode node = tree.getNodeByIndex(i);
+                if (!node.isLeaf()) {
+                    String[] leaves = node.getLeafNames();
+                    if (leaves.length == 4) {
+                        List<String> leafList = List.of(leaves);
+                        if (leafList.contains("a") && leafList.contains("b")
+                                && leafList.contains("c") && leafList.contains("d")) {
+                            assertEquals(cladeAge, node.getAge(), 1e-8,
+                                    "Calibrated clade MRCA should have age " + cladeAge);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     void testDeterministicFunctions() {
         double birthRate = 2.0;
         double deathRate = 1.0;
