@@ -1,0 +1,10 @@
+clade1=["1", "2"];
+taxaNames=["1", "2", "3","4"];
+
+rootAge ~ Uniform(lower=0.99, upper=1.01);
+taxaAge ~ Uniform(lower=0.09, upper=0.11);
+rootCalibration ~ MRCAPrior(age=rootAge, taxa=taxaNames);
+cladeCalibration ~ MRCAPrior(age=taxaAge, taxa=clade1);
+calibrations = toArray(calibration1 = rootCalibration, calibration2 = cladeCalibration);
+
+tree ~ CalibratedCPP(lambda=2, mu=0, rho=1, n=4, calibrations=calibrations);
