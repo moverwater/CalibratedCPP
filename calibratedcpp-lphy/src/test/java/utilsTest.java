@@ -29,8 +29,6 @@ public class utilsTest {
         int[] expected = new int[]{-1, 0,1,1,0};
         for (int i = 0; i < observed.length; i++) {
             assertEquals(expected[i], observed[i]);
-            System.out.println(observed[i]);
-            System.out.println(expected[i]);
         }
     }
 }

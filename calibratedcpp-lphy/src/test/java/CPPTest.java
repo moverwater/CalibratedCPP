@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static calibratedcpp.lphy.tree.CPPUtils.*;
+import static calibratedcpp.lphy.tree.CalibratedCPPTree.coalesce;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -102,14 +103,11 @@ public class CPPTest {
         Value<Number> birthRate = new Value("", 0.3);
         Value<Number> deathRate = new Value("", 0.1);
         Value<Integer> n = new Value("", 3);
-        Value<String[][]> cladeTaxa = new Value<>("", new String[][]{{"1", "2", "3"},{"1","2"}});
-        Value<Number[]> cladeMRCAAge = new Value<>("", new Number[]{2.0, 1.0});
         String[] taxa1 = new String[]{"1", "2", "3"};
         double age1 = 2.0;
         String[] taxa2 = new String[]{"1", "2"};
         double age2 = 1.0;
         Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)}));
-
 
         CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
         for (int j = 0; j < 10 ; j ++) {
@@ -163,7 +161,6 @@ public class CPPTest {
 
         CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
         TimeTree cppTree = cpp.sample().value();
-        System.out.println(cppTree);
 
         for (int i = 0; i < cppTree.getNodeCount(); i++) {
             TimeTreeNode node = cppTree.getNodeByIndex(i);
@@ -262,4 +259,89 @@ public class CPPTest {
             assertEquals(expect[i], results.get(i));
         }
     }
+
+    @Test
+    void testCoalesce() {
+        List<Double> times = new ArrayList<>();
+        times.add(4.0);
+        times.add(4.0);
+        times.add(2.0);
+        times.add(3.0);
+        times.add(1.0);
+
+        List<TimeTreeNode> nodeList = new ArrayList<>();
+        TimeTreeNode node0 = new TimeTreeNode(0.0);
+        TimeTreeNode node1 = new TimeTreeNode(0.0);
+        TimeTreeNode node2 = new TimeTreeNode(1.0);
+        TimeTreeNode node21 = new TimeTreeNode(0.0);
+        TimeTreeNode node22 = new TimeTreeNode(0.0);
+        node2.addChild(node21);
+        node2.addChild(node22);
+        TimeTreeNode node3 = new TimeTreeNode(0.0);
+        TimeTreeNode node4 = new TimeTreeNode(0.0);
+        nodeList.add(node0);
+        nodeList.add(node1);
+        nodeList.add(node2);
+        nodeList.add(node3);
+        nodeList.add(node4);
+
+        coalesce(nodeList, times);
+
+        // check ages for tips' parents
+        assertEquals(1, nodeList.size());
+        assertEquals(4.0, nodeList.get(0).getAge());
+        assertEquals(4.0, node0.getParent().getAge());
+        assertEquals(2.0, node1.getParent().getAge());
+        assertEquals(2.0, node2.getParent().getAge());
+        assertEquals(1.0, node3.getParent().getAge());
+        assertEquals(1.0, node4.getParent().getAge());
+
+        // check internal node ages
+        assertEquals(3.0, node3.getParent().getParent().getAge());
+        assertEquals(3.0, node1.getParent().getParent().getAge());
+        assertEquals(4.0, node2.getParent().getParent().getParent().getAge());
+    }
+
+    @Test
+    void testCoalesce2() {
+        List<Double> times = new ArrayList<>();
+        times.add(3.0);
+        times.add(1.5);
+        times.add(2.0);
+        times.add(3.0);
+        times.add(1.0);
+
+        List<TimeTreeNode> nodeList = new ArrayList<>();
+        TimeTreeNode node0 = new TimeTreeNode(0.0);
+        TimeTreeNode node1 = new TimeTreeNode(0.0);
+        TimeTreeNode node2 = new TimeTreeNode(1.0);
+        TimeTreeNode node21 = new TimeTreeNode(0.0);
+        TimeTreeNode node22 = new TimeTreeNode(0.0);
+        node2.addChild(node21);
+        node2.addChild(node22);
+        TimeTreeNode node3 = new TimeTreeNode(0.0);
+        TimeTreeNode node4 = new TimeTreeNode(0.0);
+        nodeList.add(node0);
+        nodeList.add(node1);
+        nodeList.add(node2);
+        nodeList.add(node3);
+        nodeList.add(node4);
+
+        coalesce(nodeList, times);
+
+        // check ages for tips' parents
+        assertEquals(1, nodeList.size());
+        assertEquals(3.0, nodeList.get(0).getAge());
+        assertEquals(1.5, node0.getParent().getAge());
+        assertEquals(1.5, node1.getParent().getAge());
+        assertEquals(2.0, node2.getParent().getAge());
+        assertEquals(1.0, node3.getParent().getAge());
+        assertEquals(1.0, node4.getParent().getAge());
+
+        // check internal node ages
+        assertEquals(3.0, node3.getParent().getParent().getAge());
+        assertEquals(2.0, node1.getParent().getParent().getAge());
+        assertEquals(3.0, node2.getParent().getParent().getAge());
+    }
+
 }

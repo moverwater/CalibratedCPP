@@ -204,93 +204,79 @@ public class CPPUtils {
 
     // returns list of booleans if clade contains cladeCalibrations.get(i) under the partial order of set inclusion
     public static boolean[] isSuperSetOf(Calibration clade, List<Calibration> cladeCalibrations) {
+
         Set<String> cladeTaxa = new HashSet<>(Arrays.asList(clade.getTaxa()));
 
-        // Prepare result array
         boolean[] result = new boolean[cladeCalibrations.size()];
-        int i = 0;
 
-        // Check each calibration to see if it's a subset of cladeTaxa
-        for (Calibration entry : cladeCalibrations) {
-            // assume it is super set, unless check unique names
-            boolean isSuperSet = true;
+        for (int i = 0; i < cladeCalibrations.size(); i++) {
 
-            for (String taxon : entry.getTaxa()) {
-                if (!cladeTaxa.contains(taxon)) {
-                    isSuperSet = false;
-                    break;
-                }
-            }
+            Calibration entry = cladeCalibrations.get(i);
+            Set<String> entryTaxa = new HashSet<>(Arrays.asList(entry.getTaxa()));
 
-            result[i] = isSuperSet;
-            i++;
-        }
-        // check the ages, superset should be older
-        for (int j = 0; j < result.length; j++) {
-            if (result[j]) {
-                if (clade.getAge() != null) {
-                    double supersetAge = clade.getAge();
-                    double subsetAge = cladeCalibrations.get(j).getAge();
+            boolean isStrictSubset =
+                    entryTaxa.size() < cladeTaxa.size() &&
+                            cladeTaxa.containsAll(entryTaxa);
 
-                    if (supersetAge < subsetAge) {
-                        throw new IllegalArgumentException(
-                                "Superset clade " + Arrays.toString(clade.getTaxa()) +
-                                        " has age " + supersetAge +
-                                        " which is younger than its subset calibration clade " +
-                                        Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
-                                        " with age " + subsetAge +
-                                        ". Please double check the clade ages."
-                        );
-                    }
+            result[i] = isStrictSubset;
+
+            if (isStrictSubset && clade.getAge() != null) {
+                double supersetAge = clade.getAge();
+                double subsetAge = entry.getAge();
+
+                if (supersetAge < subsetAge) {
+                    throw new IllegalArgumentException(
+                            "Superset clade " + Arrays.toString(clade.getTaxa()) +
+                                    " has age " + supersetAge +
+                                    " which is younger than its subset calibration clade " +
+                                    Arrays.toString(entry.getTaxa()) +
+                                    " with age " + subsetAge +
+                                    ". Please double check the clade ages."
+                    );
                 }
             }
         }
 
         return result;
     }
-    // returns list of TRUE if clade is subset of cladeCalibrations.get(i) under the partial order of set inclusion
+
+    // returns TRUE iff clade is a STRICT subset of cladeCalibrations.get(i)
     public static boolean[] isSubsetOf(Calibration clade, List<Calibration> cladeCalibrations) {
-        // Prepare result array
+
+        Set<String> cladeSet = new HashSet<>(Arrays.asList(clade.getTaxa()));
+
         boolean[] result = new boolean[cladeCalibrations.size()];
-        int i = 0;
 
-        // For each calibration, check if clade is a subset
-        for (Calibration entry : cladeCalibrations) {
-            Set<String> calibrationSet = new HashSet<>(Arrays.asList(entry.getTaxa()));
-            boolean isSubset = true;
+        for (int i = 0; i < cladeCalibrations.size(); i++) {
 
-            for (String taxon : clade.getTaxa()) {
-                if (!calibrationSet.contains(taxon)) {
-                    isSubset = false;
-                    break;
-                }
-            }
+            Calibration entry = cladeCalibrations.get(i);
+            Set<String> entrySet = new HashSet<>(Arrays.asList(entry.getTaxa()));
 
-            result[i] = isSubset;
-            i++;
-        }
+            // strict subset: clade ⊂ entry
+            boolean isStrictSubset =
+                    cladeSet.size() < entrySet.size() &&
+                            entrySet.containsAll(cladeSet);
 
-        // check ages
-        // If there's a superset calibration, check ages: subset clade must not be older than superset
-        for (int j = 0; j < result.length; j++) {
-            if (result[j]) {
-                if (clade.getAge() != null) {
-                    double supersetAge = cladeCalibrations.get(j).getAge();
-                    double subsetAge = clade.getAge();
+            result[i] = isStrictSubset;
 
-                    if (subsetAge > supersetAge) {
-                        throw new IllegalArgumentException(
-                                "Clade " + Arrays.toString(clade.getTaxa()) +
-                                        " has age " + subsetAge +
-                                        " which is older than its superset calibration clade " +
-                                        Arrays.toString(cladeCalibrations.get(j).getTaxa()) +
-                                        " with age " + supersetAge +
-                                        ". Please double check the clade ages."
-                        );
-                    }
+            // age check: subset (clade) must not be older than its superset (entry)
+            if (isStrictSubset && clade.getAge() != null) {
+                double supersetAge = entry.getAge();
+                double subsetAge = clade.getAge();
+
+                if (subsetAge > supersetAge) {
+                    throw new IllegalArgumentException(
+                            "Clade " + Arrays.toString(clade.getTaxa()) +
+                                    " has age " + subsetAge +
+                                    " which is older than its superset calibration clade " +
+                                    Arrays.toString(entry.getTaxa()) +
+                                    " with age " + supersetAge +
+                                    ". Please double check the clade ages."
+                    );
                 }
             }
         }
+
         return result;
     }
 
@@ -329,7 +315,7 @@ public class CPPUtils {
             Calibration current = cladeCalibrations.get(i);
             // check if there's a subset of the calibrations
             boolean[] results = isSubsetOf(current, cladeCalibrations);
-            if (checkTrues(results).size() == 1) {
+            if (checkTrues(results).isEmpty()) {
                 maximalCalibrations.add(current);
             }
         }
