@@ -45,7 +45,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         if (calibrations == null){
             throw new NullPointerException("Calibrations should not be null!");
         }
-        if (stemAge != null) {
+        if (stemAge != null && calibrations.value().getCalibrationArray()[0].getTaxa().length == n.value()) {
             LoggerUtils.log.warning("Stem age will be ignored if root calibration is provided.");
         }
 
@@ -336,7 +336,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
 
         tree.setRoot(nodeList.get(0), true);
         if (!rootConditioned && conditionAge != nodeList.get(0).getAge()) {
-            tree.getRoot().setRootStem(times.get(0) - nodeList.get(0).getAge());
+            tree.getRoot().setRootStem(times.get(0) );
         }
 
         return new RandomVariable<>("CPPTree", tree, this);

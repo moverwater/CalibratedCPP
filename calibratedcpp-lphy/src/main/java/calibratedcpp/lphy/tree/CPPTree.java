@@ -186,9 +186,8 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
 
         // if tree has a stem
         if (t.size() > nodeAges.size()){
-            // get a new node for the stem
-            double stemLength = t.get(0) - nodeAges.get(0);
-            tree.getRoot().setRootStem(stemLength);
+            // get a label for the stem
+            tree.getRoot().setRootStem(t.get(0));
         }
         return tree;
     }
