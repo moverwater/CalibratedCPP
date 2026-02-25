@@ -17,6 +17,6 @@ model {
     lambda ~ Uniform(lower=0.0, upper=10.0);
     mu ~ Uniform(lower=0.0, upper=10.0);
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], upperBounds=[4.2,1.5,1.9,1.5], lowerBounds=[3.5,1.0,1.5,1.1]);
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[4.2,1.5,1.9,1.5], lowerBounds=[3.5,1.0,1.5,1.1]);
     tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=100, rho=0.1);
 }
