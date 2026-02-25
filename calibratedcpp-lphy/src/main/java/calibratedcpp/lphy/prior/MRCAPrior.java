@@ -3,6 +3,7 @@ package calibratedcpp.lphy.prior;
 import lphy.core.model.GenerativeDistribution;
 import lphy.core.model.RandomVariable;
 import lphy.core.model.Value;
+import lphy.core.model.annotation.GeneratorInfo;
 import lphy.core.model.annotation.ParameterInfo;
 
 import java.util.Map;
@@ -25,6 +26,7 @@ public class MRCAPrior implements GenerativeDistribution<Calibration> {
         this.taxonSet = taxonSet;
     }
 
+    @GeneratorInfo(name = "MRCAPrior", description = "")
     @Override
     public RandomVariable<Calibration> sample() {
         double age = getAge().value();

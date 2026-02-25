@@ -4,7 +4,6 @@ import lphy.core.logger.TextFileFormatted;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 public class CalibrationArray implements TextFileFormatted {
@@ -15,6 +14,19 @@ public class CalibrationArray implements TextFileFormatted {
 
     public Calibration[] getCalibrationArray() {
         return array;
+    }
+
+    public void addCalibrationToArray(Calibration cali){
+        Calibration[] oldArray = array;
+        Calibration[] newArray = new Calibration[oldArray.length + 1];
+        for (int i = 0; i < oldArray.length; i++) {
+            newArray[i] = oldArray[i];
+        }
+        newArray[oldArray.length] = cali;
+    }
+
+    public void addCalibration(Calibration cali){
+        addCalibrationToArray(cali);
     }
 
     @Override

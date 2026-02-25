@@ -1,0 +1,6 @@
+clade1=["leaf_1", "leaf_2"];
+
+cladeCalibration ~ MRCAPrior(age=0.1, taxa=clade1);
+calibrations = toArray(calibration1 = cladeCalibration);
+
+tree ~ CalibratedCPP(lambda=2, mu=0, rho=1, n=4, calibrations=calibrations, stemAge=1);
