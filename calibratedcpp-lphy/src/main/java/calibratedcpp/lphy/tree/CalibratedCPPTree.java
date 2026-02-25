@@ -231,22 +231,22 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
                 // times[0] is skipped as it will be set to conditionAge later.
                 if (l[i] > 0 && times.get(l[i]) == 0) {
                     times.set(l[i], sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0]);
-                } else if (l[i] > 0 && times.get(l[i]) > 0) {
-                    // resample a time and check if this is taller or the
-                    double resampleTime = sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0];
-                    if (resampleTime > times.get(l[i])) {
-                    times.set(l[i], resampleTime);
-                } // otherwise, keep that taller time
-            }
+                }// else if (l[i] > 0 && times.get(l[i]) > 0) {
+//                    // resample a time and check if this is taller or the
+//                    double resampleTime = sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0];
+//                    if (resampleTime > times.get(l[i])) {
+//                    times.set(l[i], resampleTime);
+//                } // otherwise, keep that taller time
+//            }
 
             if (l[i] < m - 1 && times.get(l[i] + 1) == 0) {
                 times.set(l[i] + 1, sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0]);
-            } else if (l[i] < m - 1 && times.get(l[i] + 1) > 0) {
-                double resampleTime = sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0];
-                if (resampleTime > times.get(l[i] + 1)) {
-                    times.set(l[i] + 1, resampleTime);
-                } // otherwise, keep that taller time
-            }
+            } // else if (l[i] < m - 1 && times.get(l[i] + 1) > 0) {
+//                double resampleTime = sampleTimes(birthRate, deathRate, samplingProb, cladeAge, conditionAge, 1)[0];
+//                if (resampleTime > times.get(l[i] + 1)) {
+//                    times.set(l[i] + 1, resampleTime);
+//                } // otherwise, keep that taller time
+//            }
 
             // remove corresponding node in A
             A.remove(Integer.valueOf(l[i]));
