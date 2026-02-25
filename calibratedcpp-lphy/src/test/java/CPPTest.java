@@ -344,4 +344,36 @@ public class CPPTest {
         assertEquals(3.0, node2.getParent().getParent().getAge());
     }
 
+    @Test
+    void testDuplicateNames() {
+        Value<Number> samplingProb = new Value("", 0.2);
+        Value<Number> birthRate = new Value("", 0.3);
+        Value<Number> deathRate = new Value("", 0.1);
+        Value<Integer> n = new Value("", 7);
+        String[] taxa = new String[]{"1", "2", "3"};
+        String[] taxa2 = new String[]{"4","5"};
+        double age = 2.0;
+        Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa, age), new Calibration(taxa2, 3.0)}));
+
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, new Value<>("", 8.0));
+        TimeTree cppTree = cpp.sample().value();
+        String[] taxaNames = cppTree.getTaxaNames();
+
+        // containing name 0-5
+        boolean containsDigit0to5 = Arrays.stream(taxaNames)
+                .anyMatch(name -> name.matches(".*[0-5].*"));
+        assertTrue(containsDigit0to5);
+
+        // containing name 1_1
+        boolean hasLeaf1 = false;
+
+        for (String name : taxaNames) {
+            if (name.equals("1_2")) {
+                hasLeaf1 = true;
+                break;
+            }
+        }
+
+        assertTrue(hasLeaf1);
+    }
 }

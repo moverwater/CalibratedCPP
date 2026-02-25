@@ -323,7 +323,16 @@ public class CPPUtils {
         return maximalCalibrations;
     }
 
-
+    public static String makeUnique(String base, Set<String> used) {
+        String name = base;
+        int k = 2;
+        while (used.contains(name)) {
+            name = base + "_" + k;
+            k++;
+        }
+        used.add(name);
+        return name;
+    }
 
 
 }
