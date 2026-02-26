@@ -1,0 +1,41 @@
+<beast version='2.0'
+       namespace='beastfx.app.beauti:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.branchratemodel:beast.base.evolution.speciation:beast.base.evolution.tree.coalescent:beast.base.util:beast.base.math:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.evolution:beast.base.inference.distribution'>
+
+
+
+       
+    <!-- tree priors -->
+    <mergewith point='treePriorTemplates'>
+        <!-- Yule -->
+        <subtemplate id='YuleModel' class='beast.base.evolution.speciation.YuleModel' mainid='CalibratedCPP.t:$(n)' hmc='
+CalibratedCPPOperator/index/=Operators/BactrianNodeOperator/,
+CalibratedCPPSubtreeSlide/index/=Operators/SubtreeSlide/,
+CalibratedCPPNarrow/index/=Operators/Exchange/,
+CalibratedCPPWide/index/=Operators/Exchange/,
+CalibratedCPPWilsonBalding/index/=Operators/WilsonBalding/,
+CalibratedCPPBICEPSEpochTop/index/=Operators/EpochFlexer/,
+CalibratedCPPBICEPSEpochAll/index/=Operators/EpochFlexer/,
+CalibratedCPPBICEPSTreeFlex/index/=Operators/TreeStretcher/,
+CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
+'>
+            <![CDATA[
+            <distribution spec="calibrationprior.CalibrationPrior" id="CalibratedCPP.t:$(n)" tree="@Tree.t:$(n)">
+            </distribution>
+
+]]>
+			<plate fragment="TreeOperators" var="m" range="CalibratedCPP"/>
+
+            <connect srcID='CalibratedCPP.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>CalibratedCPP
+                speciation prior on tree t:$(n)
+            </connect>
+
+            <connect srcID='CalibratedCPP.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+
+        </subtemplate>
+
+    </mergewith>
+</beast>
+
+
