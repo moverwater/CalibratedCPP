@@ -13,5 +13,6 @@
         <provider classname="calibration.CalibrationNode"/>
         <provider classname="calibration.CalibrationClade"/>
         <provider classname="calibration.CalibrationForest"/>
+        <provider classname="calibratedcpp.beauti.CalibratedCPPInputEditor"/>
     </service>
 </package>

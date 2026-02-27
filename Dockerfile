@@ -13,14 +13,23 @@ RUN sed -i '/<parent>/,/<\/parent>/d' pom.xml
 RUN sed -i '/<artifactId>calibratedcpp-beast<\/artifactId>/i <groupId>io.github.linguaphylo<\/groupId>' pom.xml && \
     sed -i 's/<version>${revision}<\/version>/<version>0.0.1<\/version>/' pom.xml
 
-# 3. INJECT JUnit 5 Dependency (The Fix)
-# We find the <dependencies> tag and append the JUnit XML block right after it.
+# 3. INJECT JUnit 5 and JavaFX Dependencies safely in one block
 RUN sed -i '/<dependencies>/a \
     <dependency> \
         <groupId>org.junit.jupiter</groupId> \
         <artifactId>junit-jupiter</artifactId> \
         <version>5.10.2</version> \
         <scope>test</scope> \
+    </dependency> \
+    <dependency> \
+        <groupId>org.openjfx</groupId> \
+        <artifactId>javafx-controls</artifactId> \
+        <version>21.0.1</version> \
+    </dependency> \
+    <dependency> \
+        <groupId>org.openjfx</groupId> \
+        <artifactId>javafx-web</artifactId> \
+        <version>21.0.1</version> \
     </dependency>' pom.xml
 
 # 4. Install local JARs
