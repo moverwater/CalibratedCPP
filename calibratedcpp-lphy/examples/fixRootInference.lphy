@@ -1,8 +1,8 @@
 data {
-  clade1 = ["45", "46", "47"];
-  clade2 = ["45", "46", "47", "48", "49"];
-  clade3 = ["87", "88"];
-  taxaNames = ["0", "1", "2", "3","4","5","6","7","8","9",
+    clade1 = ["45", "46", "47", "48", "49", "50", "51"];
+    clade2 = ["45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55"];
+    clade3 = ["87", "88", "89", "90"];
+    taxaNames = ["0", "1", "2", "3","4","5","6","7","8","9",
     "10", "11", "12", "13","14","15","16","17","18","19",
     "20", "21", "22", "23","24","25","26","27","28","29",
     "30", "31", "32", "33","34","35","36","37","38","39",
@@ -17,6 +17,6 @@ model {
     lambda ~ Uniform(lower=0.0, upper=10.0);
     mu ~ Uniform(lower=0.0, upper=10.0);
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[4.2,1.5,1.9,1.5], lowerBounds=[3.5,1.0,1.5,1.1]);
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[3.01,1.21,1.51,2.01], lowerBounds=[2.99,1.19,1.49,1.99]);
     tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=100, rho=0.1);
 }

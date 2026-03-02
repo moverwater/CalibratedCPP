@@ -1,12 +1,12 @@
 data {
-  clade1 = ["leaf_45", "leaf_46", "leaf_47"];
-  clade2 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49"];
-  clade3 = ["leaf_87", "leaf_88"];
+    clade1 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51"];
+    clade2 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51", "leaf_52", "leaf_53", "leaf_54", "leaf_55"];
+    clade3 = ["leaf_87", "leaf_88", "leaf_89", "leaf_90"];
 }
 model {
     lambda ~ Uniform(lower=0.0, upper=10.0);
     mu ~ Uniform(lower=0.0, upper=10.0);
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2,clade3], upperBounds=[1.5,1.9,1.5], lowerBounds=[1.0,1.5,1.1]);
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2,clade3],upperBounds=[1.21,1.51,2.01], lowerBounds=[1.19,1.49,1.99]);
     tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=100, rho=0.1, stemAge=3);
 }
