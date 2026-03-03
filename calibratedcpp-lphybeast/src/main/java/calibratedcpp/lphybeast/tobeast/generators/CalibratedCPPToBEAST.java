@@ -22,9 +22,9 @@ import java.util.List;
 import static lphybeast.tobeast.TaxaUtils.getTaxonSet;
 
 public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, CalibratedBirthDeathSkylineModel> {
-    List<TaxonSet> taxonSets = new ArrayList<>();
     @Override
     public CalibratedBirthDeathSkylineModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
+        List<TaxonSet> taxonSets = new ArrayList<>();
         CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
         model.setInputValue("tree", value);
         boolean rootConditioned = generator.getRootCondition();
@@ -83,7 +83,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         } else {
             covInput = new Value<>("", 0.9);
         }
-        List<CalibrationCladePrior> cladeInput = getCalibrationCladePriors(covInput, calibrationsFromGenerator, upperBoundsInput, lowerBoundsInput);
+        List<CalibrationCladePrior> cladeInput = getCalibrationCladePriors(covInput, calibrationsFromGenerator, upperBoundsInput, lowerBoundsInput, taxonSets);
         calibrationPrior.setInputValue("calibration", cladeInput);
         calibrationPrior.initAndValidate();
 
@@ -93,7 +93,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         return model;
     }
 
-    private List<CalibrationCladePrior> getCalibrationCladePriors(Value<Double> covInput, Calibration[] calibrationsFromGenerator, Value<Double[]> upperBoundsInput, Value<Double[]> lowerBoundsInput) {
+    private List<CalibrationCladePrior> getCalibrationCladePriors(Value<Double> covInput, Calibration[] calibrationsFromGenerator, Value<Double[]> upperBoundsInput, Value<Double[]> lowerBoundsInput, List<TaxonSet> taxonSets) {
         RealParameter confidenceLevel = new RealParameter(new Double[]{covInput.value()});
 
         List<CalibrationCladePrior> cladeInput = new ArrayList<>();
