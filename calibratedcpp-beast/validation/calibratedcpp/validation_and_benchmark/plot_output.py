@@ -8,7 +8,7 @@ SCRIPT_DIR = Path(__file__).parent
 BENCH_CSV = SCRIPT_DIR / "benchmark_results.csv"
 COMP_CSV = SCRIPT_DIR / "validation_results.csv"
 README_PATH = SCRIPT_DIR / "README.md"
-PLOT_PATH = SCRIPT_DIR / "combined_benchmark_validation.png"
+PLOT_PATH = SCRIPT_DIR / "combined_benchmark_validation.svg"
 
 # Style configuration
 COLORS = {"Calibrated CPP": "black", "Heled & Drummond": "red"}

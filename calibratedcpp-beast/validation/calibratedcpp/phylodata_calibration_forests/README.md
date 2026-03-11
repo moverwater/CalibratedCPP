@@ -33,6 +33,8 @@ Annotated Newick format with BEAST-style metadata:
 
 All 93 constraint trees benchmark successfully with CalibratedCoalescentPointProcess.
 
+![](./benchmark_analysis_plot.svg)
+
 **Regression model** (R² = 0.99):
 ```
 time(μs) = 0.010 × complexity + 0.070 × taxa + 94.3
