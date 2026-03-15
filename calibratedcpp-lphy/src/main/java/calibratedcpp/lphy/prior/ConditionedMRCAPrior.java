@@ -200,7 +200,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         NormalDistribution nd = new NormalDistribution(0, 1);
 
         // root or no parent → plain lognormal
-        if (p == -1 || (rootFlag && i == 0)) {
+        if (p == -1) {
             W[i] = Math.exp(mu[i] + Math.sqrt(sigma2[i]) * nd.sample());
             inStack[i] = false;
             return;
@@ -210,8 +210,9 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         calculateByOrder(p, rootFlag, W, mu, sigma2, parent, isBetaNode, edgeAlpha, edgeBeta, inStack);
 
         if (!Double.isFinite(W[p]) || W[p] <= 1e-8) {
-            double fraction = 0.5 + Math.random() * 0.4;
-            W[i] = fraction * W[p];
+            W[i] = (0.5 + Math.random() * 0.4) * Math.max(W[p], 1e-6);
+            inStack[i] = false;
+            return;
         }
 
         if (!isBetaNode[i]) {
@@ -248,9 +249,6 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
             }
         }
 
-        // beta_params <- lapply(...)
-
-
         for (int j = 0; j < nEdges; j++) {
             double[] ab = invertLogMomentsToBeta(m_hat[j], v_hat[j]);
             edgeAlpha.put(edgeNames[j], ab[0]);
@@ -273,7 +271,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         Arrays.fill(is_beta_node, true);
 
         for (int i = 0; i < n; i++) {
-            if (rootFlag && i==0) {
+            if (rootFlag && i == 0) {
                 is_beta_node[i] = false; // root is always lognormal
                 continue;
             }

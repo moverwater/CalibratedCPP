@@ -19,8 +19,6 @@ public class priorTest {
         boolean[] actual = mapBetaNodes(parent.length, rootFlag,parent,upperBounds,lowerBounds);
 
         for (int i = 0; i < actual.length; i++) {
-//            System.out.println(actual[i]);
-//            System.out.println(expect[i]);
             assertEquals(expect[i],actual[i]);
         }
     }
@@ -36,8 +34,39 @@ public class priorTest {
         boolean[] actual = mapBetaNodes(parent.length, rootFlag,parent,upperBounds,lowerBounds);
 
         for (int i = 0; i < actual.length; i++) {
-//            System.out.println("actual: " + actual[i]);
-//            System.out.println("expect: " + expect[i]);
+            assertEquals(expect[i],actual[i]);
+        }
+    }
+
+
+    @Test
+    void testExample() {
+        // without root calibration
+        Double[] upperBounds = new Double[]{5.0, 5.0, 5.0, 5.0, 6.0};
+        Double[] lowerBounds = new Double[]{4.0, 4.0, 4.8, 4.8, 4.9};
+        int[] parent = new int[]{2, 3, -1, 4, -1};
+        boolean rootFlag = false;
+
+        boolean[] expect = new boolean[]{true,true,false,true,false};
+        boolean[] actual = mapBetaNodes(parent.length, rootFlag, parent, upperBounds, lowerBounds);
+
+        for (int i = 0; i < actual.length; i++) {
+            assertEquals(expect[i],actual[i]);
+        }
+    }
+
+    @Test
+    void testExample2() {
+        // with root calibration
+        Double[] upperBounds = new Double[]{6.0, 5.0, 5.0};
+        Double[] lowerBounds = new Double[]{4.9, 4.0, 4.8};
+        int[] parent = new int[]{-1, 2, 0};
+        boolean rootFlag = true;
+
+        boolean[] expect = new boolean[]{false, true, true};
+        boolean[] actual = mapBetaNodes(parent.length, rootFlag, parent, upperBounds, lowerBounds);
+
+        for (int i = 0; i < actual.length; i++) {
             assertEquals(expect[i],actual[i]);
         }
     }
@@ -121,5 +150,4 @@ public class priorTest {
             assertTrue(observed[1].getAge() > observed[2].getAge());
         }
     }
-
 }
