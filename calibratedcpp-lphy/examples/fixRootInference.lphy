@@ -1,6 +1,6 @@
 data {
     clade1 = ["45", "46", "47", "48", "49", "50", "51"];
-    clade2 = ["45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55"];
+    clade2 = ["45", "46", "47", "48", "49", "50", "51", "52"];
     clade3 = ["87", "88", "89", "90"];
     taxaNames = ["0", "1", "2", "3","4","5","6","7","8","9",
     "10", "11", "12", "13","14","15","16","17","18","19",
@@ -12,11 +12,22 @@ data {
     "70", "71", "72", "73","74","75","76","77","78","79",
     "80", "81", "82", "83","84","85","86","87","88","89",
     "90", "91", "92", "93","94","95","96","97","98","99"];
+    L = 200;
+
 }
 model {
-    lambda ~ Uniform(lower=0.0, upper=10.0);
-    mu ~ Uniform(lower=0.0, upper=10.0);
+    turnover ~ Beta(alpha=2.0, beta=2.0);
+    rho = 1.0;
+    diversification ~ LogNormal(meanlog=-0.5, sdlog=0.5);
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[3.01,1.21,1.51,2.01], lowerBounds=[2.99,1.19,1.49,1.99]);
-    tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=100, rho=0.1);
+
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[3.01,0.34,0.88,0.35], lowerBounds=[2.99,0.32,0.86,0.33]);
+    tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho);
+
+    // GTR substitution model
+    π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
+    rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
+    Q = gtr(rates=rates, freq=π);
+
+    D ~ PhyloCTMC(L = L, Q = Q, mu = 0.05, tree = tree);
 }

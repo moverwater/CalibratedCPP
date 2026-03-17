@@ -1,12 +1,22 @@
 data {
-    clade1 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51"];
+    clade1 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50"];
     clade2 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51", "leaf_52", "leaf_53", "leaf_54", "leaf_55"];
     clade3 = ["leaf_87", "leaf_88", "leaf_89", "leaf_90"];
+     L = 200;
 }
 model {
-    lambda ~ Uniform(lower=0.0, upper=10.0);
-    mu ~ Uniform(lower=0.0, upper=10.0);
+    turnover ~ Beta(alpha=2.0, beta=2.0);
+   rho = 1.0;
+   diversification ~ LogNormal(meanlog=-0.5, sdlog=0.5);
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2,clade3],upperBounds=[1.21,1.51,2.01], lowerBounds=[1.19,1.49,1.99]);
-    tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=100, rho=0.1, stemAge=3);
+
+   calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], upperBounds=[0.34,0.88,0.35], lowerBounds=[0.32,0.86,0.33]);
+   tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho);
+
+    // GTR substitution model
+    π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
+    rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
+    Q = gtr(rates=rates, freq=π);
+
+    D ~ PhyloCTMC(L = L, Q = Q, mu = 0.05, tree = tree);
 }

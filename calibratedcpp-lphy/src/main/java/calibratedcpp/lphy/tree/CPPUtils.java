@@ -8,6 +8,13 @@ import java.util.*;
        The mathematical and sampling methods for CPP
     */
 public class CPPUtils {
+    // resolve bd rates from diversification and turnover rates
+    public static double[] getBD(double d, double t) {
+        double lambda = d / (1.0 - t);
+        double mu = d * t / (1.0 - t);
+        return new double[]{lambda, mu};
+    }
+
     // ****** mathematical methods ******
     public static double CDF(double b, double d, double rho, double t) {
         double p;

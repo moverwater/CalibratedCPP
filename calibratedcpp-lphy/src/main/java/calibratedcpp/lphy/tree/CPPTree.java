@@ -23,6 +23,8 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
     Value<Number> rootAge;
     Value<Number> birthRate;
     Value<Number> deathRate;
+    Value<Number> diversification;
+    Value<Number> turnover;
     Value<Number> rho;
     Value<Integer> n;
     Value<String[]> taxa;
@@ -30,16 +32,27 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
     double conditionAge;
     public final String randomStemAgeName = "randomStemAge";
 
-    public CPPTree(@ParameterInfo(name = BirthDeathConstants.lambdaParamName, description = "per-lineage birth rate.") Value<Number> birthRate,
-                   @ParameterInfo(name = BirthDeathConstants.muParamName, description = "per-lineage death rate.") Value<Number> deathRate,
+    public CPPTree(@ParameterInfo(name = BirthDeathConstants.lambdaParamName, description = "per-lineage birth rate.", optional = true) Value<Number> birthRate,
+                   @ParameterInfo(name = BirthDeathConstants.muParamName, description = "per-lineage death rate.", optional = true) Value<Number> deathRate,
+                   @ParameterInfo(name = BirthDeathConstants.diversificationParamName, description = "diversification rate (lambda - mu), optional alternative to lambda/mu.", optional = true) Value<Number> diversification,
+                   @ParameterInfo(name = BirthDeathConstants.turnoverParamName, description = "turnover (mu/lambda), optional alternative to lambda/mu.", optional = true) Value<Number> turnover,
                    @ParameterInfo(name = BirthDeathConstants.rhoParamName, description = "sampling probability") Value<Number> rho,
                    @ParameterInfo(name = TaxaConditionedTreeGenerator.taxaParamName, description = "name for passed in taxa", optional = true) Value<String[]> taxa,
                    @ParameterInfo(name = DistributionConstants.nParamName, description = "the total number of taxa.", optional = true) Value<Integer> n,
                    @ParameterInfo(name = BirthDeathConstants.rootAgeParamName, description = "the root age to be conditioned on optional.", optional = true) Value<Number> rootAge,
                    @ParameterInfo(name = randomStemAgeName, description = "the age of stem of the tree root, default has no stem", optional = true)Value<Boolean> randomStemAge) {
+        // we should have either bd rates or diversification rates and turn over
+        boolean hasBD = birthRate != null && deathRate != null;
+        boolean hasDT = diversification != null && turnover != null;
+        if (!hasBD && !hasDT)
+            throw new IllegalArgumentException("Must specify either (lambda + mu) or (diversification + turnover).");
+        if (hasBD && hasDT)
+            throw new IllegalArgumentException("Cannot specify both (lambda + mu) and (diversification + turnover).");
 
         this.birthRate = birthRate;
         this.deathRate = deathRate;
+        this.diversification = diversification;
+        this.turnover = turnover;
         this.rho = rho;
         this.n = n;
         this.taxa = taxa;
@@ -51,8 +64,18 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
             description = "Generate a tree with coalescent point processing process (CPP) with node ages drawn i.i.d and factorised. If a root age is provided, the method is conditioned on root age.")
     @Override
     public RandomVariable<TimeTree> sample() {
-        double birthRate = getBirthRate().value().doubleValue();
-        double deathRate = getDeathRate().value().doubleValue();
+        double birthRate;
+        double deathRate;
+        if (getBirthRate() != null && getDeathRate() != null) {
+            birthRate = getBirthRate().value().doubleValue();
+            deathRate = getDeathRate().value().doubleValue();
+        } else {
+            double diversificationRate = getDiversificationRate().value().doubleValue();
+            double turnover = getTurnover().value().doubleValue();
+            double[] bd = getBD(diversificationRate, turnover);
+            birthRate = bd[0];
+            deathRate = bd[1];
+        }
         double rho = getSamplingProbability().value().doubleValue();
 
         // initialise a list for node ages
@@ -195,8 +218,10 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
     @Override
     public Map<String, Value> getParams() {
         Map<String, Value> map = new TreeMap<>();
-        map.put(BirthDeathConstants.lambdaParamName, birthRate);
-        map.put(BirthDeathConstants.muParamName, deathRate);
+        if (birthRate != null) map.put(BirthDeathConstants.lambdaParamName, birthRate);
+        if (deathRate != null) map.put(BirthDeathConstants.muParamName, deathRate);
+        if (diversification != null) map.put(BirthDeathConstants.diversificationParamName, diversification);
+        if (turnover != null) map.put(BirthDeathConstants.turnoverParamName, turnover);
         map.put(BirthDeathConstants.rhoParamName, rho);
         if (rootAge != null) map.put(BirthDeathConstants.rootAgeParamName, rootAge);
         if (n != null) map.put(DistributionConstants.nParamName,n);
@@ -208,6 +233,8 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
     public void setParam(String paramName, Value value){
         if (paramName.equals(BirthDeathConstants.lambdaParamName)) birthRate = value;
         else if (paramName.equals(BirthDeathConstants.muParamName)) deathRate = value;
+        else if (paramName.equals(BirthDeathConstants.diversificationParamName)) diversification = value;
+        else if (paramName.equals(BirthDeathConstants.turnoverParamName)) turnover = value;
         else if (paramName.equals(BirthDeathConstants.rhoParamName)) rho = value;
         else if (paramName.equals(BirthDeathConstants.rootAgeParamName)) rootAge = value;
         else if (paramName.equals(DistributionConstants.nParamName)) n = value;
@@ -224,6 +251,12 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
     }
     public Value<Number> getDeathRate(){
         return getParams().get(BirthDeathConstants.muParamName);
+    }
+    public Value<Number> getDiversificationRate(){
+        return getParams().get(BirthDeathConstants.diversificationParamName);
+    }
+    public Value<Number> getTurnover(){
+        return getParams().get(BirthDeathConstants.turnoverParamName);
     }
     public Value<Number> getSamplingProbability(){
         return getParams().get(BirthDeathConstants.rhoParamName);

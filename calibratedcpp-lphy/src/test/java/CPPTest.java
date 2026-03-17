@@ -31,7 +31,7 @@ public class CPPTest {
         Value<Number> deathRate = new Value("", 0.1);
         Value<String[]> taxa = new Value<>("", new String[]{"1", "2", "3"});
         Value<Integer> n = new Value("", 3);
-        CPPTree tree = new CPPTree(birthRate, deathRate,samplingProb, taxa, n, new Value<>("", 10), null);
+        CPPTree tree = new CPPTree(birthRate, deathRate, null, null,  samplingProb, taxa, n, new Value<>("", 10), null);
         TimeTree sampledTree = tree.sample().value();
         assertEquals(3, sampledTree.getLeafNodes().size());
         assertEquals(10, sampledTree.getRoot().getAge());
@@ -51,7 +51,7 @@ public class CPPTest {
         double age = 2.0;
         Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa, age)}));
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, null, null,  samplingProb, n, calibration, null, null);
         TimeTree cppTree = cpp.sample().value();
 
         for (int i = 0; i < cppTree.getNodeCount(); i++) {
@@ -79,7 +79,7 @@ public class CPPTest {
         double age = 2.0;
         Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa, age), new Calibration(allTaxa, 10.0)}));
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, null, null,  samplingProb, n, calibration, null, null);
         TimeTree cppTree = cpp.sample().value();
 
         for (int i = 0; i < cppTree.getNodeCount(); i++) {
@@ -109,7 +109,7 @@ public class CPPTest {
         double age2 = 1.0;
         Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)}));
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, null, null,  samplingProb, n, calibration, null, null);
         for (int j = 0; j < 10 ; j ++) {
             try {
                 TimeTree cppTree = cpp.sample().value();
@@ -159,7 +159,7 @@ public class CPPTest {
         Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa1, age1), new Calibration(taxa2, age2)}));
 
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, null, null,  samplingProb, n, calibration, null, null);
         TimeTree cppTree = cpp.sample().value();
 
         for (int i = 0; i < cppTree.getNodeCount(); i++) {
@@ -195,7 +195,7 @@ public class CPPTest {
         Value<CalibrationArray> calibration = new Value<>("",
                 new CalibrationArray(new Calibration[]{new Calibration(cladeTaxa, cladeAge)}));
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, null);
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, null, null,  samplingProb, n, calibration, null, null);
 
         for (int iter = 0; iter < 100; iter++) {
             TimeTree tree = cpp.sample().value();
@@ -239,13 +239,13 @@ public class CPPTest {
         int t = 2;
 
         // expected numbers calculated from r
-        //assertEquals(0.8646647, CDF(birthRate, deathRate, samplingProb, t), 1e-6);
-        //assertEquals(0 , CDF(birthRate, deathRate, samplingProb,0), 1e-6);
-        //assertEquals(1 , CDF(birthRate, deathRate, samplingProb,Double.POSITIVE_INFINITY), 1e-6);
-        //assertEquals(0.1353353, densityBD(birthRate, deathRate, samplingProb, t), 1e-6);
-        assertEquals(0.2231436, inverseCDF(birthRate, deathRate, samplingProb, 0.2), 1e-6);
+        //assertEquals(0.8646647, CDF(birthRate, deathRate, null, null,  samplingProb, t), 1e-6);
+        //assertEquals(0 , CDF(birthRate, deathRate, null, null,  samplingProb,0), 1e-6);
+        //assertEquals(1 , CDF(birthRate, deathRate, null, null,  samplingProb,Double.POSITIVE_INFINITY), 1e-6);
+        //assertEquals(0.1353353, densityBD(birthRate, deathRate, null, null,  samplingProb, t), 1e-6);
+        assertEquals(0.2231436, inverseCDF(birthRate, deathRate,  samplingProb, 0.2), 1e-6);
         assertEquals(1.203973, inverseCDF(birthRate, deathRate, samplingProb, 0.7), 1e-6);
-        assertEquals(0.4707278, Qdist(birthRate, deathRate, t, 10), 1e-6);
+        assertEquals(0.4707278, Qdist(birthRate, deathRate,  t, 10), 1e-6);
         assertEquals(1.826258, transform(0.4, birthRate, deathRate, 10), 1e-6);
 
         List<Double> list = new ArrayList<>(Arrays.asList(0.0, 1.0, 2.0, 5.0, 0.0));
@@ -355,7 +355,7 @@ public class CPPTest {
         double age = 2.0;
         Value<CalibrationArray> calibration = new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(taxa, age), new Calibration(taxa2, 3.0)}));
 
-        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, samplingProb, n, calibration, null, new Value<>("", 8.0));
+        CalibratedCPPTree cpp = new CalibratedCPPTree(birthRate, deathRate, null, null,  samplingProb, n, calibration, null, new Value<>("", 8.0));
         TimeTree cppTree = cpp.sample().value();
         String[] taxaNames = cppTree.getTaxaNames();
 
