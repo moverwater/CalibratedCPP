@@ -9,9 +9,8 @@ model {
    rho = 1.0;
    diversification ~ LogNormal(meanlog=-0.5, sdlog=0.5);
 
-
-   calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], upperBounds=[0.34,0.88,0.35], lowerBounds=[0.32,0.86,0.33]);
-   tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho);
+   calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2,clade3], upperBounds=[0.34,0.88,0.35], lowerBounds=[0.32,0.86,0.33]);
+   tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho, stemAge=3.2);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
