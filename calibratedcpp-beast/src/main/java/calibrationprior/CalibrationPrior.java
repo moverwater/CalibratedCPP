@@ -198,13 +198,14 @@ public class CalibrationPrior extends Distribution {
 
             // Check for monophyly
             Set<String> leafIDs = new HashSet<>();
-            Node treeNode = n.getCommonAncestor(tree);
-            collectLeafTaxa(treeNode, leafIDs);
-            if (!leafIDs.equals(n.getCalibrationClade().getTaxa().getTaxaNames())) {
+            Node mrca = n.getCommonAncestor(tree);
+
+            collectLeafTaxa(mrca, leafIDs);
+            if (!leafIDs.equals(n.taxa.getTaxaNames())) {
                 return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
             }
 
-            double t = treeNode.getHeight();
+            double t = mrca.getHeight();
             if (n.parent == null) {
                 // root lognormal
                 double lp = logNormalLogPdf(t, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
@@ -274,13 +275,7 @@ public class CalibrationPrior extends Distribution {
 
     @Override
     protected boolean requiresRecalculation() {
-        // Do any updates
-        for (CalibrationNode calibration : calibrationNodes) {
-            Node mrca = calibration.getCommonAncestor(treeInput.get());
-            if (calibration.getCalibrationCladePrior().getAge() != null) {
-                calibration.getCalibrationClade().getAge().setValue(mrca.getHeight());
-            }
-        }
+
         return true;
     }
 
