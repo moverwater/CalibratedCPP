@@ -259,8 +259,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
     }
 
     private double logDiffExp(double a, double b) {
-//        if (b > a) throw new IllegalArgumentException("logDiffExp: b must be <= a");
-        if (b > a) return Double.NEGATIVE_INFINITY;
+        if (b > a) throw new IllegalArgumentException("logDiffExp: b must be <= a");
         if (a == b) return Double.NEGATIVE_INFINITY;
         return a + Math.log1p(-Math.exp(b - a));
     }
