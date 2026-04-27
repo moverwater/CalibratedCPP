@@ -98,16 +98,16 @@ spec="Alignment">
                     <distr id="Uniform" spec="distribution.Uniform" lower="29.0" upper="35.0"/>
                     <taxonset idref="TaxonSet"/>
                 </distribution>
-                <distribution id="mu.prior" spec="distribution.Prior" x="@mu">
-                    <distr id="LogNormalDistributionModel" spec="distribution.LogNormalDistributionModel">
-                        <parameter id="RealParameter" spec="parameter.RealParameter" name="M">0.05</parameter>
-                        <parameter id="RealParameter1" spec="parameter.RealParameter" name="S">1.0</parameter>
+              <distribution id="mu.prior" spec="distribution.Prior" x="@mu">
+                    <distr id="LogNormalDistributionModel" spec="distribution.Beta">
+                        <parameter id="RealParameter" spec="parameter.RealParameter" name="alpha">0.05</parameter>
+                        <parameter id="RealParameter1" spec="parameter.RealParameter" name="beta">1.0</parameter>
                     </distr>
                 </distribution>
                 <distribution id="diversificationRate.prior" spec="distribution.Prior" x="@diversificationRate">
-                    <distr id="NormalDistribution" spec="distribution.Normal">
-                        <parameter id="RealParameter2" spec="parameter.RealParameter" name="mean">0.0</parameter>
-                        <parameter id="RealParameter3" spec="parameter.RealParameter" name="sigma">1.0</parameter>
+                    <distr id="NormalDistribution" spec="distribution.LogNormalDistributionModel">
+                        <parameter id="RealParameter2" spec="parameter.RealParameter" name="M">0.05</parameter>
+                        <parameter id="RealParameter3" spec="parameter.RealParameter" name="S">1.0</parameter>
                     </distr>
                 </distribution>
                 <distribution id="gamma.prior" spec="distribution.Prior" x="@gamma">
@@ -134,8 +134,9 @@ spec="Alignment">
                     <taxonset idref="TaxonSet1"/>
                 </distribution>
                 <distribution id="CalibratedCoalescentPointProcess" spec="calibratedcpp.CalibratedBirthDeathModel" conditionOnRoot="true"
-                              tree="@tree"
-                              diversificationRate="@diversificationRate" deathRate="@mu" rho="@rho" conditionOnCalibrations="false">
+                              tree="@tree" rho="@rho" conditionOnCalibrations="false">
+                    <turnover spec="calibratedcpp.SkylineParameter" values="@mu"/>
+                    <diversificationRate spec="calibratedcpp.SkylineParameter" values="@diversificationRate"/>
                     <calibrations id="CalibrationClade" spec="calibration.CalibrationClade">
                         <taxa id="TaxonSet1" spec="TaxonSet">
                             <taxon idref="IberianLynx_Lynx_pardinus"/>
