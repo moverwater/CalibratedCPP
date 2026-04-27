@@ -133,7 +133,7 @@ spec="Alignment">
                     <distr id="Uniform3" spec="distribution.Uniform" lower="5.3" upper="10.3"/>
                     <taxonset idref="TaxonSet1"/>
                 </distribution>
-                <distribution id="CalibratedCoalescentPointProcess" spec="calibratedcpp.CalibratedBirthDeathModel" conditionOnRoot="true"
+                <distribution id="CalibratedCoalescentPointProcess" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" conditionOnRoot="true"
                               tree="@tree" rho="@rho" conditionOnCalibrations="false">
                     <turnover spec="calibratedcpp.SkylineParameter" values="@mu"/>
                     <diversificationRate spec="calibratedcpp.SkylineParameter" values="@diversificationRate"/>
