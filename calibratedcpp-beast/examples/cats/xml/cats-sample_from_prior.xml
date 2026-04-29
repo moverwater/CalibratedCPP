@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+data {
+  D = readNexus(file="./data/cats.nex");
+  L = D.nchar();
+  taxa = D.taxa();
+  n = ntaxa(taxa=taxa);
+}
+model {
+  π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
+  rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
+  Q = gtr(rates=rates, freq=π);
+  t1 ~ Uniform(lower=5.3, upper=10.3);
+  t2 ~ Uniform(lower=3.8, upper=8.2);
+  t3 ~ Uniform(lower=1.5, upper=3.7);
+  taxa1 = ["IberianLynx_Lynx_pardinus", "FishingCat_Prionailurus_viverrinus", "LeopardCat_Prionailurus_bengalensis", "JungleCat_Felis_chaus", "BlackfootedCat_Felis_nigripes", "DomesticCat_Felis_catus", "SandCat_Felis_margarita"];
+  taxa2 = ["CloudedLeopard_Neofelis_nebulosa", "SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris", "Jaguar_Panthera_onca", "Leopard_Panthera_pardus", "Lion_Panthera_leo"];
+  taxa3 = ["SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris"];
+  lambda ~ LogNormal(meanlog=0.1, sdlog=1);
+  mu ~ LogNormal(meanlog=0.05, sdlog=1);
+  otherNames = ["StripedHyena_Hyaena_hyaena", "ScimitarToothedCat_Homotherium_latidens", "SpottedHyena_Crocuta_crocuta", "Caracal_Caracal_caracal", "Cheetah_Acinonyx_jubatus"];
+  rho ~ Uniform(lower=0.0, upper=1.0);
+  troot ~ Uniform(lower=29, upper=35);
+  tree ~ CalibratedCPP(cladeAge=[t1, t2, t3], cladeTaxa=[taxa1, taxa2, taxa3], lambda=lambda, mu=mu, n=n, otherNames=otherNames, rho=rho, rootAge=troot);
+  sigma ~ LogNormal(meanlog=-0.693, sdlog=0.5);
+  branchRates ~ UCLN_Mean1(tree=tree, uclnSigma=sigma);
+  mRate ~ LogNormal(meanlog=-9, sdlog=5);
+  gamma ~ LogNormal(meanlog=0, sdlog=2);
+  siteRates ~ DiscretizeGamma(shape=gamma, ncat=4, replicates=L);
+  D ~ PhyloCTMC(L=L, Q=Q, branchRates=branchRates, mu=mRate, siteRates=siteRates, tree=tree);
+}
+
+-->
+<beast namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood" required="lphybeast v1.3.0:calibratedcpp v0.0.1" version="2.7">
+
+    <data
+id="D"
+spec="Alignment">
+        <sequence id="Sequence" spec="Sequence" taxon="Cheetah_Acinonyx_jubatus"  value="?"/>
+        <sequence id="Sequence1" spec="Sequence" taxon="Caracal_Caracal_caracal"  value="?"/>
+        <sequence id="Sequence2" spec="Sequence" taxon="SpottedHyena_Crocuta_crocuta"  value="?"/>
+        <sequence id="Sequence3" spec="Sequence" taxon="DomesticCat_Felis_catus"  value="?"/>
+        <sequence id="Sequence4" spec="Sequence" taxon="JungleCat_Felis_chaus"  value="?"/>
+        <sequence id="Sequence5" spec="Sequence" taxon="SandCat_Felis_margarita"  value="?"/>
+        <sequence id="Sequence6" spec="Sequence" taxon="BlackfootedCat_Felis_nigripes"  value="?"/>
+        <sequence id="Sequence7" spec="Sequence" taxon="ScimitarToothedCat_Homotherium_latidens"  value="?"/>
+        <sequence id="Sequence8" spec="Sequence" taxon="StripedHyena_Hyaena_hyaena"  value="?"/>
+        <sequence id="Sequence9" spec="Sequence" taxon="IberianLynx_Lynx_pardinus"  value="?"/>
+        <sequence id="Sequence10" spec="Sequence" taxon="CloudedLeopard_Neofelis_nebulosa"  value="?"/>
+        <sequence id="Sequence11" spec="Sequence" taxon="Lion_Panthera_leo"  value="?"/>
+        <sequence id="Sequence12" spec="Sequence" taxon="Jaguar_Panthera_onca"  value="?"/>
+        <sequence id="Sequence13" spec="Sequence" taxon="Leopard_Panthera_pardus"  value="?"/>
+        <sequence id="Sequence14" spec="Sequence" taxon="AmurTiger_Panthera_tigris_altaica"  value="?"/>
+        <sequence id="Sequence15" spec="Sequence" taxon="BengalTiger_Panthera_tigris_tigris"  value="?"/>
+        <sequence id="Sequence16" spec="Sequence" taxon="SnowLeopard_Panthera_uncia"  value="?"/>
+        <sequence id="Sequence17" spec="Sequence" taxon="LeopardCat_Prionailurus_bengalensis"  value="?"/>
+        <sequence id="Sequence18" spec="Sequence" taxon="FishingCat_Prionailurus_viverrinus"  value="?"/>
+    </data>
+
+    <run id="MCMC" spec="MCMC" chainLength="10000000" preBurnin="710">
+        <state id="State" spec="State">
+            <parameter id="pi" spec="parameter.RealParameter" dimension="4" keys="A C G T" lower="0.0" name="stateNode" upper="1.0">0.3355435154399341 0.27306865748302644 0.16488359093105398 0.22650423614598558</parameter>
+            <parameter id="rates" spec="parameter.RealParameter" dimension="6" keys="AC AG AT CG CT GT" lower="0.0" name="stateNode" upper="1.0">0.04526281641503102 0.2820622006538708 0.06980326713466636 0.08985774979488613 0.40868670401526425 0.10432726198628167</parameter>
+            <parameter id="diversificationRate" spec="parameter.RealParameter" name="stateNode">0.1</parameter>
+            <parameter id="mu" spec="parameter.RealParameter" lower="0.0" name="stateNode">0.48629260742174</parameter>
+            <parameter id="rho" spec="parameter.RealParameter" name="stateNode">0.01</parameter>
+            <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser" IsLabelledNewick="true" newick="(((StripedHyena_Hyaena_hyaena:0.34894860742524964,Cheetah_Acinonyx_jubatus:0.34894860742524964):3.079734341411249,(Caracal_Caracal_caracal:1.405896687652245,(SpottedHyena_Crocuta_crocuta:0.19494400056282432,ScimitarToothedCat_Homotherium_latidens:0.19494400056282432):1.2109526870894207):2.0227862611842538):30.342044191965027,((((Leopard_Panthera_pardus:1.660743870014873,(CloudedLeopard_Neofelis_nebulosa:1.136239427018968,Lion_Panthera_leo:1.136239427018968):0.5245044429959049):1.0259236206787625,Jaguar_Panthera_onca:2.6866674906936354):3.6087893574781726,(BengalTiger_Panthera_tigris_tigris:3.3723908568908474,(SnowLeopard_Panthera_uncia:2.199678643149744,AmurTiger_Panthera_tigris_altaica:2.199678643149744):1.1727122137411032):2.9230659912809607):0.3922845494576652,((((DomesticCat_Felis_catus:1.2575715232994562,(BlackfootedCat_Felis_nigripes:0.07430415845350369,LeopardCat_Prionailurus_bengalensis:0.07430415845350369):1.1832673648459524):0.04628456607053866,FishingCat_Prionailurus_viverrinus:1.3038560893699949):0.5340552031205872,SandCat_Felis_margarita:1.837911292490582):3.4911301161366888,(JungleCat_Felis_chaus:0.3280415745818498,IberianLynx_Lynx_pardinus:0.3280415745818498):5.000999834045421):1.3586999890022025):27.082985743172053):0.0;">
+                <taxonset id="TaxonSet" spec="TaxonSet">
+                    <taxon id="StripedHyena_Hyaena_hyaena" spec="Taxon"/>
+                    <taxon id="Cheetah_Acinonyx_jubatus" spec="Taxon"/>
+                    <taxon id="Caracal_Caracal_caracal" spec="Taxon"/>
+                    <taxon id="SpottedHyena_Crocuta_crocuta" spec="Taxon"/>
+                    <taxon id="ScimitarToothedCat_Homotherium_latidens" spec="Taxon"/>
+                    <taxon id="Leopard_Panthera_pardus" spec="Taxon"/>
+                    <taxon id="CloudedLeopard_Neofelis_nebulosa" spec="Taxon"/>
+                    <taxon id="Lion_Panthera_leo" spec="Taxon"/>
+                    <taxon id="Jaguar_Panthera_onca" spec="Taxon"/>
+                    <taxon id="BengalTiger_Panthera_tigris_tigris" spec="Taxon"/>
+                    <taxon id="SnowLeopard_Panthera_uncia" spec="Taxon"/>
+                    <taxon id="AmurTiger_Panthera_tigris_altaica" spec="Taxon"/>
+                    <taxon id="DomesticCat_Felis_catus" spec="Taxon"/>
+                    <taxon id="BlackfootedCat_Felis_nigripes" spec="Taxon"/>
+                    <taxon id="LeopardCat_Prionailurus_bengalensis" spec="Taxon"/>
+                    <taxon id="FishingCat_Prionailurus_viverrinus" spec="Taxon"/>
+                    <taxon id="SandCat_Felis_margarita" spec="Taxon"/>
+                    <taxon id="JungleCat_Felis_chaus" spec="Taxon"/>
+                    <taxon id="IberianLynx_Lynx_pardinus" spec="Taxon"/>
+                </taxonset>
+            </stateNode>
+            <parameter id="sigma" spec="parameter.RealParameter" lower="0.0" name="stateNode">0.7562716668210623</parameter>
+            <parameter id="branchRates" spec="parameter.RealParameter" dimension="36" name="stateNode">0.6341609568755441 0.495602309825602 0.6842850350425499 0.8118221867750349 2.194285154025201 1.3530327911683344 1.6020239859264365 0.26599778156866893 0.25073215088712103 1.7855818064681777 0.27264716745429113 0.7377362304802397 0.4770781246841346 1.0849344759845072 0.45162012940495244 0.48545616866564084 1.426213570066238 1.132056741651239 0.7153953800441639 0.5572376348566296 2.624888204500951 1.0573651610055854 2.2151825771583495 0.6924367468864854 0.46994323730792165 1.3201103246141814 5.311457789923404 4.066628065592515 0.2854806714209129 0.8477585051996014 0.3798433856664401 5.379488792355205 0.057754883421150205 1.7259387741874297 0.8556889921857552 2.1099431496593803</parameter>
+            <parameter id="mRate" spec="parameter.RealParameter" lower="0.0" name="stateNode">0.0019489565757940615</parameter>
+            <parameter id="gamma" spec="parameter.RealParameter" lower="0.0" name="stateNode">2.3897393376503144</parameter>
+        </state>
+        <distribution id="posterior" spec="CompoundDistribution">
+            <distribution id="prior" spec="CompoundDistribution">
+                <distribution id="troot.prior" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <distr id="Uniform" spec="distribution.Uniform" lower="29.0" upper="35.0"/>
+                    <taxonset idref="TaxonSet"/>
+                </distribution>
+              <distribution id="mu.prior" spec="distribution.Prior" x="@mu">
+                    <distr id="LogNormalDistributionModel" spec="distribution.Beta">
+                        <parameter id="RealParameter" spec="parameter.RealParameter" name="alpha">0.05</parameter>
+                        <parameter id="RealParameter1" spec="parameter.RealParameter" name="beta">1.0</parameter>
+                    </distr>
+                </distribution>
+                <distribution id="diversificationRate.prior" spec="distribution.Prior" x="@diversificationRate">
+                    <distr id="NormalDistribution" spec="distribution.LogNormalDistributionModel">
+                        <parameter id="RealParameter2" spec="parameter.RealParameter" name="M">0.05</parameter>
+                        <parameter id="RealParameter3" spec="parameter.RealParameter" name="S">1.0</parameter>
+                    </distr>
+                </distribution>
+                <distribution id="gamma.prior" spec="distribution.Prior" x="@gamma">
+                    <distr id="LogNormalDistributionModel2" spec="distribution.LogNormalDistributionModel">
+                        <parameter id="RealParameter4" spec="parameter.RealParameter" name="M">0.0</parameter>
+                        <parameter id="RealParameter5" spec="parameter.RealParameter" name="S">2.0</parameter>
+                    </distr>
+                </distribution>
+                <distribution id="t2.prior" spec="beast.base.evolution.tree.MRCAPrior" monophyletic="true" tree="@tree">
+                    <distr id="Uniform1" spec="distribution.Uniform" lower="3.8" upper="8.2"/>
+                    <taxonset idref="TaxonSet2"/>
+                </distribution>
+                <distribution id="pi.prior" spec="distribution.Prior" x="@pi">
+                    <distr id="Dirichlet" spec="distribution.Dirichlet">
+                        <parameter id="RealParameter6" spec="parameter.RealParameter" dimension="4" estimate="false" name="alpha">3.0 3.0 3.0 3.0</parameter>
+                    </distr>
+                </distribution>
+                <distribution id="t3.prior" spec="beast.base.evolution.tree.MRCAPrior" monophyletic="true" tree="@tree">
+                    <distr id="Uniform2" spec="distribution.Uniform" lower="1.5" upper="3.7"/>
+                    <taxonset idref="TaxonSet3"/>
+                </distribution>
+                <distribution id="t1.prior" spec="beast.base.evolution.tree.MRCAPrior" monophyletic="true" tree="@tree">
+                    <distr id="Uniform3" spec="distribution.Uniform" lower="5.3" upper="10.3"/>
+                    <taxonset idref="TaxonSet1"/>
+                </distribution>
+                <distribution id="CalibratedCoalescentPointProcess" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" conditionOnRoot="true"
+                              tree="@tree" rho="@rho">
+                    <turnover spec="calibratedcpp.SkylineParameter" values="@mu"/>
+                    <diversificationRate spec="calibratedcpp.SkylineParameter" values="@diversificationRate"/>
+                    <calibrations id="CalibrationClade" spec="calibration.CalibrationClade">
+                        <taxa id="TaxonSet1" spec="TaxonSet">
+                            <taxon idref="IberianLynx_Lynx_pardinus"/>
+                            <taxon idref="FishingCat_Prionailurus_viverrinus"/>
+                            <taxon idref="LeopardCat_Prionailurus_bengalensis"/>
+                            <taxon idref="JungleCat_Felis_chaus"/>
+                            <taxon idref="BlackfootedCat_Felis_nigripes"/>
+                            <taxon idref="DomesticCat_Felis_catus"/>
+                            <taxon idref="SandCat_Felis_margarita"/>
+                        </taxa>
+                    </calibrations>
+                    <calibrations id="CalibrationClade1" spec="calibration.CalibrationClade">
+                        <taxa id="TaxonSet2" spec="TaxonSet">
+                            <taxon idref="CloudedLeopard_Neofelis_nebulosa"/>
+                            <taxon idref="SnowLeopard_Panthera_uncia"/>
+                            <taxon idref="AmurTiger_Panthera_tigris_altaica"/>
+                            <taxon idref="BengalTiger_Panthera_tigris_tigris"/>
+                            <taxon idref="Jaguar_Panthera_onca"/>
+                            <taxon idref="Leopard_Panthera_pardus"/>
+                            <taxon idref="Lion_Panthera_leo"/>
+                        </taxa>
+                    </calibrations>
+                    <calibrations id="CalibrationClade2" spec="calibration.CalibrationClade">
+                        <taxa id="TaxonSet3" spec="TaxonSet">
+                            <taxon idref="SnowLeopard_Panthera_uncia"/>
+                            <taxon idref="AmurTiger_Panthera_tigris_altaica"/>
+                            <taxon idref="BengalTiger_Panthera_tigris_tigris"/>
+                        </taxa>
+                    </calibrations>
+                </distribution>
+                <distribution id="rates.prior" spec="distribution.Prior" x="@rates">
+                    <distr id="Dirichlet1" spec="distribution.Dirichlet">
+                        <parameter id="RealParameter7" spec="parameter.RealParameter" dimension="6" estimate="false" name="alpha">1.0 2.0 1.0 1.0 2.0 1.0</parameter>
+                    </distr>
+                </distribution>
+<!--                <distribution id="rho.prior" spec="distribution.Prior" x="@rho">-->
+<!--                    <distr id="Uniform4" spec="distribution.Uniform"/>-->
+<!--                </distribution>-->
+                <distribution id="mRate.prior" spec="distribution.Prior" x="@mRate">
+                    <distr id="LogNormalDistributionModel3" spec="distribution.LogNormalDistributionModel">
+                        <parameter id="RealParameter8" spec="parameter.RealParameter" name="M">-9.0</parameter>
+                        <parameter id="RealParameter9" spec="parameter.RealParameter" name="S">5.0</parameter>
+                    </distr>
+                </distribution>
+                <distribution id="sigma.prior" spec="distribution.Prior" x="@sigma">
+                    <distr id="LogNormalDistributionModel4" spec="distribution.LogNormalDistributionModel">
+                        <parameter id="RealParameter10" spec="parameter.RealParameter" name="M">-0.693</parameter>
+                        <parameter id="RealParameter11" spec="parameter.RealParameter" name="S">0.5</parameter>
+                    </distr>
+                </distribution>
+                <distribution id="branchRates.prior" spec="distribution.Prior" x="@branchRates">
+                    <distr id="LogNormalDistr.branchRates" spec="distribution.LogNormalDistributionModel" S="@sigma" meanInRealSpace="true">
+                        <parameter id="RealParameter12" spec="parameter.RealParameter" lower="0.0" name="M" upper="0.0">1.0</parameter>
+                    </distr>
+                </distribution>
+            </distribution>
+            <distribution id="likelihood" spec="CompoundDistribution">
+                <distribution id="D.treeLikelihood" spec="ThreadedTreeLikelihood" tree="@tree" useAmbiguities="true">
+                    <data idref="D"/>
+                    <siteModel id="SiteModel" spec="SiteModel" gammaCategoryCount="4" shape="@gamma">
+                        <substModel id="GTR" spec="substmodels.nucleotide.GTR" rates="@rates">
+                            <frequencies id="Frequencies" spec="Frequencies" frequencies="@pi"/>
+                        </substModel>
+                    </siteModel>
+                    <branchRateModel id="branchRates.model" spec="beast.base.evolution.branchratemodel.UCRelaxedClockModel" clock.rate="@mRate" distr="@LogNormalDistr.branchRates" rates="@branchRates" tree="@tree"/>
+                </distribution>
+            </distribution>
+        </distribution>
+        <operator id="ORCAdaptableOperatorSampler.NER.branchRates" spec="AdaptableOperatorSampler" weight="6.261973295049071">
+            <tree idref="tree"/>
+            <operator id="ORCNER_Exchange.NER.tree" spec="Exchange" tree="@tree" weight="1.0"/>
+            <operator id="RNNIMetric.NER.tree" spec="orc.ner.NEROperator_dAE_dBE_dCE" rates="@branchRates" tree="@tree" weight="1.0"/>
+            <metric id="RNNIMetric" spec="beastlabs.evolution.tree.RNNIMetric" taxonset="@TaxonSet"/>
+        </operator>
+        <operator id="ORCAdaptableOperatorSampler.ratesInternal.branchRates" spec="AdaptableOperatorSampler" weight="12.523946590098141">
+            <parameter idref="branchRates"/>
+            <tree idref="tree"/>
+            <operator id="branchRates.model.inConstantDistanceOperator" spec="orc.consoperators.InConstantDistanceOperator" clockModel="@branchRates.model" rates="@branchRates" tree="@tree" twindowSize="3.3770727140801533" weight="1.0"/>
+            <operator id="ORCUcldStdevRandomWalk.branchRates" spec="operator.kernel.BactrianRandomWalkOperator" parameter="@branchRates" scaleFactor="0.1" weight="1.0"/>
+            <operator id="ORCUcldStdevScale.branchRates" spec="kernel.BactrianScaleOperator" parameter="@branchRates" scaleFactor="0.5" upper="10.0" weight="1.0"/>
+            <operator id="ORCSampleFromPriorOperator.branchRates" spec="orc.operators.SampleFromPriorOperator" parameter="@branchRates" prior2="@branchRates.prior" weight="1.0"/>
+        </operator>
+        <operator id="ORCAdaptableOperatorSampler.ratesRoot.branchRates" spec="AdaptableOperatorSampler" weight="1.0">
+            <parameter idref="branchRates"/>
+            <tree idref="tree"/>
+            <operator id="branchRates.model.simpleDistance" spec="orc.consoperators.SimpleDistance" clockModel="@branchRates.model" rates="@branchRates" tree="@tree" twindowSize="3.3770727140801533" weight="1.0"/>
+            <operator id="branchRates.model.smallPulley" spec="orc.consoperators.SmallPulley" clockModel="@branchRates.model" dwindowSize="0.1" rates="@branchRates" tree="@tree" weight="1.0"/>
+        </operator>
+        <operator id="ORCAdaptableOperatorSampler.sigma" spec="AdaptableOperatorSampler" weight="2.504789318019628">
+            <parameter idref="sigma"/>
+            <operator id="ORCucldStdevScaler.sigma" spec="orc.consoperators.UcldScalerOperator" distr="@LogNormalDistr.branchRates" rates="@branchRates" scaleFactor="0.5" stdev="@sigma" weight="1.0"/>
+            <operator id="ORCUcldStdevRandomWalk.sigma" spec="operator.kernel.BactrianRandomWalkOperator" parameter="@sigma" scaleFactor="0.1" weight="1.0"/>
+            <operator id="ORCUcldStdevScale.sigma" spec="kernel.BactrianScaleOperator" parameter="@sigma" scaleFactor="0.5" upper="10.0" weight="1.0"/>
+            <operator id="ORCSampleFromPriorOperator.sigma" spec="orc.operators.SampleFromPriorOperator" parameter="@sigma" prior2="@sigma.prior" weight="1.0"/>
+        </operator>
+        <operator id="gamma.scale" spec="kernel.BactrianScaleOperator" parameter="@gamma" upper="10.0" weight="1.0"/>
+        <operator id="diversificationRate.scale" spec="beast.base.inference.operator.RealRandomWalkOperator" parameter="@diversificationRate" windowSize="0.1" weight="1.0"/>
+        <operator id="mRate.scale" spec="kernel.BactrianScaleOperator" parameter="@mRate" upper="10.0" weight="1.0"/>
+        <operator id="muAndDiversificationRate" spec="beast.base.evolution.operator.kernel.AdaptableVarianceMultivariateNormalOperator"
+                  weight="2"
+                  coefficient="1.0"
+                  scaleFactor="0.75"
+                  beta="0.05"
+                  initial="800"
+                  burnin="400"
+                  every="1">
+            <transformations spec="beast.base.inference.operator.kernel.Transform$LogTransform">
+                <f idref="mu"/>
+            </transformations>
+            <transformations spec="beast.base.inference.operator.kernel.Transform$NoTransform">
+                <f idref="diversificationRate"/>
+            </transformations>
+        </operator>
+        <operator id="mRateUptreeDownOperator" spec="operator.kernel.BactrianUpDownOperator" scaleFactor="0.9" weight="7.85466234994081">
+            <up idref="mRate"/>
+            <down idref="tree"/>
+        </operator>
+        <operator id="mu.scale" spec="kernel.BactrianScaleOperator" parameter="@mu" upper="10.0" weight="1.0"/>
+        <operator id="pi.deltaExchange" spec="operator.kernel.BactrianDeltaExchangeOperator" delta="0.25" weight="2.157669279974593">
+            <parameter idref="pi"/>
+        </operator>
+        <operator id="rates.deltaExchange" spec="operator.kernel.BactrianDeltaExchangeOperator" delta="0.16666666666666666" weight="3.0851693136000478">
+            <parameter idref="rates"/>
+        </operator>
+        <operator id="tree.BICEPSEpochAll" spec="EpochFlexOperator" fromOldestTipOnly="false" scaleFactor="0.1" tree="@tree" weight="1.624504792712471"/>
+        <operator id="tree.BICEPSEpochTop" spec="EpochFlexOperator" scaleFactor="0.1" tree="@tree" weight="1.0"/>
+        <operator id="tree.BICEPSTreeFlex" spec="TreeStretchOperator" scaleFactor="0.01" tree="@tree" weight="7.56294171712541"/>
+        <operator id="tree.rootAgeScale" spec="kernel.BactrianScaleOperator" rootOnly="true" tree="@tree" upper="0.975" weight="1.0"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="3.3770727140801533" tree="@tree" weight="7.56294171712541"/>
+        <operator id="tree.uniform" spec="kernel.BactrianNodeOperator" tree="@tree" weight="7.56294171712541"/>
+        <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.7826024579660034"/>
+        <operator id="tree.wilsonBalding" spec="WilsonBalding" tree="@tree" weight="1.7826024579660034"/>
+        <logger id="ScreenLogger" spec="Logger" logEvery="5000">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+            <log idref="pi"/>
+            <log idref="rates"/>
+            <log idref="diversificationRate"/>
+            <log idref="mu"/>
+            <log idref="sigma"/>
+            <log idref="mRate"/>
+            <log idref="gamma"/>
+        </logger>
+        <logger id="Logger" spec="Logger" fileName="$(filebase).log" logEvery="50">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+            <log idref="pi"/>
+            <log idref="rates"/>
+            <log idref="diversificationRate"/>
+            <log idref="mu"/>
+            <log idref="sigma"/>
+            <log idref="mRate"/>
+            <log idref="gamma"/>
+            <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
+            <log id="RatesStat.branchRates" spec="beast.base.evolution.RateStatistic" branchratemodel="@branchRates.model" tree="@tree"/>
+            <log idref="D.treeLikelihood"/>
+            <log idref="t2.prior"/>
+            <log idref="t1.prior"/>
+            <log idref="t3.prior"/>
+        </logger>
+        <logger id="TreeWithMetaDataLogger.tree" spec="Logger" fileName="$(filebase)_with_rates.trees" logEvery="50" mode="tree">
+            <log id="TreeWithMetaDataLogger" spec="beast.base.evolution.TreeWithMetaDataLogger" branchratemodel="@branchRates.model" tree="@tree"/>
+        </logger>
+    </run>
+
+</beast>
+
