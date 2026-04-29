@@ -8,7 +8,10 @@ SCRIPT_DIR = Path(__file__).parent
 BENCH_CSV = SCRIPT_DIR / "benchmark_results.csv"
 COMP_CSV = SCRIPT_DIR / "validation_results.csv"
 README_PATH = SCRIPT_DIR / "README.md"
-PLOT_PATH = SCRIPT_DIR / "combined_benchmark_validation.svg"
+
+# Define separate output paths as PDFs
+PLOT_BENCH_PATH = SCRIPT_DIR / "benchmark_plot.pdf"
+PLOT_COMP_PATH = SCRIPT_DIR / "validation_plot.pdf"
 
 # Style configuration
 COLORS = {"Calibrated CPP": "black", "Heled & Drummond": "red"}
@@ -40,9 +43,6 @@ def update_readme(df):
     ]
 
     # 3. Generate Markdown Table
-    # floatfmt=(None, ".2f", ".2f") tells the formatter:
-    # - None: Don't force decimals on the 1st column (integers stay integers)
-    # - ".2f": Use 2 decimals for the 2nd and 3rd columns
     md_table = pivot_df.to_markdown(index=False, tablefmt="github", floatfmt=("", ".2f", ".2f"))
 
     # 4. Slice and Stitch
@@ -67,10 +67,11 @@ def main():
     df_bench = pd.read_csv(BENCH_CSV)
     df_comp = pd.read_csv(COMP_CSV)
 
-    # Setup Combined Plot
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4.5))
-
+    # ==========================================
     # Plot 1: Benchmark (Time)
+    # ==========================================
+    fig1, ax1 = plt.subplots(figsize=(6, 5))
+
     for label, group in df_bench.groupby('Benchmark'):
         name = "Calibrated CPP" if "measureCPP" in label else "Heled & Drummond"
         ax1.plot(group['Param: nCalibrations'], group['Score'], 
@@ -79,10 +80,21 @@ def main():
     ax1.set_yscale('log')
     ax1.set_xlabel('Number of calibrations (k)')
     ax1.set_ylabel('Time (μs)')
-    ax1.set_title('Benchmark Performance')
+    ax1.set_title('Likelihood Calculation Time')
     ax1.grid(True, alpha=0.3)
+    ax1.legend(loc='best', frameon=True)
 
+    fig1.tight_layout()
+    # Save as PDF (dpi is ignored for vector graphics like PDFs, but safe to leave)
+    fig1.savefig(PLOT_BENCH_PATH)
+    plt.close(fig1)
+    print(f"Benchmark plot saved to {PLOT_BENCH_PATH}")
+
+    # ==========================================
     # Plot 2: Likelihood (Validation)
+    # ==========================================
+    fig2, ax2 = plt.subplots(figsize=(6, 5))
+
     ax2.plot(df_comp['BirthRate'], df_comp['HeledAndDrummond_LogLikelihood'], 
              color=COLORS["Heled & Drummond"], label="Heled & Drummond", linewidth=1.5)
     ax2.scatter(df_comp['BirthRate'], df_comp['CPP_LogLikelihood'], 
@@ -92,15 +104,14 @@ def main():
     ax2.set_ylabel('Log-likelihood')
     ax2.set_title('Likelihood Validation')
     ax2.grid(True, alpha=0.3)
+    ax2.legend(loc='best', frameon=True)
 
-    # Shared Legend at bottom
-    handles, labels = ax1.get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', ncol=2, frameon=True)
-    
-    plt.tight_layout(rect=[0, 0.08, 1, 1])
-    plt.savefig(PLOT_PATH, dpi=150)
-    print(f"Plot saved to {PLOT_PATH}")
+    fig2.tight_layout()
+    fig2.savefig(PLOT_COMP_PATH)
+    plt.close(fig2)
+    print(f"Validation plot saved to {PLOT_COMP_PATH}")
 
+    # Update Readme
     update_readme(df_bench)
 
 if __name__ == "__main__":
