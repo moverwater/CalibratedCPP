@@ -1,8 +1,6 @@
 data{
-    D = readNexus(file="./data/cats.nex");
-    var = informativeSites(alignment=D);
-    A = copySites(ids=var, alignment=D);
-    L = A.nchar();
+    D = readNexus(file="./data/cats_half.nex");
+    L = D.nchar();
     taxa = D.taxa();
     n = ntaxa(taxa=taxa);
 }
@@ -51,5 +49,5 @@ model{
     mRate ~ LogNormal(meanlog=-9, sdlog=5);
 
     // simulate sequences along the tree, clamp by real data
-    A ~ PhyloCTMC(L = L, Q = Q, branchRates = branchRates, mu = mRate, tree = tree, siteRates=siteRates);
+    D ~ PhyloCTMC(L = L, Q = Q, branchRates = branchRates, mu = mRate, tree = tree, siteRates=siteRates);
 }

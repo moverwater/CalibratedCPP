@@ -1,5 +1,5 @@
 data{
-    D = readNexus(file="./data/cats_100Sites.nex");
+    D = readNexus(file="./data/cats.nex");
     L = D.nchar();
     taxa = D.taxa();
     n = ntaxa(taxa=taxa);
@@ -21,17 +21,16 @@ model{
     // Snow leopard vs tigers, >= 1.5 million years
     taxa3 = ["SnowLeopard_Panthera_uncia", "AmurTiger_Panthera_tigris_altaica", "BengalTiger_Panthera_tigris_tigris"];
 
-    // birth death rate
-    lambda ~ LogNormal(meanlog = 0.1, sdlog = 1);
-    mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
+    diversification ~ LogNormal(meanlog = -1, sdlog = 0.5);
+    turnover ~ Beta(alpha=1,beta=4);
     rho ~ Uniform(lower=0.0, upper=1.0);
 
     calibrationTaxa = [taxaAll, taxa1, taxa2, taxa3];
-    upperBounds = [35.0, 10.3, 8.8, 6.5 ];
+    upperBounds = [35.0, 10.3, 8.2, 3.7];
     lowerBounds = [29.0, 5.3, 3.8, 1.5];
 
     calibrations ~ ConditionedMRCAPrior(calibrationTaxa = calibrationTaxa, upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
-    tree ~ CalibratedCPP(calibrations = calibrations,lambda=lambda, mu=mu, n=n, rho=rho);
+    tree ~ CalibratedCPP(calibrations = calibrations,turnover=turnover, diversification=diversification, n=n, rho=rho);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
