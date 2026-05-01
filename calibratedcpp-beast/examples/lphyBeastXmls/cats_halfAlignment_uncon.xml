@@ -237,7 +237,7 @@ model {
             <operator id="branchRates.model.inConstantDistanceOperator" spec="orc.consoperators.InConstantDistanceOperator" clockModel="@branchRates.model" rates="@branchRates" tree="@tree" twindowSize="3.393107224163626" weight="1.0"/>
             <operator id="ORCUcldStdevRandomWalk.branchRates" spec="operator.kernel.BactrianRandomWalkOperator" parameter="@branchRates" scaleFactor="0.1" weight="1.0"/>
             <operator id="ORCUcldStdevScale.branchRates" spec="kernel.BactrianScaleOperator" parameter="@branchRates" scaleFactor="0.5" upper="10.0" weight="1.0"/>
-           
+           </operator>
         <operator id="ORCAdaptableOperatorSampler.ratesRoot.branchRates" spec="AdaptableOperatorSampler" weight="1.0">
             <parameter idref="branchRates"/>
             <tree idref="tree"/>
