@@ -41,13 +41,17 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
                    @ParameterInfo(name = DistributionConstants.nParamName, description = "the total number of taxa.", optional = true) Value<Integer> n,
                    @ParameterInfo(name = BirthDeathConstants.rootAgeParamName, description = "the root age to be conditioned on optional.", optional = true) Value<Number> rootAge,
                    @ParameterInfo(name = randomStemAgeName, description = "the age of stem of the tree root, default has no stem", optional = true)Value<Boolean> randomStemAge) {
-        // we should have either bd rates or diversification rates and turn over
-        boolean hasBD = birthRate != null && deathRate != null;
-        boolean hasDT = diversification != null && turnover != null;
-        if (!hasBD && !hasDT)
-            throw new IllegalArgumentException("Must specify either (lambda + mu) or (diversification + turnover).");
-        if (hasBD && hasDT)
-            throw new IllegalArgumentException("Cannot specify both (lambda + mu) and (diversification + turnover).");
+        int count = 0;
+        if (birthRate != null) count++;
+        if (deathRate != null) count++;
+        if (diversification != null) count++;
+        if (turnover != null) count++;
+
+        if (count != 2) {
+            throw new IllegalArgumentException(
+                    "Must specify exactly two of: birthRate, deathRate, diversification, turnover."
+            );
+        }
 
         this.birthRate = birthRate;
         this.deathRate = deathRate;
@@ -66,16 +70,32 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
     public RandomVariable<TimeTree> sample() {
         double birthRate;
         double deathRate;
-        if (getBirthRate() != null && getDeathRate() != null) {
+        if (getBirthRate() != null && getDeathRate() != null) { //if both lambda and mu are given
             birthRate = getBirthRate().value().doubleValue();
             deathRate = getDeathRate().value().doubleValue();
-        } else {
+        } else if (getDiversificationRate() != null && getTurnover() != null) { //if both diversification and turnover are given
             double diversificationRate = getDiversificationRate().value().doubleValue();
             double turnover = getTurnover().value().doubleValue();
             double[] bd = getBD(diversificationRate, turnover);
             birthRate = bd[0];
             deathRate = bd[1];
+        } else if (getBirthRate() != null && getDiversificationRate() != null){
+            birthRate = getBirthRate().value().doubleValue();
+            deathRate = birthRate - getDiversificationRate().value().doubleValue();
+        } else if (getBirthRate() != null && getTurnover() != null){
+            birthRate = getBirthRate().value().doubleValue();
+            deathRate = birthRate * getTurnover().value().doubleValue();
+        } else if (getDeathRate() != null && getDiversificationRate() != null) {
+            deathRate = getDeathRate().value().doubleValue();
+            birthRate = getDiversificationRate().value().doubleValue() + deathRate;
+        } else if (getDeathRate() != null && getTurnover() != null) {
+            deathRate = getDeathRate().value().doubleValue();
+            birthRate = deathRate / getTurnover().value().doubleValue();
+        } else {
+            throw new IllegalArgumentException("Invalid parameter combination, should provide either two of birth rate, death rate, diversification, and turnover.");
         }
+
+
         double rho = getSamplingProbability().value().doubleValue();
 
         // initialise a list for node ages
