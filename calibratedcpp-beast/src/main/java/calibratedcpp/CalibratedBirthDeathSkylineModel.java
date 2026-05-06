@@ -5,6 +5,7 @@ import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.spec.inference.parameter.RealVectorParam;
 import beast.base.spec.type.RealScalar;
+import beast.base.spec.type.RealVector;
 
 import java.util.*;
 
@@ -51,8 +52,8 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
             // Check if the SkylineParameter itself exists
             if (sp != null) {
                 // Now it is safe to access fields
-                RealVectorParam<?> rateP = sp.valuesInput.get();
-                RealVectorParam<?> timeP = sp.changeTimesInput.get();
+                RealVector<?> rateP = sp.valuesInput.get();
+                RealVector<?> timeP = sp.changeTimesInput.get();
 
                   if (rateP != null) {
                     specifiedRates++;
@@ -174,17 +175,18 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
      * * @param reverse If TRUE: Input is already Age (Distance from Present).
      * If FALSE: Input is Distance from Root (needs conversion).
      */
-    private List<Double> processInput(Input<RealVectorParam<?>> rateInput, Input<RealVectorParam<?>> timeInput,
+    private List<Double> processInput(Input<RealVector<?>> rateInput, Input<RealVector<?>> timeInput,
                                       boolean relative, boolean reverse, double maxTime) {
         List<Double> times = new ArrayList<>();
         if (rateInput.get() == null) return times;
 
-        RealVectorParam<?> rateP = rateInput.get();
-        RealVectorParam<?> timeP = timeInput.get();
+        RealVector<?> rateP = rateInput.get();
+        RealVector<?> timeP = timeInput.get();
 
         if (timeP != null) {
             // --- Explicit Change Times ---
-            double[] vals = timeP.getValues();
+            double[] vals = new double[timeP.size()];
+            for (int i = 0; i < timeP.size(); i++) vals[i] = timeP.get(i);
             Arrays.sort(vals);
             for (double v : vals) {
                 double tAge;
@@ -222,7 +224,7 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
      * Enforces Rates: Root -> Present.
      * * @param t The current time (Age).
      */
-    private double getVal(RealVectorParam<?> p, List<Double> cuts, double t) {
+    private double getVal(RealVector<?> p, List<Double> cuts, double t) {
         if (p == null) return 0;
 
         // Find which time interval 't' falls into based on the cuts (which are Ages).
