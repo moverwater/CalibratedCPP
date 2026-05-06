@@ -3,6 +3,7 @@ package calibratedcpp;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
+import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.inference.parameter.RealVectorParam;
 import beast.base.spec.type.RealScalar;
 import beast.base.spec.type.RealVector;
@@ -26,8 +27,8 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
             new Input<>("reproductiveNumber", "Skyline parameter for the reproductiveNumber (λ/µ)", (SkylineParameter) null);
     public Input<SkylineParameter> turnoverInput =
             new Input<>("turnover", "Skyline parameter for the turnover (µ/λ)", (SkylineParameter) null);
-    public Input<RealScalar<?>> samplingProbabilityInput =
-            new Input<>("rho", "Sampling probability (⍴)", (RealScalar<?>) null);
+    public Input<RealScalar<UnitInterval>> samplingProbabilityInput =
+            new Input<>("rho", "Sampling probability (⍴)", (RealScalar<UnitInterval>) null);
 
 
     protected double[] intervalStartTimes, lambda, r, cumulativeIntegral, cumulativeExpR;
@@ -175,7 +176,7 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
      * * @param reverse If TRUE: Input is already Age (Distance from Present).
      * If FALSE: Input is Distance from Root (needs conversion).
      */
-    private List<Double> processInput(Input<RealVector<?>> rateInput, Input<RealVector<?>> timeInput,
+    private List<Double> processInput(Input<? extends RealVector<?>> rateInput, Input<? extends RealVector<?>> timeInput,
                                       boolean relative, boolean reverse, double maxTime) {
         List<Double> times = new ArrayList<>();
         if (rateInput.get() == null) return times;

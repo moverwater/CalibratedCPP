@@ -5,6 +5,7 @@ import beast.base.core.Input;
 import beast.base.evolution.speciation.SpeciesTreeDistribution;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
+import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.type.RealScalar;
 import calibration.CalibrationClade;
 import calibration.CalibrationForest;
@@ -21,8 +22,8 @@ import java.util.function.IntUnaryOperator;
 
 @Description("A general class of birth-death processes with incomplete extant sampling and conditioning on clade calibrations")
 public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
-    public Input<RealScalar<?>> originInput =
-            new Input<>("origin", "Age of the origin (time of process start)", (RealScalar<?>) null);
+    public Input<RealScalar<PositiveReal>> originInput =
+            new Input<>("origin", "Age of the origin (time of process start)", (RealScalar<PositiveReal>) null);
 
     public Input<Boolean> conditionOnRootInput =
             new Input<>("conditionOnRoot", "Whether the model is conditioned on the root age (default: false)", false);

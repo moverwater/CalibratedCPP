@@ -2,7 +2,8 @@ package calibrationprior;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.spec.domain.Real;
+import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.inference.parameter.RealScalarParam;
 import beast.base.spec.type.RealScalar;
 import calibration.CalibrationClade;
@@ -13,13 +14,13 @@ import calibration.CalibrationClade;
 
 @Description("A calibration clade is a taxon set in a monophyletic clade and an upper and lower bound on the age of the clade")
 public class CalibrationCladePrior extends CalibrationClade {
-    public Input<RealScalar<?>> upperAgeInput =
+    public Input<RealScalar<NonNegativeReal>> upperAgeInput =
             new Input<>("upperAge", "the soft upper bound on the age of the clade", Input.Validate.REQUIRED);
-    public Input<RealScalar<?>> lowerAgeInput =
+    public Input<RealScalar<NonNegativeReal>> lowerAgeInput =
             new Input<>("lowerAge", "the soft lower bound on the age of the clade", Input.Validate.REQUIRED);
-    public Input<RealScalar<?>> pCoverageInput =
+    public Input<RealScalar<UnitInterval>> pCoverageInput =
             new Input<>("confidenceLevel", "the amount of probability mass in the bounds" +
-                    "default value (0.9)", new RealScalarParam<>(0.9, Real.INSTANCE));
+                    "default value (0.9)", new RealScalarParam<>(0.9, UnitInterval.INSTANCE));
 
     @Override
     public void initAndValidate() {

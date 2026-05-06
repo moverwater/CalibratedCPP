@@ -3,6 +3,8 @@ package calibratedcpp;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.inference.CalculationNode;
+import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.Real;
 import beast.base.spec.type.RealVector;
 
 /**
@@ -11,9 +13,9 @@ import beast.base.spec.type.RealVector;
 
 @Description("Input for rate parameters in BirthDeathSkylineModel.")
 public class SkylineParameter extends CalculationNode {
-    public Input<RealVector<?>> valuesInput =
+    public Input<RealVector<? extends Real>> valuesInput =
             new Input<>("values", "Value of the rates specified from root to present.", Input.Validate.REQUIRED);
-    public Input<RealVector<?>> changeTimesInput =
+    public Input<RealVector<NonNegativeReal>> changeTimesInput =
             new Input<>("changeTimes", "Value of the change times.", Input.Validate.OPTIONAL);
     public Input<Boolean> timesAreRelativeInput =
             new Input<>("timesAreRelative", "Boolean whether change times are relative to root height/origin. Default: false", false);

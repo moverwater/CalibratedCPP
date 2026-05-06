@@ -4,6 +4,7 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.TaxonSet;
+import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.type.RealScalar;
 
 
@@ -17,7 +18,7 @@ import beast.base.spec.type.RealScalar;
 public class CalibrationClade extends BEASTObject {
     public Input<TaxonSet> taxaInput =
             new Input<>("taxa", "The set of taxa in the clade", Input.Validate.REQUIRED);
-    public Input<RealScalar<?>> ageInput =
+    public Input<RealScalar<PositiveReal>> ageInput =
             new Input<>("tmrca", "The time of the most recent common ancestor in the clade", Input.Validate.OPTIONAL);
 
     public boolean providedAge;
