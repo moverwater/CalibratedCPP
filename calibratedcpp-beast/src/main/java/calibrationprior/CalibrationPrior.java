@@ -9,9 +9,9 @@ import beast.base.inference.Distribution;
 import beast.base.inference.State;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
-import org.apache.commons.math3.linear.*;
-import org.apache.commons.math3.special.Erf;
-import org.apache.commons.math3.special.Gamma;
+import org.hipparchus.linear.*;
+import org.hipparchus.special.Erf;
+import org.hipparchus.special.Gamma;
 
 import java.util.*;
 
