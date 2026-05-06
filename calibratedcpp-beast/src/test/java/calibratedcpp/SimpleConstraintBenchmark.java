@@ -4,7 +4,8 @@ import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import calibration.CalibrationClade;
 
 import java.io.*;
@@ -308,9 +309,9 @@ public class SimpleConstraintBenchmark {
         // System.err.println("  Num calibrations: " + calibrationClades.size());
 
         // Set up birth-death model
-        RealParameter turnover = new RealParameter("0.0");
-        RealParameter birthRate = new RealParameter("2.0");
-        RealParameter rho = new RealParameter("1.0");
+        RealScalarParam<Real> turnover = new RealScalarParam<>(0.0, Real.INSTANCE);
+        RealScalarParam<Real> birthRate = new RealScalarParam<>(2.0, Real.INSTANCE);
+        RealScalarParam<Real> rho = new RealScalarParam<>(1.0, Real.INSTANCE);
 
         // Set up CalibratedCoalescentPointProcess
         CalibratedCoalescentPointProcess cpp = new CalibratedBirthDeathModel();

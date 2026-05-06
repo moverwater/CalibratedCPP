@@ -2,7 +2,8 @@ package calibratedcpp;
 
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -22,23 +23,23 @@ public class CalibratedBirthDeathModelTest {
         birthDeathModelSuperCrit = new CalibratedBirthDeathModel();
         birthDeathModelSuperCrit.initByName("tree", tree,
                 "conditionOnRoot", true,
-                "birthRate", new RealParameter("2.0"),
-                "deathRate", new RealParameter("1.0"),
-                "rho", new RealParameter("0.1"));
+                "birthRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(1.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE));
 
         birthDeathModelSubCrit = new CalibratedBirthDeathModel();
         birthDeathModelSubCrit.initByName("tree", tree,
                 "conditionOnRoot", true,
-                "birthRate", new RealParameter("1.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1"));
+                "birthRate", new RealScalarParam<>(1.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE));
 
         birthDeathModelCrit = new CalibratedBirthDeathModel();
         birthDeathModelCrit.initByName("tree", tree,
                 "conditionOnRoot", true,
-                "birthRate", new RealParameter("1.0"),
-                "diversificationRate", new RealParameter("0.0"),
-                "rho", new RealParameter("1.0"));
+                "birthRate", new RealScalarParam<>(1.0, Real.INSTANCE),
+                "diversificationRate", new RealScalarParam<>(0.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(1.0, Real.INSTANCE));
     }
 
     @Test
