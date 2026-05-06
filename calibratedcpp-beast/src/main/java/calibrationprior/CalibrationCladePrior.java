@@ -2,7 +2,9 @@ package calibrationprior;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.parameter.RealScalarParam;
+import beast.base.spec.type.RealScalar;
 import calibration.CalibrationClade;
 
 /**
@@ -11,24 +13,24 @@ import calibration.CalibrationClade;
 
 @Description("A calibration clade is a taxon set in a monophyletic clade and an upper and lower bound on the age of the clade")
 public class CalibrationCladePrior extends CalibrationClade {
-    public Input<RealParameter> upperAgeInput =
+    public Input<RealScalar<?>> upperAgeInput =
             new Input<>("upperAge", "the soft upper bound on the age of the clade", Input.Validate.REQUIRED);
-    public Input<RealParameter> lowerAgeInput =
+    public Input<RealScalar<?>> lowerAgeInput =
             new Input<>("lowerAge", "the soft lower bound on the age of the clade", Input.Validate.REQUIRED);
-    public Input<RealParameter> pCoverageInput =
+    public Input<RealScalar<?>> pCoverageInput =
             new Input<>("confidenceLevel", "the amount of probability mass in the bounds" +
-                    "default value (0.9)", new RealParameter("0.9"));
+                    "default value (0.9)", new RealScalarParam<>(0.9, Real.INSTANCE));
 
     @Override
     public void initAndValidate() {
         super.initAndValidate();
-        double p = pCoverageInput.get().getValue();
+        double p = pCoverageInput.get().get();
         if ((p < 0.0) || (p > 1.0)) {
             throw new IllegalArgumentException("confidenceLevel (" + p + ") should be between 0.0 and 1.0");
         }
 
-        double t_lo = lowerAgeInput.get().getValue();
-        double t_hi = upperAgeInput.get().getValue();
+        double t_lo = lowerAgeInput.get().get();
+        double t_hi = upperAgeInput.get().get();
 
         if (t_hi < t_lo) {
             throw new IllegalArgumentException("lowerAge (" + t_lo + ") should be less than upperAge (" + t_hi + ")");
@@ -51,14 +53,14 @@ public class CalibrationCladePrior extends CalibrationClade {
     public double beta;      // Beta beta
 
     public double getUpper() {
-        return upperAgeInput.get().getValue();
+        return upperAgeInput.get().get();
     }
 
     public double getLower() {
-        return lowerAgeInput.get().getValue();
+        return lowerAgeInput.get().get();
     }
 
     public double getCoverage() {
-        return pCoverageInput.get().getValue();
+        return pCoverageInput.get().get();
     }
 }

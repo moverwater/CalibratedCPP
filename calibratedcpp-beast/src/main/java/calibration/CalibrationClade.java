@@ -4,7 +4,7 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.TaxonSet;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.type.RealScalar;
 
 
 /**
@@ -17,7 +17,7 @@ import beast.base.inference.parameter.RealParameter;
 public class CalibrationClade extends BEASTObject {
     public Input<TaxonSet> taxaInput =
             new Input<>("taxa", "The set of taxa in the clade", Input.Validate.REQUIRED);
-    public Input<RealParameter> ageInput =
+    public Input<RealScalar<?>> ageInput =
             new Input<>("tmrca", "The time of the most recent common ancestor in the clade", Input.Validate.OPTIONAL);
 
     public boolean providedAge;
@@ -28,7 +28,7 @@ public class CalibrationClade extends BEASTObject {
             throw new IllegalArgumentException("Calibration clade " + getID() + " must contain at least one taxon.");
         }
         if (ageInput.get() != null) {
-            if (ageInput.get().getValue() <= 0) {
+            if (ageInput.get().get() <= 0) {
                 throw new IllegalArgumentException("Calibration age must be positive: " + getID());
             }
             providedAge = true;
@@ -41,7 +41,7 @@ public class CalibrationClade extends BEASTObject {
         return taxaInput.get();
     }
 
-    public RealParameter getAge() {
+    public RealScalar<?> getAge() {
         return ageInput.get();
     }
 }

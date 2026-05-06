@@ -2,7 +2,7 @@ package calibratedcpp;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.type.RealScalar;
 
 /**
  * @author Marcus Overwater
@@ -11,23 +11,23 @@ import beast.base.inference.parameter.RealParameter;
 @Description("Extension of CalibratedCoalescentPointProcess, implements node age density and CDF for" +
         "constant rate birth-death process with incomplete extant sampling.")
 public class CalibratedBirthDeathModel extends CalibratedCoalescentPointProcess {
-    public Input<RealParameter> birthRateInput =
-            new Input<>("birthRate", "The birth rate (lambda)", (RealParameter) null);
+    public Input<RealScalar<?>> birthRateInput =
+            new Input<>("birthRate", "The birth rate (lambda)", (RealScalar<?>) null);
 
-    public Input<RealParameter> deathRateInput =
-            new Input<>("deathRate", "The death rate (mu)", (RealParameter) null);
+    public Input<RealScalar<?>> deathRateInput =
+            new Input<>("deathRate", "The death rate (mu)", (RealScalar<?>) null);
 
-    public Input<RealParameter> diversificationRateInput =
-            new Input<>("diversificationRate", "Diversification rate (lambda - mu)", (RealParameter) null);
+    public Input<RealScalar<?>> diversificationRateInput =
+            new Input<>("diversificationRate", "Diversification rate (lambda - mu)", (RealScalar<?>) null);
 
-    public Input<RealParameter> reproductiveNumberInput =
-            new Input<>("reproductiveNumber", "Reproductive number (lambda / mu)", (RealParameter) null);
+    public Input<RealScalar<?>> reproductiveNumberInput =
+            new Input<>("reproductiveNumber", "Reproductive number (lambda / mu)", (RealScalar<?>) null);
 
-    public Input<RealParameter> turnoverInput =
-            new Input<>("turnover", "Turnover (mu / lambda)", (RealParameter) null);
+    public Input<RealScalar<?>> turnoverInput =
+            new Input<>("turnover", "Turnover (mu / lambda)", (RealScalar<?>) null);
 
-    public Input<RealParameter> rhoInput =
-            new Input<>("rho", "Probability with which each individual in the population is sampled.", (RealParameter) null);
+    public Input<RealScalar<?>> rhoInput =
+            new Input<>("rho", "Probability with which each individual in the population is sampled.", (RealScalar<?>) null);
 
     // Numeric versions of model parameters after extraction from inputs
     public Double birthRate;
@@ -225,13 +225,13 @@ public class CalibratedBirthDeathModel extends CalibratedCoalescentPointProcess 
     }
 
     /**
-     * Safely retrieves a numeric value from an {@link Input<RealParameter>}.
+     * Safely retrieves a numeric value from an {@link Input} holding a {@link RealScalarParam}.
      *
-     * @param input the RealParameter input
+     * @param input the RealScalarParam input
      * @return the numeric value, or {@code null} if input is undefined
      */
-    private Double safeGet(Input<RealParameter> input) {
-        RealParameter param = input.get();
-        return (param != null) ? param.getValue() : null;
+    private Double safeGet(Input<RealScalar<?>> input) {
+        RealScalar<?> param = input.get();
+        return (param != null) ? param.get() : null;
     }
 }
