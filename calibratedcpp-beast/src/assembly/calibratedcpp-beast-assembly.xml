@@ -26,9 +26,12 @@
             <outputDirectory>/lib</outputDirectory>
             <useProjectArtifact>true</useProjectArtifact>
             <scope>runtime</scope>
-            <includes>
-                <include>io.github.linguaphylo:calibratedcpp-beast</include>
-            </includes>
+            <excludes>
+                <!-- Provided by the BEAST runtime -->
+                <exclude>io.github.compevol:*</exclude>
+                <!-- Benchmark-only, not needed at runtime -->
+                <exclude>org.openjdk.jmh:*</exclude>
+            </excludes>
         </dependencySet>
     </dependencySets>
 
