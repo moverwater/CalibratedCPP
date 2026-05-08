@@ -3,9 +3,12 @@ package calibratedcpp.lphybeast.tobeast.generators;
 import beast.base.core.BEASTInterface;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.parameter.RealParameter;
-import calibratedcpp.CalibratedBirthDeathSkylineModel;
-import calibratedcpp.SkylineParameter;
+import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.domain.UnitInterval;
+import beast.base.spec.inference.parameter.RealScalarParam;
+import beast.base.spec.type.RealScalar;
+import calibratedcpp.CalibratedBirthDeathModel;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibration.CalibrationClade;
@@ -21,53 +24,33 @@ import java.util.List;
 
 import static lphybeast.tobeast.TaxaUtils.getTaxonSet;
 
-public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, CalibratedBirthDeathSkylineModel> {
+public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, CalibratedBirthDeathModel> {
     @Override
-    public CalibratedBirthDeathSkylineModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
+    public CalibratedBirthDeathModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
         List<TaxonSet> taxonSets = new ArrayList<>();
-        CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
+        CalibratedBirthDeathModel model = new CalibratedBirthDeathModel();
         model.setInputValue("tree", value);
         boolean rootConditioned = generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
         model.setInputValue("conditionOnCalibrations", true); // users should change this in XML
 
-        // if it is not root conditioned, then set the stem age
-        // if there is root calibration, then it will be set in initAndValidate
-        if (! rootConditioned){
-            RealParameter realParameter = new RealParameter(new Double[]{generator.getOrigin().value()});
-           model.setInputValue("origin", realParameter);
+        if (!rootConditioned) {
+            model.setInputValue("origin", new RealScalarParam<>(generator.getOrigin().value(), PositiveReal.INSTANCE));
         }
 
-        // get tree model
-        if (generator.getBirthRate() != null){
-            SkylineParameter b = new SkylineParameter();
-            b.setInputValue("values", context.getAsRealParameter(generator.getBirthRate()));
-            b.initAndValidate();
-            model.setInputValue("birthRate", b);
-        }
+        if (generator.getBirthRate() != null)
+            model.setInputValue("birthRate", context.getAsRealScalar(generator.getBirthRate()));
 
-        if (generator.getDeathRate() != null){
-            SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealParameter(generator.getDeathRate()));
-            model.setInputValue("deathRate", d);
-        }
+        if (generator.getDeathRate() != null)
+            model.setInputValue("deathRate", context.getAsRealScalar(generator.getDeathRate()));
 
-        if (generator.getTurnover() != null){
-            SkylineParameter t = new SkylineParameter();
-            t.setInputValue("values", context.getAsRealParameter(generator.getTurnover()));
-            t.initAndValidate();
-            model.setInputValue("turnover", t);
-        }
+        if (generator.getTurnover() != null)
+            model.setInputValue("turnover", context.getAsRealScalar(generator.getTurnover()));
 
-        if (generator.getDiversificationRate() != null){
-            SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealParameter(generator.getDiversificationRate()));
-            d.initAndValidate();
-            model.setInputValue("diversificationRate", d);
-        }
+        if (generator.getDiversificationRate() != null)
+            model.setInputValue("diversificationRate", context.getAsRealScalar(generator.getDiversificationRate()));
 
-
-        model.setInputValue("rho", context.getAsRealParameter(generator.getSamplingProb()));
+        model.setInputValue("rho", context.getAsRealScalar(generator.getSamplingProb()));
 
         // get clade calibrations
         List<CalibrationClade> calibrations = new ArrayList<>();
@@ -90,15 +73,12 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
          */
         CalibrationPrior calibrationPrior = new CalibrationPrior();
         calibrationPrior.setInputValue("tree", value);
-        // get the calibrations
-        List<CalibrationCladePrior> bounds = new ArrayList<>();
-        // extract bounds and coverage info from generator
         ConditionedMRCAPrior conditionedMRCAPrior = (ConditionedMRCAPrior) generator.getCalibrations().getInputs().get(0);
-        Value<Double[]> upperBoundsInput = ( Value<Double[]>) conditionedMRCAPrior.getParams().get("upperBounds");
-        Value<Double[]> lowerBoundsInput = ( Value<Double[]>) conditionedMRCAPrior.getParams().get("lowerBounds");
+        Value<Double[]> upperBoundsInput = (Value<Double[]>) conditionedMRCAPrior.getParams().get("upperBounds");
+        Value<Double[]> lowerBoundsInput = (Value<Double[]>) conditionedMRCAPrior.getParams().get("lowerBounds");
         Value<Double> covInput;
-        if (conditionedMRCAPrior.getParams().get("p") != null){
-            covInput = ( Value<Double>) conditionedMRCAPrior.getParams().get("p");
+        if (conditionedMRCAPrior.getParams().get("p") != null) {
+            covInput = (Value<Double>) conditionedMRCAPrior.getParams().get("p");
         } else {
             covInput = new Value<>("", 0.9);
         }
@@ -106,24 +86,22 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         calibrationPrior.setInputValue("calibration", cladeInput);
         calibrationPrior.initAndValidate();
 
-        // add beast beast object for calibrationPrior
-       context.addBEASTObject(calibrationPrior,conditionedMRCAPrior);
+        context.addBEASTObject(calibrationPrior, conditionedMRCAPrior);
 
         return model;
     }
 
     private List<CalibrationCladePrior> getCalibrationCladePriors(Value<Double> covInput, Calibration[] calibrationsFromGenerator, Value<Double[]> upperBoundsInput, Value<Double[]> lowerBoundsInput, List<TaxonSet> taxonSets) {
-        RealParameter confidenceLevel = new RealParameter(new Double[]{covInput.value()});
+        RealScalar<UnitInterval> confidenceLevel = new RealScalarParam<>(covInput.value(), UnitInterval.INSTANCE);
 
         List<CalibrationCladePrior> cladeInput = new ArrayList<>();
         for (int i = 0; i < calibrationsFromGenerator.length; i++) {
             Double upper = upperBoundsInput.value()[i];
             Double lower = lowerBoundsInput.value()[i];
 
-            RealParameter upperAge = new RealParameter(new Double[]{upper});
-            RealParameter lowerAge = new RealParameter(new Double[]{lower});
+            RealScalar<NonNegativeReal> upperAge = new RealScalarParam<>(upper, NonNegativeReal.INSTANCE);
+            RealScalar<NonNegativeReal> lowerAge = new RealScalarParam<>(lower, NonNegativeReal.INSTANCE);
 
-            // construct calibration clade prior
             CalibrationCladePrior calibrationCladePrior = new CalibrationCladePrior();
             calibrationCladePrior.setInputValue("upperAge", upperAge);
             calibrationCladePrior.setInputValue("lowerAge", lowerAge);
@@ -141,7 +119,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
     }
 
     @Override
-    public Class<CalibratedBirthDeathSkylineModel> getBEASTClass() {
-        return CalibratedBirthDeathSkylineModel.class;
+    public Class<CalibratedBirthDeathModel> getBEASTClass() {
+        return CalibratedBirthDeathModel.class;
     }
 }

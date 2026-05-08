@@ -1,56 +1,40 @@
 package calibratedcpp.lphybeast.tobeast.generators;
 
 import beast.base.core.BEASTInterface;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import calibratedcpp.CalibratedBirthDeathModel;
-import calibratedcpp.CalibratedBirthDeathSkylineModel;
-import calibratedcpp.SkylineParameter;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
 import calibratedcpp.lphy.tree.CPPTree;
 
-public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeathSkylineModel> {
+public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeathModel> {
     @Override
-    public CalibratedBirthDeathSkylineModel generatorToBEAST(CPPTree generator, BEASTInterface value, BEASTContext context) {
-        CalibratedBirthDeathSkylineModel cpp = new CalibratedBirthDeathSkylineModel();
+    public CalibratedBirthDeathModel generatorToBEAST(CPPTree generator, BEASTInterface value, BEASTContext context) {
+        CalibratedBirthDeathModel cpp = new CalibratedBirthDeathModel();
         cpp.setInputValue("tree", value);
 
-        // set origin and condition on root
         if (generator.getRootAge() != null) {
             cpp.setInputValue("conditionOnRoot", true);
-            cpp.setInputValue("origin", context.getAsRealParameter(generator.getRootAge()));
+            cpp.setInputValue("origin", context.getAsRealScalar(generator.getRootAge()));
         } else {
-            cpp.setInputValue("origin", generator.getConditionAge());
+            cpp.setInputValue("origin", new RealScalarParam<>(generator.getConditionAge(), PositiveReal.INSTANCE));
             cpp.setInputValue("conditionOnRoot", false);
         }
 
-        if (generator.getBirthRate() != null){
-            SkylineParameter b = new SkylineParameter();
-            b.setInputValue("values", context.getAsRealParameter(generator.getBirthRate()));
-            b.initAndValidate();
-            cpp.setInputValue("birthRate", b);
-        }
+        if (generator.getBirthRate() != null)
+            cpp.setInputValue("birthRate", context.getAsRealScalar(generator.getBirthRate()));
 
-        if (generator.getDeathRate() != null){
-            SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealParameter(generator.getDeathRate()));
-            cpp.setInputValue("deathRate", d);
-        }
+        if (generator.getDeathRate() != null)
+            cpp.setInputValue("deathRate", context.getAsRealScalar(generator.getDeathRate()));
 
-        if (generator.getTurnover() != null){
-            SkylineParameter t = new SkylineParameter();
-            t.setInputValue("values", context.getAsRealParameter(generator.getTurnover()));
-            t.initAndValidate();
-            cpp.setInputValue("turnover", t);
-        }
+        if (generator.getTurnover() != null)
+            cpp.setInputValue("turnover", context.getAsRealScalar(generator.getTurnover()));
 
-        if (generator.getDiversificationRate() != null){
-            SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealParameter(generator.getDiversificationRate()));
-            d.initAndValidate();
-            cpp.setInputValue("diversificationRate", d);
-        }
+        if (generator.getDiversificationRate() != null)
+            cpp.setInputValue("diversificationRate", context.getAsRealScalar(generator.getDiversificationRate()));
 
-        cpp.setInputValue("rho", context.getAsRealParameter(generator.getSamplingProbability()));
+        cpp.setInputValue("rho", context.getAsRealScalar(generator.getSamplingProbability()));
 
         cpp.initAndValidate();
         return cpp;
@@ -62,7 +46,7 @@ public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeat
     }
 
     @Override
-    public Class<CalibratedBirthDeathSkylineModel> getBEASTClass() {
-        return CalibratedBirthDeathSkylineModel.class;
+    public Class<CalibratedBirthDeathModel> getBEASTClass() {
+        return CalibratedBirthDeathModel.class;
     }
 }
