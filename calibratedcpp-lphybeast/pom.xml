@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.github.linguaphylo</groupId>
+        <groupId>io.github.moverwater</groupId>
         <artifactId>calibratedcpp-root</artifactId>
         <version>${revision}</version>
     </parent>
@@ -21,20 +21,36 @@
         </dependency>
 
         <dependency>
-            <groupId>io.github.linguaphylo</groupId>
+            <groupId>io.github.moverwater</groupId>
             <artifactId>calibratedcpp-beast</artifactId>
             <version>${project.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>io.github.linguaphylo</groupId>
+            <groupId>io.github.moverwater</groupId>
             <artifactId>calibratedcpp-lphy</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
 
+    <properties>
+        <lphybeast.args/>
+    </properties>
+
     <build>
         <plugins>
+            <!-- mvn -pl calibratedcpp-lphybeast exec:exec -Dlphybeast.args="convert examples/CPPTree.lphy" -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration>
+                    <executable>java</executable>
+                    <classpathScope>compile</classpathScope>
+                    <commandlineArgs>-Dpicocli.disable.closures=true --module-path %classpath --add-modules calibratedcpp.lphybeast -m lphy.beast/lphybeast.LPhyBeastMain ${lphybeast.args}</commandlineArgs>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>

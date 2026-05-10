@@ -1,7 +1,7 @@
 <project>
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.github.linguaphylo</groupId>
+        <groupId>io.github.moverwater</groupId>
         <artifactId>calibratedcpp-root</artifactId>
         <version>${revision}</version>
     </parent>
@@ -163,7 +163,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
