@@ -25,6 +25,9 @@ Required:
 - Maven 3.9+
 
 ### Maven build
+Before building this project, let's build the dependencies first following [LphyBeast Testing Guide](https://github.com/LinguaPhylo/LPhyBeast/blob/beast3/TESTING.md).
+After building lphybeast, we can start to build CalibratedCPP.
+
 With terminal, run from the project root:
 ```bash
 mvn install -DskipTests
