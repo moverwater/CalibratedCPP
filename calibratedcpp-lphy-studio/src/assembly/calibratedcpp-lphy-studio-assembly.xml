@@ -12,8 +12,8 @@
         <moduleSet>
             <useAllReactorProjects>true</useAllReactorProjects>
             <includes>
-                <include>io.github.linguaphylo:calibratedcpp-lphy</include>
-                <include>io.github.linguaphylo:calibratedcpp-lphy-studio</include>
+                <include>io.github.moverwater:calibratedcpp-lphy</include>
+                <include>io.github.moverwater:calibratedcpp-lphy-studio</include>
             </includes>
 
             <sources>
@@ -43,6 +43,7 @@
         </fileSet>
         <fileSet>
             <excludes>
+                <exclude>target/**</exclude>
                 <exclude>**/todo/**</exclude>
                 <exclude>**/*.log</exclude>
                 <exclude>**/*.trees</exclude>
@@ -56,8 +57,8 @@
             <outputDirectory>/lib</outputDirectory>
             <includes>
                 <!-- only calibratedcpp jars -->
-                <include>io.github.linguaphylo:calibratedcpp-lphy</include>
-                <include>io.github.linguaphylo:calibratedcpp-lphy-studio</include>
+                <include>io.github.moverwater:calibratedcpp-lphy</include>
+                <include>io.github.moverwater:calibratedcpp-lphy-studio</include>
             </includes>
         </dependencySet>
     </dependencySets>
