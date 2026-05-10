@@ -52,12 +52,12 @@
             <version>${lphybeast.vision}</version>
             <scope>provided</scope>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>io.github.jordandouglas</groupId>-->
-<!--            <artifactId>beast-orc</artifactId>-->
-<!--            <version>1.3.0-SNAPSHOT</version>-->
-<!--            <scope>provided</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>io.github.jordandouglas</groupId>
+            <artifactId>beast-orc</artifactId>
+            <version>1.3.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <properties>
