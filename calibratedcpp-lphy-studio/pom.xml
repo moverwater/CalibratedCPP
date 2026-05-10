@@ -1,7 +1,7 @@
 <project>
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.github.linguaphylo</groupId>
+        <groupId>io.github.moverwater</groupId>
         <artifactId>calibratedcpp-root</artifactId>
         <version>${revision}</version>
     </parent>
@@ -11,7 +11,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.github.linguaphylo</groupId>
+            <groupId>io.github.moverwater</groupId>
             <artifactId>calibratedcpp-lphy</artifactId>
             <version>${revision}</version>
         </dependency>
