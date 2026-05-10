@@ -11,12 +11,12 @@ import jebl.evolution.sequences.SequenceType;
 import lphy.core.model.Generator;
 import lphybeast.GeneratorToBEAST;
 import lphybeast.ValueToBEAST;
-import lphybeast.spi.LPhyBEASTExt;
+import lphybeast.spi.LPhyBEASTMapping;
 
 import java.util.List;
 import java.util.Map;
 
-public class LBcalibratedcppImpl implements LPhyBEASTExt {
+public class LBcalibratedcppImpl implements LPhyBEASTMapping {
     @Override
     public List<Class<? extends GeneratorToBEAST>> getGeneratorToBEASTs() {
         return List.of(
