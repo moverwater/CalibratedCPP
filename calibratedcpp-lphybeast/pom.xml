@@ -31,6 +31,33 @@
             <artifactId>calibratedcpp-lphy</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- LPhyBEAST extensions: putting their JARs on the module path lets
+             ALL-MODULE-PATH discover them automatically — no module names needed -->
+        <dependency>
+            <groupId>io.github.linguaphylo</groupId>
+            <artifactId>lphybeast-ssm</artifactId>
+            <version>${lphybeast.vision}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>substmodels</groupId>
+            <artifactId>substmodels</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.github.linguaphylo</groupId>
+            <artifactId>lphybeast-orc</artifactId>
+            <version>${lphybeast.vision}</version>
+            <scope>provided</scope>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.github.jordandouglas</groupId>-->
+<!--            <artifactId>beast-orc</artifactId>-->
+<!--            <version>1.3.0-SNAPSHOT</version>-->
+<!--            <scope>provided</scope>-->
+<!--        </dependency>-->
     </dependencies>
 
     <properties>
@@ -47,7 +74,7 @@
                 <configuration>
                     <executable>java</executable>
                     <classpathScope>compile</classpathScope>
-                    <commandlineArgs>-Dpicocli.disable.closures=true --module-path %classpath --add-modules calibratedcpp.lphybeast -m lphy.beast/lphybeast.LPhyBeastMain ${lphybeast.args}</commandlineArgs>
+                    <commandlineArgs>-Dpicocli.disable.closures=true --module-path %classpath --add-modules ALL-MODULE-PATH -m lphy.beast/lphybeast.LPhyBeastMain ${lphybeast.args}</commandlineArgs>
                 </configuration>
             </plugin>
 
