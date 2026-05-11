@@ -54,13 +54,13 @@ mvn test
 #### LphyBeast XML Generation
 Run from the project root using `CPPTree.lphy` as an example:
 ```bash
-mvn -pl calibratedcpp-lphybeast exec:exec -Dlphybeast.args="convert ../calibratedcpp-lphy/examples/CPPTree.lphy"
+mvn -pl calibratedcpp-lphybeast-launcher exec:exec -Dlphybeast.args="convert ../calibratedcpp-lphy/examples/CPPTree.lphy"
 ```
 The generated BEAST XML is saved alongside the `.lphy` file (e.g. `calibratedcpp-lphy/examples/CPPTree.xml`).
 
 To convert and immediately run BEAST3:
 ```bash
-mvn -pl calibratedcpp-lphybeast exec:exec -Dlphybeast.args="run ../calibratedcpp-lphy/examples/CPPTree.lphy"
+mvn -pl calibratedcpp-lphybeast-launcher exec:exec -Dlphybeast.args="run ../calibratedcpp-lphy/examples/CPPTree.lphy"
 ```
 
 #### BEAST3 Run
@@ -78,7 +78,7 @@ BEAST2 produces a posterior distribution that can be compared with the data gene
 Run from the project root:
 ```bash
 # Convert with 100 replicates
-mvn -pl calibratedcpp-lphybeast exec:exec -Dlphybeast.args="convert -r 100 ../calibratedcpp-lphy/examples/wellCalibratedStudy.lphy"
+mvn -pl calibratedcpp-lphybeast-launcher exec:exec -Dlphybeast.args="convert -r 100 ../calibratedcpp-lphy/examples/wellCalibratedStudy.lphy"
 
 # Run BEAST3 on each replicate
 for i in {0..99}; do
