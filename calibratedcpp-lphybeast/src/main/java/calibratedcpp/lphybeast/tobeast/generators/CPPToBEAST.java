@@ -4,14 +4,16 @@ import beast.base.core.BEASTInterface;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.inference.parameter.RealScalarParam;
 import calibratedcpp.CalibratedBirthDeathModel;
+import calibratedcpp.CalibratedBirthDeathSkylineModel;
+import calibratedcpp.SkylineParameter;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
 import calibratedcpp.lphy.tree.CPPTree;
 
-public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeathModel> {
+public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeathSkylineModel> {
     @Override
-    public CalibratedBirthDeathModel generatorToBEAST(CPPTree generator, BEASTInterface value, BEASTContext context) {
-        CalibratedBirthDeathModel cpp = new CalibratedBirthDeathModel();
+    public CalibratedBirthDeathSkylineModel generatorToBEAST(CPPTree generator, BEASTInterface value, BEASTContext context) {
+        CalibratedBirthDeathSkylineModel cpp = new CalibratedBirthDeathSkylineModel();
         cpp.setInputValue("tree", value);
 
         if (generator.getRootAge() != null) {
@@ -22,17 +24,32 @@ public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeat
             cpp.setInputValue("conditionOnRoot", false);
         }
 
-        if (generator.getBirthRate() != null)
-            cpp.setInputValue("birthRate", context.getAsRealScalar(generator.getBirthRate()));
+        if (generator.getBirthRate() != null) {
+            SkylineParameter b = new SkylineParameter();
+            b.setInputValue("values", context.getAsRealScalar(generator.getBirthRate()));
+            b.initAndValidate();
+            cpp.setInputValue("birthRate", b);
+        }
 
-        if (generator.getDeathRate() != null)
-            cpp.setInputValue("deathRate", context.getAsRealScalar(generator.getDeathRate()));
+        if (generator.getDeathRate() != null) {
+            SkylineParameter d = new SkylineParameter();
+            d.setInputValue("values", context.getAsRealScalar(generator.getDeathRate()));
+            cpp.setInputValue("deathRate", d);
+        }
 
-        if (generator.getTurnover() != null)
-            cpp.setInputValue("turnover", context.getAsRealScalar(generator.getTurnover()));
+        if (generator.getTurnover() != null) {
+            SkylineParameter t = new SkylineParameter();
+            t.setInputValue("values", context.getAsRealScalar(generator.getTurnover()));
+            t.initAndValidate();
+            cpp.setInputValue("turnover", t);
+        }
 
-        if (generator.getDiversificationRate() != null)
-            cpp.setInputValue("diversificationRate", context.getAsRealScalar(generator.getDiversificationRate()));
+        if (generator.getDiversificationRate() != null) {
+            SkylineParameter d = new SkylineParameter();
+            d.setInputValue("values", context.getAsRealScalar(generator.getDiversificationRate()));
+            d.initAndValidate();
+            cpp.setInputValue("diversificationRate", d);
+        }
 
         cpp.setInputValue("rho", context.getAsRealScalar(generator.getSamplingProbability()));
 
@@ -46,7 +63,7 @@ public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeat
     }
 
     @Override
-    public Class<CalibratedBirthDeathModel> getBEASTClass() {
-        return CalibratedBirthDeathModel.class;
+    public Class<CalibratedBirthDeathSkylineModel> getBEASTClass() {
+        return CalibratedBirthDeathSkylineModel.class;
     }
 }

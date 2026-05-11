@@ -9,6 +9,7 @@ import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.inference.parameter.RealScalarParam;
 import beast.base.spec.type.RealScalar;
 import calibratedcpp.CalibratedBirthDeathModel;
+import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibration.CalibrationClade;
@@ -38,17 +39,32 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
             model.setInputValue("origin", new RealScalarParam<>(generator.getOrigin().value(), PositiveReal.INSTANCE));
         }
 
-        if (generator.getBirthRate() != null)
-            model.setInputValue("birthRate", context.getAsRealScalar(generator.getBirthRate()));
+        if (generator.getBirthRate() != null) {
+            SkylineParameter b = new SkylineParameter();
+            b.setInputValue("values", context.getAsRealScalar(generator.getBirthRate()));
+            b.initAndValidate();
+            model.setInputValue("birthRate", b);
+        }
 
-        if (generator.getDeathRate() != null)
-            model.setInputValue("deathRate", context.getAsRealScalar(generator.getDeathRate()));
+        if (generator.getDeathRate() != null) {
+            SkylineParameter d = new SkylineParameter();
+            d.setInputValue("values", context.getAsRealScalar(generator.getDeathRate()));
+            model.setInputValue("deathRate", d);
+        }
 
-        if (generator.getTurnover() != null)
-            model.setInputValue("turnover", context.getAsRealScalar(generator.getTurnover()));
+        if (generator.getTurnover() != null) {
+            SkylineParameter t = new SkylineParameter();
+            t.setInputValue("values", context.getAsRealScalar(generator.getTurnover()));
+            t.initAndValidate();
+            model.setInputValue("turnover", t);
+        }
 
-        if (generator.getDiversificationRate() != null)
-            model.setInputValue("diversificationRate", context.getAsRealScalar(generator.getDiversificationRate()));
+        if (generator.getDiversificationRate() != null) {
+            SkylineParameter d = new SkylineParameter();
+            d.setInputValue("values", context.getAsRealScalar(generator.getDiversificationRate()));
+            d.initAndValidate();
+            model.setInputValue("diversificationRate", d);
+        }
 
         model.setInputValue("rho", context.getAsRealScalar(generator.getSamplingProb()));
 
