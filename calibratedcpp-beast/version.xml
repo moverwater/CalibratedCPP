@@ -6,6 +6,7 @@
         <provider classname="calibratedcpp.CalibratedCoalescentPointProcess"/>
         <provider classname="calibratedcpp.CalibratedBirthDeathModel"/>
         <provider classname="calibratedcpp.CalibratedBirthDeathSkylineModel"/>
+        <provider classname="calibratedcpp.CalibratedAgeDependentBirthDeathModel"/>
         <provider classname="calibratedcpp.SkylineParameter"/>
         <provider classname="calibrationprior.CalibrationPrior"/>
         <provider classname="calibrationprior.CalibrationCladePrior"/>

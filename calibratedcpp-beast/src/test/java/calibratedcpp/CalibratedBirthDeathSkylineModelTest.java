@@ -146,7 +146,7 @@ public class CalibratedBirthDeathSkylineModelTest {
       RealParameter birthRates = new RealParameter("2.0 1.0 3.0");
       RealParameter deathRates = new RealParameter("1.1 2.0 0.5");
       RealParameter rho = new RealParameter("0.5");
-      TreeInterface tree = new TreeParser("((A:3,B:3):3,C:6);");
+      TreeInterface tree = new TreeParser("((A:3,B:3):4,(C:6,D:6):1);");
 
       RealParameter birthRateChangeTimes = new RealParameter("1.0 1.5");
       RealParameter deathRateChangeTimes = new RealParameter("0.5 1.25");
@@ -161,7 +161,7 @@ public class CalibratedBirthDeathSkylineModelTest {
               "birthRateChangeTimes", birthRateChangeTimesBDSKY,
               "deathRateChangeTimes", deathRateChangeTimesBDSKY,
               "samplingRate", new RealParameter("0.0"),
-              "origin", new RealParameter("6.1"),
+              "origin", new RealParameter("8.0"),
               "conditionOnSurvival", true,
               "reverseTimeArrays", new BooleanParameter("true true true true true"),
               "tree", tree);
@@ -179,9 +179,9 @@ public class CalibratedBirthDeathSkylineModelTest {
               "deathRate", deathRateSkyline,
               "rho", rho,
               "tree", tree,
-              "origin", new RealParameter("6.1"));
+              "origin", new RealParameter("8.0"));
 
-      assertEquals(BDSKY.calculateTreeLogLikelihood(tree) + 2.0 * Math.log(2.0) - Math.log(3.0) - Math.log(2.0),
+      assertEquals(BDSKY.calculateTreeLogLikelihood(tree) + 3.0 * Math.log(2.0) - Math.log(4.0) - Math.log(3.0) - Math.log(2.0),
               CalibratedBDSKY.calculateTreeLogLikelihood(tree), 1e-8,
               "Likelihood of tree under BDSKY does not match likelihood under Calibrated BDSKY.");
    }
