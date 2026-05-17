@@ -30,7 +30,7 @@ The birth-death skyline model takes as inputs any TWO of the time dependent piec
 
 ## `CalibratedAgeDependentBirthDeathModel`
 
-The age dependent birth-death model describes a population where the lifetime of individuals can be from any distribution and give birth to new individuals at a constant rate $\lambda$.
+The age dependent birth-death model describes a population where the lifetime of individuals are drawn from an arbitrary distribution and give birth to new individuals at a constant rate $\lambda$.
 
 `CalibratedAgeDependentBirthDeathModel` takes as inputs:
 - `lifetimeDistribution`: A `ParametricDistribution` object describing the lifetimes of the individuals. Currently, the implementation only supports Erlang distributed lifetimes, $\Gamma(\theta,k)$ for integer $k$.
