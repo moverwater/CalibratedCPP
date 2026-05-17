@@ -36,6 +36,13 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/launcher-${beastVersion}.jar</systemPath>
         </dependency>
+        <dependency>
+            <groupId>beast2</groupId>
+            <artifactId>bdsky</artifactId>
+            <version>1.5.1</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/BDSKY.v1.5.1.jar</systemPath>
+        </dependency>
 
         <dependency>
             <groupId>org.openjdk.jmh</groupId>

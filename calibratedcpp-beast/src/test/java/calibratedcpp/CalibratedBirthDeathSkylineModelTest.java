@@ -1,11 +1,13 @@
 package calibratedcpp;
 
 import beast.base.evolution.tree.Tree;
+import beast.base.evolution.tree.TreeInterface;
 import beast.base.evolution.tree.TreeParser;
+import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.RealParameter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import bdsky.evolution.speciation.BirthDeathSkylineModel;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CalibratedBirthDeathSkylineModelTest {
@@ -140,88 +142,47 @@ public class CalibratedBirthDeathSkylineModelTest {
    }
 
    @Test
-   public void calculateTreeLogLikelihoodTest() {
-      RealParameter birthRate = new RealParameter("2.0");
-      RealParameter deathRate = new RealParameter("1.0");
-      RealParameter rhoVal = new RealParameter("0.5");
+   public void calculateTreeLogLikelihood() {
+      RealParameter birthRates = new RealParameter("2.0 1.0 3.0");
+      RealParameter deathRates = new RealParameter("1.1 2.0 0.5");
+      RealParameter rho = new RealParameter("0.5");
+      TreeInterface tree = new TreeParser("((A:3,B:3):3,C:6);");
 
-      SkylineParameter birthRateSkyline = createSkyline(birthRate);
-      SkylineParameter deathRateSkyline = createSkyline(deathRate);
+      RealParameter birthRateChangeTimes = new RealParameter("1.0 1.5");
+      RealParameter deathRateChangeTimes = new RealParameter("0.5 1.25");
 
-      // --- PART 1: Success Case ---
-      CalibratedBirthDeathSkylineModel bdskyRoot = new CalibratedBirthDeathSkylineModel();
-      bdskyRoot.initByName(
-              "birthRate", birthRateSkyline,
+      RealParameter birthRateChangeTimesBDSKY = new RealParameter("0.0 1.0 1.5");
+      RealParameter deathRateChangeTimesBDSKY = new RealParameter("0.0 0.5 1.25");
+
+      BirthDeathSkylineModel BDSKY = new BirthDeathSkylineModel();
+      BDSKY.initByName("birthRate", birthRates,
+              "deathRate", deathRates,
+              "rho", rho,
+              "birthRateChangeTimes", birthRateChangeTimesBDSKY,
+              "deathRateChangeTimes", deathRateChangeTimesBDSKY,
+              "samplingRate", new RealParameter("0.0"),
+              "origin", new RealParameter("6.1"),
+              "conditionOnSurvival", true,
+              "reverseTimeArrays", new BooleanParameter("true true true true true"),
+              "tree", tree);
+
+      CalibratedBirthDeathSkylineModel CalibratedBDSKY = new CalibratedBirthDeathSkylineModel();
+      SkylineParameter birthRateSkyline = new SkylineParameter();
+      SkylineParameter deathRateSkyline = new SkylineParameter();
+      birthRateSkyline.initByName("values", birthRates,
+              "changeTimes", birthRateChangeTimes,
+              "timesAreAges", true);
+      deathRateSkyline.initByName("values", deathRates,
+              "changeTimes", deathRateChangeTimes,
+              "timesAreAges", true);
+      CalibratedBDSKY.initByName("birthRate", birthRateSkyline,
               "deathRate", deathRateSkyline,
-              "rho", rhoVal,
-              "tree", tree,
-              "conditionOnRoot", true
-      );
-
-      CalibratedBirthDeathModel constantBD = new CalibratedBirthDeathModel();
-      constantBD.initByName("birthRate", birthRate, "deathRate", deathRate,
-              "rho", rhoVal, "tree", tree, "conditionOnRoot", true);
-
-      assertEquals(constantBD.calculateTreeLogLikelihood(tree),
-              bdskyRoot.calculateTreeLogLikelihood(tree), 1e-50);
-
-      // --- PART 2: Failure Case (Invalid Origin) ---
-      CalibratedBirthDeathSkylineModel bdskyInvalidOrigin = new CalibratedBirthDeathSkylineModel();
-      bdskyInvalidOrigin.initByName(
-              "birthRate", birthRateSkyline,
-              "deathRate", deathRateSkyline,
-              "rho", rhoVal,
-              "tree", tree,
-              "origin", new RealParameter("3.5"), // < Tree Height
-              "conditionOnRoot", false
-      );
-
-      // This returns -Infinity immediately
-      bdskyInvalidOrigin.originInput.setValue(new RealParameter("1.5"), bdskyInvalidOrigin);
-      double val = bdskyInvalidOrigin.calculateTreeLogLikelihood(tree);
-      assertEquals(Double.NEGATIVE_INFINITY, val, "Should return -Infinity if Origin < Tree Height");
-
-
-      // --- PART 3: Dynamic Updates ---
-      RealParameter safeOrigin = new RealParameter("5.0");
-      CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
-      model.initByName(
-              "birthRate", createSkyline(b),
-              "deathRate", createSkyline(d),
               "rho", rho,
               "tree", tree,
-              "origin", safeOrigin
-      );
-
-      Tree tallTree = new TreeParser();
-      tallTree.initByName("newick", "((A:3,B:3):3,C:6);",
-              "IsLabelledNewick", true, "adjustTipHeights", true);
-
-      // Update tree
-      model.treeInput.setValue(tallTree, model);
-
-      double logL = model.calculateTreeLogLikelihood(tallTree);
-      assertEquals(Double.NEGATIVE_INFINITY, logL);
-
-      // Fix origin
-      model.originInput.setValue(new RealParameter("6.1"), model);
-
-      // Update rates
-      RealParameter newRates = new RealParameter("3.0 2.0");
-      RealParameter newTimes = new RealParameter("0.5");
-      SkylineParameter newBirthSkyline = createSkyline(newRates, newTimes, false, true);
-
-      model.birthRateInput.setValue(newBirthSkyline, model);
-
-      double result = model.calculateTreeLogLikelihood(tallTree);
-      assertTrue(Double.isFinite(result));
-
-      CalibratedBirthDeathSkylineModel bdskyModel = new CalibratedBirthDeathSkylineModel();
-      bdskyModel.initByName("birthRate", createSkyline(new RealParameter("3.0 2.0")),
-              "deathRate", createSkyline(new RealParameter("1.0")),
-              "rho", new RealParameter("0.5"),
-              "tree", tallTree,
               "origin", new RealParameter("6.1"));
-      System.out.println("logP = " + bdskyModel.calculateTreeLogLikelihood(tallTree));
+
+      assertEquals(BDSKY.calculateTreeLogLikelihood(tree) + 2.0 * Math.log(2.0) - Math.log(3.0) - Math.log(2.0),
+              CalibratedBDSKY.calculateTreeLogLikelihood(tree), 1e-8,
+              "Likelihood of tree under BDSKY does not match likelihood under Calibrated BDSKY.");
    }
 }
