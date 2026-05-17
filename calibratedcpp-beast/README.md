@@ -28,6 +28,17 @@ The birth-death skyline model takes as inputs any TWO of the time dependent piec
 - `timesAreAges`: A `Boolean` which is `true` if the change times are given as ages before the present. The default is `false`.  
 - `timesAreRelative`: A `Boolean` which is `true` if the change times are given as relative to the age of the tree (origin/root height). The default is `false`.
 
+## `CalibratedAgeDependentBirthDeathModel`
+
+The age dependent birth-death model describes a population where the lifetime of individuals can be from any distribution and give birth to new individuals at a constant rate $\lambda$.
+
+`CalibratedAgeDependentBirthDeathModel` takes as inputs:
+- `lifetimeDistribution`: A `ParametricDistribution` object describing the lifetimes of the individuals. Currently, the implementation only supports Erlang distributed lifetimes, $\Gamma(\theta,k)$ for integer $k$.
+- `birthRate`: The rate at which individuals give birth to new individuals.
+- `rho`: The probability with which each extant individual is sampled.
+
+
+
 ## Validation
 
 In the [`validation`](./validation) directory we validate the `BirthDeathModel` against the Heled and Drummond implementation of the Calibrated Birth-Death process and benchmark the performance. We also benchmark the likelihood calculation time on 93 real calibration analyses available on [phylodata](https://pypi.org/project/phylodata/).
