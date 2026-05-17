@@ -14,11 +14,10 @@ import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
 @Description("Implementation of the Calibrated Coalescent Point Process where individual lifetimes follow an " +
         "Erlang distribution (integer-shape Gamma) and births happen at a constant rate.")
 public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentPointProcess {
-
     Input<ParametricDistribution> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
             "Distribution of the lifetime of an individual.");
     Input<RealParameter> birthRateInput = new Input<>("birthRate", "The birth rate.");
-
+    Input<RealParameter> rhoInput = new Input<>("rho", "The probability with which extant individuals are sampled.");
     protected boolean lifetimesAreErlang;
     protected double birthRate;
     protected double rho;
@@ -34,6 +33,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     @Override
     public void initAndValidate() {
         lifetimesAreErlang = lifetimeDistributionInput.get() instanceof Gamma;
+        rho = rhoInput.get().getValue();
         super.initAndValidate();
     }
 
@@ -45,7 +45,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
 
     public void preCalc() {
         birthRate = birthRateInput.get().getValue();
-
+        rho = rhoInput.get().getValue();
         if (!lifetimesAreErlang) return;
 
         gammaDistribution = (Gamma) lifetimeDistributionInput.get();
