@@ -4,6 +4,7 @@ import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.distribution.Exponential;
 import beast.base.inference.distribution.Gamma;
+import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +46,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
     private static CalibratedAgeDependentBirthDeathModel erlangModel(
             Tree tree, double lambda, double mu, double rho, double origin) {
         Gamma gamma = new Gamma();
-        gamma.initByName("alpha", new RealParameter("1.0"),
+        gamma.initByName("alpha", new IntegerParameter("1.0"),
                          "beta",  new RealParameter(String.valueOf(1.0 / mu)));
         CalibratedAgeDependentBirthDeathModel model = new CalibratedAgeDependentBirthDeathModel();
         model.initByName("tree", tree,

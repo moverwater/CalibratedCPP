@@ -5,6 +5,7 @@ import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Gamma;
+import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 import java.util.Arrays;
 import org.apache.commons.math3.analysis.integration.gauss.GaussIntegrator;
@@ -58,7 +59,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     @Override
     public void initAndValidate() {
         ParametricDistribution dist = lifetimeDistributionInput.get();
-        lifetimesAreErlang = dist instanceof Gamma;
+        lifetimesAreErlang = dist instanceof Gamma && ((Gamma) dist).alphaInput.get() instanceof IntegerParameter;
         useNumericalSolver = (dist != null) && !lifetimesAreErlang;
         super.initAndValidate();
     }
@@ -88,6 +89,9 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         gammaDistribution = (Gamma) lifetimeDistributionInput.get();
         double shapeParam = gammaDistribution.alphaInput.get().getArrayValue();
         n = (int) Math.round(shapeParam);
+        if (n - shapeParam > 1e-10){
+            throw new IllegalArgumentException("Shape parameter must be an integer.");
+        }
         theta = 1.0 / gammaDistribution.betaInput.get().getArrayValue();
 
         double[] coeffs = buildRnCoefficients(n, theta, birthRate);

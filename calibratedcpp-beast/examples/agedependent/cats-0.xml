@@ -177,6 +177,14 @@ spec="Alignment">
               <f idref="birthRate"/>
             </transformations>
         </operator>
+        <operator id="tree.BICEPSEpochAll" spec="EpochFlexOperator" fromOldestTipOnly="false" scaleFactor="0.1" tree="@tree" weight="1.624504792712471"/>
+        <operator id="tree.BICEPSEpochTop" spec="EpochFlexOperator" scaleFactor="0.1" tree="@tree" weight="1.0"/>
+        <operator id="tree.BICEPSTreeFlex" spec="TreeStretchOperator" scaleFactor="0.01" tree="@tree" weight="7.56294171712541"/>
+        <operator id="tree.rootAgeScale" spec="kernel.BactrianScaleOperator" rootOnly="true" tree="@tree" upper="0.975" weight="1.0"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="3.3770727140801533" tree="@tree" weight="7.56294171712541"/>
+        <operator id="tree.uniform" spec="kernel.BactrianNodeOperator" tree="@tree" weight="7.56294171712541"/>
+        <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.7826024579660034"/>
+        <operator id="tree.wilsonBalding" spec="WilsonBalding" tree="@tree" weight="1.7826024579660034"/>
         <logger id="ScreenLogger" spec="Logger" logEvery="1000">
             <log idref="posterior"/>
             <log idref="prior"/>
