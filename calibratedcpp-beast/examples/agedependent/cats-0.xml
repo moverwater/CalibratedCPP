@@ -59,7 +59,7 @@ spec="Alignment">
 
     <run id="MCMC" spec="MCMC" chainLength="10000000" preBurnin="1000">
         <state id="State" spec="State">
-            <parameter id="shape" spec="parameter.RealParameter" name="stateNode" lower="1.0">1.0</parameter>
+            <parameter id="shape" spec="parameter.IntegerParameter" name="stateNode" lower="1">1</parameter>
             <parameter id="scale" spec="parameter.RealParameter" name="stateNode" lower="0.0">1.0</parameter>
             <parameter id="birthRate" spec="parameter.RealParameter" lower="0.0" name="stateNode">2.0</parameter>
             <parameter id="rho" spec="parameter.RealParameter" name="stateNode">0.01</parameter>
@@ -124,7 +124,7 @@ spec="Alignment">
                     <taxonset idref="TaxonSet1"/>
                 </distribution>
                 <distribution id="CalibratedCoalescentPointProcess" spec="calibratedcpp.CalibratedAgeDependentBirthDeathModel" conditionOnRoot="true"
-                              tree="@tree" rho="@rho" conditionOnCalibrations="false">
+                              tree="@tree" rho="@rho">
                     <birthRate idref="birthRate"/>
                     <lifetimeDistribution spec="beast.base.inference.distribution.Gamma" id="lifetimeDistribution" alpha="@shape" beta="@scale"/>
                     <calibrations id="CalibrationClade" spec="calibration.CalibrationClade">
@@ -161,7 +161,7 @@ spec="Alignment">
         </distribution>
         <operator id="birthRate.scale" spec="beast.base.inference.operator.kernel.BactrianRandomWalkOperator" parameter="@birthRate" windowSize="0.1" weight="1.0"/>
         <operator id="scale.scale" spec="beast.base.inference.operator.kernel.BactrianRandomWalkOperator" parameter="@scale" windowSize="0.1" weight="1.0"/>
-        <operator id="shape.scale" spec="beast.base.inference.operator.kernel.BactrianRandomWalkOperator" parameter="@shape" windowSize="0.1" weight="1.0"/>
+        <operator id="shape.scale" spec="beast.base.inference.operator.IntRandomWalkOperator" parameter="@shape" windowSize="2" weight="1.0"/>
         <operator id="jointOperator" spec="beast.base.evolution.operator.kernel.AdaptableVarianceMultivariateNormalOperator"
                   weight="2"
                   coefficient="1.0"
@@ -170,9 +170,9 @@ spec="Alignment">
                   initial="800"
                   burnin="400"
                   every="1">
-            <transformations spec="beast.base.inference.operator.kernel.Transform$LogTransform">
+<!--             <transformations spec="beast.base.inference.operator.kernel.Transform$LogTransform">
                 <f idref="shape"/>
-            </transformations>
+            </transformations> -->
             <transformations spec="beast.base.inference.operator.kernel.Transform$NoTransform">
                 <f idref="scale"/>
             </transformations>
