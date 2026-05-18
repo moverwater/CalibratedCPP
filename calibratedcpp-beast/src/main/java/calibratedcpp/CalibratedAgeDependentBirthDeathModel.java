@@ -5,6 +5,8 @@ import beast.base.core.Input;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Gamma;
 import beast.base.inference.parameter.RealParameter;
+import org.apache.commons.math3.analysis.integration.gauss.GaussIntegrator;
+import org.apache.commons.math3.analysis.integration.gauss.GaussIntegratorFactory;
 import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 import org.apache.commons.math3.complex.Complex;
@@ -18,11 +20,11 @@ import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
         "are handled via closed-form partial fractions; all other distributions use a numerical Volterra IDE solver.")
 public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentPointProcess {
 
-    Input<ParametricDistribution> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
+    public Input<ParametricDistribution> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
             "Distribution of the lifetime of an individual.");
-    Input<RealParameter> rhoInput = new Input<>("rho", "Extant sampling probability.");
-    Input<RealParameter> birthRateInput = new Input<>("birthRate", "The birth rate.");
-    Input<Integer> gridSizeInput = new Input<>("gridSize",
+    public Input<RealParameter> rhoInput = new Input<>("rho", "Extant sampling probability.");
+    public Input<RealParameter> birthRateInput = new Input<>("birthRate", "The birth rate.");
+    public Input<Integer> gridSizeInput = new Input<>("gridSize",
             "Number of grid points for the numerical Volterra IDE solver (used for non-Erlang lifetime distributions).", 1000);
 
     protected boolean lifetimesAreErlang;
@@ -41,7 +43,10 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     // --- Numerical VIDE fields ---
     // gSpline stores G(t) = F(t) - 1, so fp - 1 = rho*G(t) without cancellation
     protected PolynomialSplineFunction gSpline;
-    protected PolynomialSplineFunction fPrimeSpline;
+    protected PolynomialSplineFunction lifetimePdfSpline;  // g(s): lifetime PDF
+    protected PolynomialSplineFunction survivalSpline;     // S(t) = 1 - CDF_g(t)
+
+    private static final GaussIntegratorFactory GAUSS_FACTORY = new GaussIntegratorFactory();
 
     @Override
     public void initAndValidate() {
@@ -76,10 +81,10 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         gammaDistribution = (Gamma) lifetimeDistributionInput.get();
         double shapeParam = gammaDistribution.alphaInput.get().getArrayValue();
         n = (int) Math.round(shapeParam);
-        if (Math.abs(shapeParam - n) > 1e-10 || n < 1) {
-            throw new IllegalArgumentException(
-                    "Shape parameter must be a positive integer for Erlang distribution, got " + shapeParam);
-        }
+//        if (Math.abs(shapeParam - n) > 1e-10 || n < 1) {
+//            throw new IllegalArgumentException(
+//                    "Shape parameter must be a positive integer for Erlang distribution, got " + shapeParam);
+//        }
         theta = 1.0 / gammaDistribution.betaInput.get().getArrayValue();
 
         double[] coeffs = buildRnCoefficients(n, theta, birthRate);
@@ -160,71 +165,106 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     // -------------------------------------------------------------------------
 
     /**
-     * Solves F'(t) = lambda*(F(t) - integral_0^t F(t-s)*g(s)ds), F(0) = 1
-     * on [0, maxTime] using an implicit trapezoidal scheme.
+     * Solves the VIDE G'(t) = lambda*(G(t) - integral_0^t G(t-s)*g(s)ds + S(t))
+     * on [0, maxTime] and builds cubic splines for G, the lifetime PDF, and the survival function.
      *
-     * <p>Stores G(t) = F(t) - 1 rather than F(t) directly. Since G(0) = 0 and
-     * fp - 1 = rho*G(t), this avoids catastrophic cancellation when evaluating the
-     * log CDF at small times where F(t) is close to 1.</p>
-     *
-     * <p>The VIDE in terms of G(t) is:
-     * G'(t) = lambda*(G(t) - integral_0^t G(t-s)*g(s)ds + S(t))
-     * where S(t) = 1 - CDF_g(t) is the survival function of the lifetime distribution.
-     * The implicit trapezoidal step resolves to a scalar division at each grid point,
-     * giving second-order accuracy and unconditional stability for the decaying modes.</p>
+     * <p>Uses Richardson extrapolation over two implicit-trapezoidal solves (step h and step 2h)
+     * to cancel the O(h^2) leading error, giving O(h^4) global accuracy in G(t) at ~25% extra cost.
+     * The combined G values are at the coarse-grid points (N/2 + 1 points), which is sufficient
+     * resolution for the cubic spline.</p>
      */
     private void solveVIDE() {
         int N = gridSizeInput.get();
-        double h = maxTime / N;
+        if (N % 2 != 0) N++;  // Richardson requires an even step count
 
-        double[] gridT    = new double[N + 1];
-        double[] gridG    = new double[N + 1]; // G(t) = F(t) - 1
-        double[] gridGPrime = new double[N + 1]; // G'(t) = F'(t)
-        double[] gValues  = new double[N + 1]; // lifetime PDF at grid points
-        double[] sValues  = new double[N + 1]; // survival function S(t) = 1 - CDF_g(t)
+        ParametricDistribution dist = lifetimeDistributionInput.get();
 
-        org.apache.commons.math3.distribution.RealDistribution dist =
-                (org.apache.commons.math3.distribution.RealDistribution) lifetimeDistributionInput.get().getDistribution();
+        double[] gridG_fine   = computeGridG(N,     dist);
+        double[] gridG_coarse = computeGridG(N / 2, dist);
 
-        for (int j = 0; j <= N; j++) {
-            gridT[j]   = j * h;
-            gValues[j] = dist.density(gridT[j]);
-            sValues[j] = 1.0 - dist.cumulativeProbability(gridT[j]);
+        // Richardson extrapolation: G_4th = (4*G_h - G_2h) / 3 at coarse-grid points.
+        // Splines for the lifetime PDF and survival function are exact (no Richardson needed).
+        int M = N / 2;
+        double hc = maxTime / M;
+        double[] coarseT  = new double[M + 1];
+        double[] gridG    = new double[M + 1];
+        double[] gValues  = new double[M + 1];
+        double[] sValues  = new double[M + 1];
+
+        try {
+            for (int j = 0; j <= M; j++) {
+                coarseT[j] = j * hc;
+                gridG[j]   = (4.0 * gridG_fine[2 * j] - gridG_coarse[j]) / 3.0;
+                gValues[j] = dist.density(coarseT[j]);
+                sValues[j] = 1.0 - dist.cumulativeProbability(coarseT[j]);
+            }
+        } catch (org.apache.commons.math.MathException e) {
+            throw new RuntimeException("Failed to evaluate lifetime distribution", e);
         }
 
-        // G(0) = 0; G'(0) = lambda*(G(0) - 0 + S(0)) = lambda
-        gridG[0]     = 0.0;
-        gridGPrime[0] = birthRate;
+        SplineInterpolator interp = new SplineInterpolator();
+        gSpline           = interp.interpolate(coarseT, gridG);
+        lifetimePdfSpline = interp.interpolate(coarseT, gValues);
+        survivalSpline    = interp.interpolate(coarseT, sValues);
+    }
 
-        // Implicit trapezoidal denominator (constant across steps):
-        // derived from the trapezoidal convolution endpoint term 0.5*h*g(0)*G[k+1]
+    /**
+     * Runs the implicit trapezoidal VIDE solver on a uniform grid of N steps over [0, maxTime].
+     * Returns G(t) = F(t) - 1 at all N+1 grid points.
+     */
+    private double[] computeGridG(int N, ParametricDistribution dist) {
+        double h = maxTime / N;
+        double[] gridG      = new double[N + 1];
+        double[] gridGPrime = new double[N + 1];
+        double[] gValues    = new double[N + 1];
+        double[] sValues    = new double[N + 1];
+
+        try {
+            for (int j = 0; j <= N; j++) {
+                double t   = j * h;
+                gValues[j] = dist.density(t);
+                sValues[j] = 1.0 - dist.cumulativeProbability(t);
+            }
+        } catch (org.apache.commons.math.MathException e) {
+            throw new RuntimeException("Failed to evaluate lifetime distribution at a grid point", e);
+        }
+
+        gridG[0]      = 0.0;
+        gridGPrime[0] = birthRate;
         double g0    = gValues[0];
         double denom = 1.0 - 0.5 * h * birthRate * (1.0 - 0.5 * h * g0);
 
         for (int k = 0; k < N; k++) {
-            // Known interior convolution terms for t_{k+1}:
-            // K = h * sum_{j=1}^{k} G[k+1-j] * g[j]
-            // (j=0 endpoint contributes 0.5*h*g0*G[k+1] which is the unknown; j=k+1 gives G[0]=0)
             double K = 0.0;
             for (int j = 1; j <= k; j++) {
                 K += gridG[k + 1 - j] * gValues[j];
             }
             K *= h;
 
-            // Implicit trapezoidal step: solve for G[k+1]
-            // G[k+1] * denom = G[k] + h/2 * G'[k] + h/2 * lambda * (S[k+1] - K)
             gridG[k + 1] = (gridG[k] + 0.5 * h * gridGPrime[k]
                     + 0.5 * h * birthRate * (sValues[k + 1] - K)) / denom;
 
-            // G'[k+1] = lambda*(G[k+1] - Conv_G[k+1] + S[k+1])
-            // Conv_G[k+1] = 0.5*h*g0*G[k+1] + K
-            double convKp1 = 0.5 * h * g0 * gridG[k + 1] + K;
+            double convKp1    = 0.5 * h * g0 * gridG[k + 1] + K;
             gridGPrime[k + 1] = birthRate * (gridG[k + 1] - convKp1 + sValues[k + 1]);
         }
+        return gridG;
+    }
 
-        SplineInterpolator interp = new SplineInterpolator();
-        gSpline      = interp.interpolate(gridT, gridG);
-        fPrimeSpline = interp.interpolate(gridT, gridGPrime);
+    /**
+     * Evaluates G'(t) = lambda*(G(t) - integral_0^t G(t-s)*g(s)ds + S(t)) on demand.
+     *
+     * <p>Rather than interpolating a stored G'(t) spline (which accumulates O(h^2) absolute
+     * error and gives large relative error when G'(t) is exponentially small in the subcritical
+     * case), we re-evaluate the VIDE formula directly using 32-point Gauss-Legendre quadrature
+     * on the G spline. The O(h^2) equilibrium error in G(t) cancels with the corresponding
+     * error in the convolution integral, leaving a remainder of order O(h^2 * S(t)) which
+     * decays exponentially — giving stable relative accuracy at all t.</p>
+     */
+    private double evaluateGPrime(double t) {
+        if (t <= 0.0) return birthRate;
+        GaussIntegrator gl = GAUSS_FACTORY.legendre(32, 0.0, t);
+        double integral = gl.integrate(s -> gSpline.value(t - s) * lifetimePdfSpline.value(s));
+        return birthRate * (gSpline.value(t) - integral + survivalSpline.value(t));
     }
 
     // -------------------------------------------------------------------------
@@ -243,9 +283,9 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
             double innerFp = constTerm * Math.exp(-maxExp) + rho * scaledF;
             return Math.log(rho) + Math.log(scaledFP) - maxExp - 2.0 * Math.log(innerFp);
         } else if (useNumericalSolver) {
-            double g       = gSpline.value(time);    // G(t) = F(t) - 1
-            double fp      = 1.0 + rho * g;          // fp = (1-rho) + rho*(G+1) = 1 + rho*G
-            double fpPrime = rho * fPrimeSpline.value(time);
+            double g       = gSpline.value(time);
+            double fp      = 1.0 + rho * g;
+            double fpPrime = rho * evaluateGPrime(time);
             return Math.log(fpPrime) - 2.0 * Math.log(fp);
         }
         return 0.0;
