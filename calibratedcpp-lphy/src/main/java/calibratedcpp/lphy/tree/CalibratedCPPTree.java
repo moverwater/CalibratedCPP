@@ -410,13 +410,9 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             int nodeIndex = A.get(j);
             int count = 0;
             // Check if i < m and i+1 is within bounds
-            if (nodeIndex < m - 1 && times.get(nodeIndex + 1) == 0) {
-                count++;
-            }
+            if (nodeIndex < m - 1 && times.get(nodeIndex + 1) == 0) count++;
             // Check if nodeIndex is within bounds and times[i] == 0
-            if (times.get(nodeIndex) == 0) {
-                count++;
-            }
+            if (nodeIndex > 0 && times.get(nodeIndex) == 0) count++;
             s[j] = count;
         }
         return s;
