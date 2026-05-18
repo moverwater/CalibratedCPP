@@ -22,47 +22,61 @@ public class ConditionedPriorUtils {
         return sigma * sigma;
     }
 
+    private static final double MIN_CONCENTRATION_FACTOR = 1.0;
+
     public static double[] invertLogMomentsToBeta(double m, double v) {
-        double Ey = Math.exp(m + v / 2);
-        double Vy = Math.exp(2 * m + v) * (Math.exp(v) - 1);
-        if (Vy <= 0) Vy = 1e-8;
-        Ey = Math.min(1 - 1e-8, Math.max(1e-8, Ey));
-        if (Vy >= Ey * (1 - Ey)) Vy = 0.99 * Ey * (1 - Ey);
+        double mu0 = Math.exp(m);
+        mu0 = Math.min(1.0 - 1e-6, Math.max(1e-6, mu0));
+        double n0 = Math.max(1e-3, (1.0 - mu0) / (mu0 * Math.max(v, 1e-15)));
+        double a = Math.max(1e-6, mu0 * n0);
+        double b = Math.max(1e-6, n0 - a);
 
-        double common = Ey * (1 - Ey) / Vy - 1;
-        double a = Math.max(1e-3, Ey * common);
-        double b = Math.max(1e-3, (1 - Ey) * common);
-
-        for (int iter = 0; iter < 100; iter++) {
-            double triA  = Gamma.trigamma(a);
-            double triAB = Gamma.trigamma(a + b);
-            double f1 = Gamma.digamma(a) - Gamma.digamma(a + b) - m;
-            double f2 = triA - triAB - v;
+        for (int iter = 0; iter < 200; iter++) {
+            double n = a + b;
+            double f1 = Gamma.digamma(a) - Gamma.digamma(n) - m;
+            double f2 = Gamma.trigamma(a) - Gamma.trigamma(n) - v;
             if (Math.abs(f1) < 1e-10 && Math.abs(f2) < 1e-10) break;
 
-            // Analytical Jacobian for f1; numerical (finite-diff) for f2 rows
-            // since tetragamma is not in Apache Commons Math.
-            double J11 = triA - triAB;          // df1/da
-            double J12 = -triAB;                // df1/db
-            double ha  = Math.max(a * 1e-5, 1e-9);
-            double hb  = Math.max(b * 1e-5, 1e-9);
-            double J21 = (Gamma.trigamma(a + ha) - Gamma.trigamma(a + ha + b) - triA + triAB) / ha;
-            double J22 = (triAB - Gamma.trigamma(a + b + hb)) / hb;
+            double triA = Gamma.trigamma(a);
+            double triN = Gamma.trigamma(n);
+            double hA = Math.max(a * 1e-5, 1e-9);
+            double hN = Math.max(n * 1e-5, 1e-9);
+            double tetA = (Gamma.trigamma(a + hA) - Gamma.trigamma(a - hA)) / (2 * hA);
+            double tetN = (Gamma.trigamma(n + hN) - Gamma.trigamma(n - hN)) / (2 * hN);
 
-            double det = J11 * J22 - J12 * J21;
-            if (Math.abs(det) < 1e-15) break;
+            double j11 = triA - triN;
+            double j12 = -triN;
+            double j21 = tetA - tetN;
+            double j22 = -tetN;
+            double det = j11 * j22 - j12 * j21;
+            if (Math.abs(det) < 1e-20) break;
 
-            double da = -(f1 * J22 - f2 * J12) / det;
-            double db = -(J11 * f2 - J21 * f1) / det;
+            double da = (-j22 * f1 + j12 * f2) / det;
+            double db = ( j21 * f1 - j11 * f2) / det;
 
-            // Backtracking: halve step until both parameters stay positive
+            // Armijo line search: halve step until ||F||^2 decreases
+            double res0 = f1 * f1 + f2 * f2;
             double step = 1.0;
-            for (int ls = 0; ls < 20 && (a + step * da < 1e-9 || b + step * db < 1e-9); ls++)
+            for (int ls = 0; ls < 50; ls++) {
+                double an = Math.max(a + step * da, 1e-6);
+                double bn = Math.max(b + step * db, 1e-6);
+                double nn = an + bn;
+                double g1 = Gamma.digamma(an) - Gamma.digamma(nn) - m;
+                double g2 = Gamma.trigamma(an) - Gamma.trigamma(nn) - v;
+                if (g1 * g1 + g2 * g2 < res0) break;
                 step *= 0.5;
-
-            a = Math.max(a + step * da, 1e-9);
-            b = Math.max(b + step * db, 1e-9);
+            }
+            a = Math.max(a + step * da, 1e-6);
+            b = Math.max(b + step * db, 1e-6);
         }
+
+        double mu = a / (a + b);
+        double minN = MIN_CONCENTRATION_FACTOR / (mu * (1.0 - mu));
+        if (a + b < minN) {
+            a = minN * mu;
+            b = minN * (1.0 - mu);
+        }
+
         return new double[]{a, b};
     }
 }

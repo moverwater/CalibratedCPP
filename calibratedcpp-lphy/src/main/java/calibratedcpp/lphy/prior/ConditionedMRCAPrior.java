@@ -130,7 +130,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
                 edgeNames[idx] = par_i + "_" + i;   // parent_child
 
                 double m_edge = mu[i] - mu[par_i];
-                double v_edge = sigma2[i];       // approx relative variance
+                double v_edge = sigma2[i] - sigma2[par_i];
 
                 b_mean[idx] = m_edge;
                 b_var[idx]  = v_edge;
@@ -242,11 +242,8 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
             v_hat[j] = b_var[j];    // A_mean is identity
         }
 
-        // v_hat <- pmax(v_hat, 1e-6)
         for (int j = 0; j < nEdges; j++) {
-            if (v_hat[j] < 1e-6) {
-                v_hat[j] = 1e-6;
-            }
+            if (v_hat[j] <= 0) v_hat[j] = 1e-8;
         }
 
         for (int j = 0; j < nEdges; j++) {

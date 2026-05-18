@@ -1,7 +1,6 @@
 # -------------------------------
 # Hybrid tree simulation: multiplicative Beta + LogNormal for non-overlapping nodes
 # -------------------------------
-library(nnls)
 library(nleqslv)
 library(ggplot2)
 library(ggpubr)
@@ -28,21 +27,37 @@ compute_log_targets <- function(t_l, t_u, p) {
   list(mu = mu, sigma2 = sigma^2)
 }
 
+# Minimum concentration factor (matches Java MIN_CONCENTRATION_FACTOR = 1.0).
+# Ensures alpha+beta >= MIN_CONCENTRATION_FACTOR / (mu*(1-mu)).
+MIN_CONCENTRATION_FACTOR <- 1.0
+
 # Invert log-moments to Beta parameters
 invert_logmoments_to_beta <- function(m, v){
-  Ey <- exp(m + v/2)
-  Vy <- exp(2*m + v)*(exp(v)-1)
-  if(Vy >= Ey*(1-Ey)) Vy <- 0.99*Ey*(1-Ey)
-  ab_sum <- Ey*(1-Ey)/Vy -1
-  a0 <- max(1e-3, Ey*ab_sum)
-  b0 <- max(1e-3, (1-Ey)*ab_sum)
+  # Asymptotic initialisation: for large n=a+b, digamma(a)-digamma(n) ≈ ln(a/n)
+  # and trigamma(a)-trigamma(n) ≈ (1-mu)/(mu*n). Solving gives:
+  mu0 <- exp(m)
+  mu0 <- min(1 - 1e-6, max(1e-6, mu0))
+  n0  <- max(1e-3, (1 - mu0) / (mu0 * max(v, 1e-15)))
+  a0  <- max(1e-6, mu0 * n0)
+  b0  <- max(1e-6, n0 - a0)
+
   F <- function(par){
     a <- par[1]; b <- par[2]
     c(digamma(a)-digamma(a+b)-m,
       trigamma(a)-trigamma(a+b)-v)
   }
-  sol <- nleqslv(c(a0,b0), F)
-  list(alpha = sol$x[1], beta = sol$x[2])
+  sol <- nleqslv(c(a0, b0), F)
+  a <- sol$x[1]; b <- sol$x[2]
+
+  # Minimum concentration floor: rescale up along constant-mean line if needed
+  mu  <- a / (a + b)
+  min_n <- MIN_CONCENTRATION_FACTOR / (mu * (1 - mu))
+  if (a + b < min_n) {
+    a <- min_n * mu
+    b <- min_n * (1 - mu)
+  }
+
+  list(alpha = a, beta = b)
 }
 
 safe_rlnorm_trunc <- function(meanlog, sdlog, upper_vec) {
@@ -109,7 +124,15 @@ for(idx in seq_along(edges)){
   i <- edges[idx]
   par_i <- parent[i]
   m_edge <- mu_vec[i] - mu_vec[par_i]
-  v_edge <- sigma2_vec[i]  # approx, relative variance
+  # Exact under the independence model t_child = r * t_parent:
+  # Var[log(r)] = Var[log(t_child)] - Var[log(t_parent)]
+  v_edge <- sigma2_vec[i] - sigma2_vec[par_i]
+  if(v_edge < 0){
+    warning(sprintf(
+      "Node %d: sigma2_child (%.6f) < sigma2_parent (%.6f); child is more precisely calibrated than its overlapping parent. vEdge clamped to 1e-8.",
+      i, sigma2_vec[i], sigma2_vec[par_i]))
+    v_edge <- 1e-8
+  }
   b_mean[idx] <- m_edge
   b_var[idx] <- v_edge
   A_mean[idx, idx] <- 1
@@ -119,8 +142,7 @@ for(idx in seq_along(edges)){
 # Step 4: solve for beta parameters
 # -------------------------------
 m_hat <- solve(A_mean, b_mean)
-v_hat <- nnls(A_mean, b_var)$x
-v_hat <- pmax(v_hat, 1e-6)
+v_hat <- solve(A_mean, b_var)  # non-negativity enforced upstream by clamping
 
 beta_params <- lapply(1:n_edges, function(j) invert_logmoments_to_beta(m_hat[j], v_hat[j]))
 edge_alpha <- sapply(beta_params, `[[`, "alpha")
