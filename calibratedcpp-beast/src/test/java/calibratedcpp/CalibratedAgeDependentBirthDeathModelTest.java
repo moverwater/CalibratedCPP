@@ -70,7 +70,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
                 "birthRate",           new RealParameter(String.valueOf(lambda)),
                 "rho",                 new RealParameter(String.valueOf(rho)),
                 "lifetimeDistribution", expDist,
-                "gridSize",            2000);
+                "gridSize",            20000);
         return model;
     }
 
