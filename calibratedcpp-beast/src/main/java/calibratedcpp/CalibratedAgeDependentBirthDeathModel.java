@@ -265,7 +265,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         int lenK   = r - m;
         double[] Gsub   = Arrays.copyOfRange(gridG, l + 1, m + 1);
         double[] gSlice = new double[lenG + lenK - 1];
-        for (int j = 0; j < gSlice.length; j++) gSlice[j] = gValues[j + 1];
+        System.arraycopy(gValues, 1, gSlice, 0, gSlice.length);
         double[] c = linearConvolve(Gsub, gSlice);
         for (int kp = 0; kp < lenK; kp++) K[m + 1 + kp] += h * c[lenG - 1 + kp];
     }
