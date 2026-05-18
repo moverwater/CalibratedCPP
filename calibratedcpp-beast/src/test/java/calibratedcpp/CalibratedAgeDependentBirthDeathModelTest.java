@@ -172,7 +172,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
         for (double t : times) {
             assertEquals(bdSuper.calculateLogNodeAgeDensity(t),
                          videSuper.calculateLogNodeAgeDensity(t),
-                         1e-3, "VIDE (Exponential) density ≠ BD (supercritical) at t=" + t);
+                         1e-6, "VIDE (Exponential) density ≠ BD (supercritical) at t=" + t);
         }
 
         Tree tree2 = smallTree();
@@ -183,7 +183,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
         for (double t : times) {
             assertEquals(bdSub.calculateLogNodeAgeDensity(t),
                          videSub.calculateLogNodeAgeDensity(t),
-                         1e-3, "VIDE (Exponential) density ≠ BD (subcritical) at t=" + t);
+                         1e-6, "VIDE (Exponential) density ≠ BD (subcritical) at t=" + t);
         }
     }
 
@@ -199,7 +199,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
         for (double t : times) {
             assertEquals(bdSuper.calculateLogNodeAgeCDF(t),
                          videSuper.calculateLogNodeAgeCDF(t),
-                         1e-3, "VIDE (Exponential) CDF ≠ BD (supercritical) at t=" + t);
+                         1e-6, "VIDE (Exponential) CDF ≠ BD (supercritical) at t=" + t);
         }
 
         Tree tree2 = smallTree();
@@ -210,7 +210,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
         for (double t : times) {
             assertEquals(bdSub.calculateLogNodeAgeCDF(t),
                          videSub.calculateLogNodeAgeCDF(t),
-                         1e-3, "VIDE (Exponential) CDF ≠ BD (subcritical) at t=" + t);
+                         1e-6, "VIDE (Exponential) CDF ≠ BD (subcritical) at t=" + t);
         }
     }
 
@@ -233,7 +233,7 @@ public class CalibratedAgeDependentBirthDeathModelTest {
 
         assertEquals(bdSuper.calculateTreeLogLikelihood(tree),
                      videSuper.calculateTreeLogLikelihood(tree),
-                     1e-3, "VIDE (Exponential) tree log likelihood ≠ BD (supercritical)");
+                     1e-6, "VIDE (Exponential) tree log likelihood ≠ BD (supercritical)");
 
         // Subcritical
         Tree tree2 = smallTree();
@@ -247,10 +247,10 @@ public class CalibratedAgeDependentBirthDeathModelTest {
                 "birthRate",           new RealParameter("1.0"),
                 "rho",                 new RealParameter("0.1"),
                 "lifetimeDistribution", expDist2,
-                "gridSize",            2000);
+                "gridSize",            20000);
 
         assertEquals(bdSub.calculateTreeLogLikelihood(tree2),
                      videSub.calculateTreeLogLikelihood(tree2),
-                     1e-3, "VIDE (Exponential) tree log likelihood ≠ BD (subcritical)");
+                     1e-6, "VIDE (Exponential) tree log likelihood ≠ BD (subcritical)");
     }
 }
