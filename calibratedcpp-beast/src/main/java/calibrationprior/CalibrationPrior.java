@@ -2,6 +2,7 @@ package calibrationprior;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.core.Log;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.Distribution;
@@ -50,6 +51,30 @@ public class CalibrationPrior extends Distribution {
 
         // === Step 3: compute log-moments ===
         for (CalibrationNode n : calibrationNodes) computeLogTargets(n);
+
+        // === Step 3b: validate overlap edges ===
+        for (CalibrationNode node : calibrationNodes) {
+            if (node.parent == null || !node.getCalibrationCladePrior().isOverlapEdge) continue;
+
+            CalibrationCladePrior child = node.getCalibrationCladePrior();
+            CalibrationCladePrior parent = node.parent.getCalibrationCladePrior();
+
+            if (child.sigma2 < parent.sigma2) {
+                double childLogWidth  = Math.log(child.getUpper())  - Math.log(child.getLower());
+                double parentLogWidth = Math.log(parent.getUpper()) - Math.log(parent.getLower());
+                Log.warning(String.format(
+                    "WARNING: Calibration clade '%s' (bounds [%.4g, %.4g], log-width %.4g) is more " +
+                    "precisely specified than its overlapping ancestor clade '%s' " +
+                    "(bounds [%.4g, %.4g], log-width %.4g). " +
+                    "For overlapping calibrations the child's calibration interval should span " +
+                    "at least as wide a range on the log scale as the parent's. " +
+                    "The Beta prior edge variance will be clamped to a small positive value.",
+                    node.getCalibrationClade().getID(),
+                    child.getLower(), child.getUpper(), childLogWidth,
+                    node.parent.getCalibrationClade().getID(),
+                    parent.getLower(), parent.getUpper(), parentLogWidth));
+            }
+        }
 
         // === Step 4: partition into overlap components and fit ===
         List<CalibrationComponent> comps = CalibrationComponent.partition(calibrationForest);
@@ -152,29 +177,76 @@ public class CalibrationPrior extends Distribution {
         n.getCalibrationCladePrior().mu = Math.log(tLo) + z * sigma;
     }
 
+    // Minimum total concentration (alpha+beta) expressed as a multiple of 1/mean(1-mean).
+    // A value of 1 ensures each Beta has at least one "pseudo-observation" relative to its mean,
+    // preventing near-degenerate point-mass or near-uniform distributions.
+    private static final double MIN_CONCENTRATION_FACTOR = 1.0;
+
     // ------------------------------------------------------------------
     // Utility math
-    private double[] invertLogMomentsToBetaParams(double m, double v) {
-        double Ey = Math.exp(m + v / 2);
-        double Vy = Math.exp(2 * m + v) * (Math.exp(v) - 1);
-        if (Vy <= 0) Vy = 1e-8;
-        Ey = Math.min(1 - 1e-8, Math.max(1e-8, Ey));
+    public static double[] invertLogMomentsToBetaParams(double m, double v) {
+        // Asymptotic initialization: for large n=a+b, digamma(a)-digamma(n) ≈ ln(a/n)
+        // and trigamma(a)-trigamma(n) ≈ 1/a - 1/n = (1-mu)/(mu*n).
+        // Solving these gives mu0 = exp(m) and n0 = (1-mu0)/(mu0*v).
+        double mu0 = Math.exp(m);
+        mu0 = Math.min(1.0 - 1e-6, Math.max(1e-6, mu0));
+        double n0 = Math.max(1e-3, (1.0 - mu0) / (mu0 * Math.max(v, 1e-15)));
+        double a = Math.max(1e-6, mu0 * n0);
+        double b = Math.max(1e-6, n0 - a);
 
-        double common = Ey * (1 - Ey) / Vy - 1;
-        double a = Math.max(1e-3, Ey * common);
-        double b = Math.max(1e-3, (1 - Ey) * common);
+        // 2×2 Newton on F(a,b) = [digamma(a)-digamma(a+b)-m, trigamma(a)-trigamma(a+b)-v]
+        // Jacobian: J = [[triA-triN, -triN], [tetA-tetN, -tetN]]
+        // where tetragamma is approximated via central finite difference of trigamma.
+        for (int iter = 0; iter < 200; iter++) {
+            double n = a + b;
+            double f1 = Gamma.digamma(a) - Gamma.digamma(n) - m;
+            double f2 = Gamma.trigamma(a) - Gamma.trigamma(n) - v;
+            if (Math.abs(f1) < 1e-10 && Math.abs(f2) < 1e-10) break;
 
-        for (int iter = 0; iter < 40; iter++) {
-            double psiA = Gamma.digamma(a);
-            double psiAB = Gamma.digamma(a + b);
-            double f1 = psiA - psiAB - m;
-            double f2 = Gamma.trigamma(a) - Gamma.trigamma(a + b) - v;
-            if (Math.abs(f1) < 1e-8 && Math.abs(f2) < 1e-8) break;
-            a -= 0.5 * f1;
-            b -= 0.5 * f2;
-            a = Math.max(a, 1e-6);
-            b = Math.max(b, 1e-6);
+            double triA = Gamma.trigamma(a);
+            double triN = Gamma.trigamma(n);
+            double hA = Math.max(a * 1e-5, 1e-9);
+            double hN = Math.max(n * 1e-5, 1e-9);
+            double tetA = (Gamma.trigamma(a + hA) - Gamma.trigamma(a - hA)) / (2 * hA);
+            double tetN = (Gamma.trigamma(n + hN) - Gamma.trigamma(n - hN)) / (2 * hN);
+
+            double j11 = triA - triN;
+            double j12 = -triN;
+            double j21 = tetA - tetN;
+            double j22 = -tetN;
+            double det = j11 * j22 - j12 * j21;
+            if (Math.abs(det) < 1e-20) break;
+
+            // J^{-1} * [-f1, -f2]: da = (-j22*f1 + j12*f2)/det, db = (j21*f1 - j11*f2)/det
+            double da = (-j22 * f1 + j12 * f2) / det;
+            double db = ( j21 * f1 - j11 * f2) / det;
+
+            // Armijo line search: halve step until ||F||^2 decreases
+            double res0 = f1 * f1 + f2 * f2;
+            double step = 1.0;
+            for (int ls = 0; ls < 50; ls++) {
+                double an = Math.max(a + step * da, 1e-6);
+                double bn = Math.max(b + step * db, 1e-6);
+                double nn = an + bn;
+                double g1 = Gamma.digamma(an) - Gamma.digamma(nn) - m;
+                double g2 = Gamma.trigamma(an) - Gamma.trigamma(nn) - v;
+                if (g1 * g1 + g2 * g2 < res0) break;
+                step *= 0.5;
+            }
+            a = Math.max(a + step * da, 1e-6);
+            b = Math.max(b + step * db, 1e-6);
         }
+
+        // Enforce minimum concentration relative to the mean.
+        // Floor: n >= MIN_CONCENTRATION_FACTOR / (mu*(1-mu)) ensures each Beta has at least
+        // MIN_CONCENTRATION_FACTOR effective pseudo-observations scaled to the mean.
+        double mu = a / (a + b);
+        double minN = MIN_CONCENTRATION_FACTOR / (mu * (1.0 - mu));
+        if (a + b < minN) {
+            a = minN * mu;
+            b = minN * (1.0 - mu);
+        }
+
         return new double[]{a, b};
     }
 
