@@ -89,7 +89,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         gammaDistribution = (Gamma) lifetimeDistributionInput.get();
         double shapeParam = gammaDistribution.alphaInput.get().getArrayValue();
         n = (int) Math.round(shapeParam);
-        if (n - shapeParam > 1e-10){
+        if (Math.abs(n - shapeParam) > 1e-10){
             throw new IllegalArgumentException("Shape parameter must be an integer.");
         }
         theta = 1.0 / gammaDistribution.betaInput.get().getArrayValue();
