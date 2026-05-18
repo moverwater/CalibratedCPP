@@ -2,6 +2,7 @@ package calibratedcpp;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Gamma;
 import beast.base.inference.parameter.RealParameter;
@@ -43,6 +44,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     protected Complex[] roots;
     protected Complex[] alphas;
     protected double gammaConst;
+    protected boolean erlangValid = true; // false when root-finding fails → return -Inf likelihood
 
     // --- Numerical VIDE fields ---
     // gSpline stores G(t) = F(t) - 1, so fp - 1 = rho*G(t) without cancellation
@@ -89,9 +91,14 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         theta = 1.0 / gammaDistribution.betaInput.get().getArrayValue();
 
         double[] coeffs = buildRnCoefficients(n, theta, birthRate);
-        roots = new LaguerreSolver(1e-12).solveAllComplex(coeffs, 1.0);
-        gammaConst = Math.pow(theta, n) / coeffs[0];
-        alphas = computeResidues(roots, n, theta, coeffs);
+        try {
+            roots = new LaguerreSolver(1e-12).solveAllComplex(coeffs, 1.0, 1000);
+            gammaConst = Math.pow(theta, n) / coeffs[0];
+            alphas = computeResidues(roots, n, theta, coeffs);
+            erlangValid = true;
+        } catch (org.apache.commons.math3.exception.TooManyEvaluationsException e) {
+            erlangValid = false;
+        }
     }
 
     /**
@@ -342,6 +349,15 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
             return Math.log(fpMinusOne) - Math.log(fp);
         }
         return 0.0;
+    }
+
+    @Override
+    public double calculateTreeLogLikelihood(TreeInterface tree) {
+        updateModel();
+        if (!erlangValid) {
+            return Double.NEGATIVE_INFINITY;
+        }
+        return super.calculateTreeLogLikelihood(tree);
     }
 
     // -------------------------------------------------------------------------

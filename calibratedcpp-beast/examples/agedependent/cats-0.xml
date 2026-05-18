@@ -170,9 +170,6 @@ spec="Alignment">
                   initial="800"
                   burnin="400"
                   every="1">
-<!--             <transformations spec="beast.base.inference.operator.kernel.Transform$LogTransform">
-                <f idref="shape"/>
-            </transformations> -->
             <transformations spec="beast.base.inference.operator.kernel.Transform$NoTransform">
                 <f idref="scale"/>
             </transformations>
