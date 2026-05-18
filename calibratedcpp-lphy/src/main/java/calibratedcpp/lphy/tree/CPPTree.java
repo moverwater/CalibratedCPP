@@ -221,7 +221,7 @@ public class CPPTree implements GenerativeDistribution<TimeTree>{
 
             nodeAges.set(j-1, t.get(j));
             nodeAges.remove(j);
-            t.remove(t.get(j));
+            t.remove(j);
         }
 
         TimeTree tree = new TimeTree();

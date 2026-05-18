@@ -307,7 +307,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
 
 
         if (rootConditioned){
-            if (times.get(0) != rootAge){
+            if (Math.abs(times.get(0) - rootAge) > 1e-8){
                 // shouldn't have this thrown theoretically
                 throw new RuntimeException("The max age is not root age when root conditioned");
             }
