@@ -6,6 +6,7 @@ out/
 calibratedcpp-beast/META-INF/
 *.iml
 */target
+**/.flattened-pom.xml
 
 ### Eclipse ###
 .apt_generated
