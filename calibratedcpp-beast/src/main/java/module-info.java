@@ -2,7 +2,6 @@ open module calibratedcpp.beast {
     requires beast.pkgmgmt;
     requires beast.base;
     requires beast.fx;
-    requires org.apache.commons.numbers.gamma;
     requires hipparchus.core;
 
     // JavaFX modules used by CalibratedCPPInputEditor (beast.fx does not re-export these)
@@ -10,6 +9,7 @@ open module calibratedcpp.beast {
     requires javafx.controls;
     requires javafx.web;
     requires jdk.jsobject;
+    requires org.apache.commons.statistics.distribution;
 
     exports calibratedcpp;
     exports calibration;
@@ -22,6 +22,7 @@ open module calibratedcpp.beast {
     provides beast.base.core.BEASTInterface with
         calibratedcpp.CalibratedBirthDeathModel,
         calibratedcpp.CalibratedBirthDeathSkylineModel,
+        calibratedcpp.CalibratedAgeDependentBirthDeathModel,
         calibratedcpp.SkylineParameter,
         calibrationprior.CalibrationPrior,
         calibrationprior.CalibrationCladePrior,

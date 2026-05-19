@@ -3,20 +3,18 @@ package calibratedcpp;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.distribution.ParametricDistribution;
-import beast.base.inference.distribution.Gamma;
-import beast.base.inference.parameter.IntegerParameter;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.domain.UnitInterval;
+import beast.base.spec.inference.distribution.Gamma;
+import beast.base.spec.inference.distribution.ScalarDistribution;
+import beast.base.spec.type.RealScalar;
 import java.util.Arrays;
-import org.apache.commons.math3.analysis.integration.gauss.GaussIntegrator;
-import org.apache.commons.math3.analysis.integration.gauss.GaussIntegratorFactory;
-import org.apache.commons.math3.analysis.interpolation.SplineInterpolator;
-import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
-import org.apache.commons.math3.complex.Complex;
-import org.apache.commons.math3.analysis.solvers.LaguerreSolver;
-import org.apache.commons.math3.transform.DftNormalization;
-import org.apache.commons.math3.transform.FastFourierTransformer;
-import org.apache.commons.math3.transform.TransformType;
+import org.hipparchus.analysis.integration.gauss.GaussIntegrator;
+import org.hipparchus.analysis.integration.gauss.GaussIntegratorFactory;
+import org.hipparchus.analysis.interpolation.SplineInterpolator;
+import org.hipparchus.analysis.polynomials.PolynomialSplineFunction;
+import org.hipparchus.complex.Complex;
+import org.hipparchus.analysis.solvers.LaguerreSolver;
 
 /**
  * @author Marcus Overwater
@@ -26,10 +24,10 @@ import org.apache.commons.math3.transform.TransformType;
         "are handled via closed-form partial fractions; all other distributions use a numerical Volterra IDE solver.")
 public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentPointProcess {
 
-    public Input<ParametricDistribution> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
+    public Input<ScalarDistribution> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
             "Distribution of the lifetime of an individual.");
-    public Input<RealParameter> rhoInput = new Input<>("rho", "Extant sampling probability.");
-    public Input<RealParameter> birthRateInput = new Input<>("birthRate", "The birth rate.");
+    public Input<RealScalar<UnitInterval>> rhoInput = new Input<>("rho", "Extant sampling probability.");
+    public Input<RealScalar<PositiveReal>> birthRateInput = new Input<>("birthRate", "The birth rate.");
     public Input<Integer> gridSizeInput = new Input<>("gridSize",
             "Number of grid points for the numerical Volterra IDE solver (used for non-Erlang lifetime distributions).", 1000);
 
@@ -54,12 +52,15 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     protected PolynomialSplineFunction survivalSpline;     // S(t) = 1 - CDF_g(t)
 
     private static final GaussIntegratorFactory GAUSS_FACTORY = new GaussIntegratorFactory();
-    private static final FastFourierTransformer FFT = new FastFourierTransformer(DftNormalization.STANDARD);
 
     @Override
     public void initAndValidate() {
-        ParametricDistribution dist = lifetimeDistributionInput.get();
-        lifetimesAreErlang = dist instanceof Gamma && ((Gamma) dist).alphaInput.get() instanceof IntegerParameter;
+        ScalarDistribution dist = lifetimeDistributionInput.get();
+        lifetimesAreErlang = false;
+        if (dist instanceof Gamma specG) {
+            double alpha = specG.alphaInput.get().get();
+            lifetimesAreErlang = Math.abs(alpha - Math.round(alpha)) < 1e-10;
+        }
         useNumericalSolver = (dist != null) && !lifetimesAreErlang;
         super.initAndValidate();
     }
@@ -71,8 +72,8 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     }
 
     public void preCalc() {
-        birthRate = birthRateInput.get().getValue();
-        rho = rhoInput.get().getValue();
+        birthRate = birthRateInput.get().get();
+        rho = rhoInput.get().get();
 
         if (lifetimesAreErlang) {
             preCalcErlang();
@@ -87,20 +88,25 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
 
     private void preCalcErlang() {
         gammaDistribution = (Gamma) lifetimeDistributionInput.get();
-        double shapeParam = gammaDistribution.alphaInput.get().getArrayValue();
+        double shapeParam = gammaDistribution.alphaInput.get().get();
         n = (int) Math.round(shapeParam);
         if (Math.abs(n - shapeParam) > 1e-10){
             throw new IllegalArgumentException("Shape parameter must be an integer.");
         }
-        theta = 1.0 / gammaDistribution.betaInput.get().getArrayValue();
+        // thetaInput → input name "theta" (scale); betaInput → input name "lambda" (rate)
+        if (gammaDistribution.thetaInput.get() != null) {
+            theta = 1.0 / gammaDistribution.thetaInput.get().get();  // rate = 1/scale
+        } else {
+            theta = gammaDistribution.betaInput.get().get();          // rate provided directly
+        }
 
         double[] coeffs = buildRnCoefficients(n, theta, birthRate);
         try {
-            roots = new LaguerreSolver(1e-12).solveAllComplex(coeffs, 1.0, 1000);
+            roots = new LaguerreSolver(1e-12).solveAllComplex(coeffs, 1000, 1.0);
             gammaConst = Math.pow(theta, n) / coeffs[0];
             alphas = computeResidues(roots, n, theta, coeffs);
             erlangValid = true;
-        } catch (org.apache.commons.math3.exception.TooManyEvaluationsException e) {
+        } catch (org.hipparchus.exception.MathIllegalStateException e) {
             erlangValid = false;
         }
     }
@@ -189,9 +195,8 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         int N = gridSizeInput.get();
         if (N % 2 != 0) N++;  // Richardson requires an even step count
 
-        ParametricDistribution dist = lifetimeDistributionInput.get();
-
-        double[] gridG_fine   = computeGridG(N,     dist);
+        ScalarDistribution dist = lifetimeDistributionInput.get();
+        double[] gridG_fine = computeGridG(N, dist);
         double[] gridG_coarse = computeGridG(N / 2, dist);
 
         // Richardson extrapolation: G_4th = (4*G_h - G_2h) / 3 at coarse-grid points.
@@ -203,15 +208,11 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         double[] gValues  = new double[M + 1];
         double[] sValues  = new double[M + 1];
 
-        try {
-            for (int j = 0; j <= M; j++) {
-                coarseT[j] = j * hc;
-                gridG[j]   = (4.0 * gridG_fine[2 * j] - gridG_coarse[j]) / 3.0;
-                gValues[j] = dist.density(coarseT[j]);
-                sValues[j] = 1.0 - dist.cumulativeProbability(coarseT[j]);
-            }
-        } catch (org.apache.commons.math.MathException e) {
-            throw new RuntimeException("Failed to evaluate lifetime distribution", e);
+        for (int j = 0; j <= M; j++) {
+            coarseT[j] = j * hc;
+            gridG[j]   = (4.0 * gridG_fine[2 * j] - gridG_coarse[j]) / 3.0;
+            gValues[j] = dist.density(coarseT[j]);
+            sValues[j] = 1.0 - dist.cumulativeProbability(coarseT[j]);
         }
 
         SplineInterpolator interp = new SplineInterpolator();
@@ -220,21 +221,17 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         survivalSpline    = interp.interpolate(coarseT, sValues);
     }
 
-    private double[] computeGridG(int N, ParametricDistribution dist) {
+    private double[] computeGridG(int N, ScalarDistribution dist) {
         double h = maxTime / N;
         double[] gridG      = new double[N + 1];
         double[] gridGPrime = new double[N + 1];
         double[] gValues    = new double[N + 1];
         double[] sValues    = new double[N + 1];
 
-        try {
-            for (int j = 0; j <= N; j++) {
-                double t   = j * h;
-                gValues[j] = dist.density(t);
-                sValues[j] = 1.0 - dist.cumulativeProbability(t);
-            }
-        } catch (org.apache.commons.math.MathException e) {
-            throw new RuntimeException("Failed to evaluate lifetime distribution at a grid point", e);
+        for (int j = 0; j <= N; j++) {
+            double t   = j * h;
+            gValues[j] = dist.density(t);
+            sValues[j] = 1.0 - dist.cumulativeProbability(t);
         }
 
         gridG[0]      = 0.0;
@@ -286,17 +283,23 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         int n = a.length + b.length - 1;
         int m = 1;
         while (m < n) m <<= 1;
-        Complex[] fa = new Complex[m], fb = new Complex[m];
+        // JTransforms uses interleaved real/imaginary in a single double[] of length 2*m
+        double[] fa = new double[2 * m];
+        double[] fb = new double[2 * m];
+        for (int i = 0; i < a.length; i++) fa[2 * i] = a[i];
+        for (int i = 0; i < b.length; i++) fb[2 * i] = b[i];
+        org.jtransforms.fft.DoubleFFT_1D fft = new org.jtransforms.fft.DoubleFFT_1D(m);
+        fft.complexForward(fa);
+        fft.complexForward(fb);
         for (int i = 0; i < m; i++) {
-            fa[i] = new Complex(i < a.length ? a[i] : 0.0, 0.0);
-            fb[i] = new Complex(i < b.length ? b[i] : 0.0, 0.0);
+            double re = fa[2*i] * fb[2*i] - fa[2*i+1] * fb[2*i+1];
+            double im = fa[2*i] * fb[2*i+1] + fa[2*i+1] * fb[2*i];
+            fa[2*i]   = re;
+            fa[2*i+1] = im;
         }
-        fa = FFT.transform(fa, TransformType.FORWARD);
-        fb = FFT.transform(fb, TransformType.FORWARD);
-        for (int i = 0; i < m; i++) fa[i] = fa[i].multiply(fb[i]);
-        fa = FFT.transform(fa, TransformType.INVERSE);
+        fft.complexInverse(fa, true); // true = scale by 1/m
         double[] result = new double[n];
-        for (int i = 0; i < n; i++) result[i] = fa[i].getReal();
+        for (int i = 0; i < n; i++) result[i] = fa[2 * i];
         return result;
     }
 
