@@ -15,6 +15,7 @@ import org.hipparchus.analysis.interpolation.SplineInterpolator;
 import org.hipparchus.analysis.polynomials.PolynomialSplineFunction;
 import org.hipparchus.complex.Complex;
 import org.hipparchus.analysis.solvers.LaguerreSolver;
+import org.hipparchus.exception.MathIllegalStateException;
 
 /**
  * @author Marcus Overwater
@@ -106,7 +107,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
             gammaConst = Math.pow(theta, n) / coeffs[0];
             alphas = computeResidues(roots, n, theta, coeffs);
             erlangValid = true;
-        } catch (org.hipparchus.exception.MathIllegalStateException e) {
+        } catch (MathIllegalStateException e) {
             erlangValid = false;
         }
     }
@@ -208,11 +209,15 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         double[] gValues  = new double[M + 1];
         double[] sValues  = new double[M + 1];
 
-        for (int j = 0; j <= M; j++) {
-            coarseT[j] = j * hc;
-            gridG[j]   = (4.0 * gridG_fine[2 * j] - gridG_coarse[j]) / 3.0;
-            gValues[j] = dist.density(coarseT[j]);
-            sValues[j] = 1.0 - dist.cumulativeProbability(coarseT[j]);
+        try {
+            for (int j = 0; j <= M; j++) {
+                coarseT[j] = j * hc;
+                gridG[j] = (4.0 * gridG_fine[2 * j] - gridG_coarse[j]) / 3.0;
+                gValues[j] = dist.density(coarseT[j]);
+                sValues[j] = 1.0 - dist.cumulativeProbability(coarseT[j]);
+            }
+        } catch (MathIllegalStateException e){
+            throw new RuntimeException("Failed to evaluate lifetime distribution", e);
         }
 
         SplineInterpolator interp = new SplineInterpolator();
@@ -228,10 +233,14 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         double[] gValues    = new double[N + 1];
         double[] sValues    = new double[N + 1];
 
-        for (int j = 0; j <= N; j++) {
-            double t   = j * h;
-            gValues[j] = dist.density(t);
-            sValues[j] = 1.0 - dist.cumulativeProbability(t);
+        try {
+            for (int j = 0; j <= N; j++) {
+                double t = j * h;
+                gValues[j] = dist.density(t);
+                sValues[j] = 1.0 - dist.cumulativeProbability(t);
+            }
+        } catch (MathIllegalStateException e){
+            throw new RuntimeException("Failed to evaluate lifetime distribution at a grid point", e);
         }
 
         gridG[0]      = 0.0;
