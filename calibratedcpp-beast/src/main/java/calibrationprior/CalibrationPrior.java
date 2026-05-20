@@ -119,7 +119,10 @@ public class CalibrationPrior extends Distribution {
 
         // Solve least-squares for mean and variance edges
         RealVector mHat = solveQR(A, new ArrayRealVector(bMu));
-        RealVector vHat = solveQR(A, new ArrayRealVector(bVar));
+        RealVector vHat = nnls(A, new ArrayRealVector(bVar));
+        for (int i = 0; i < K; i++) {
+            if (vHat.getEntry(i) < 1e-8) vHat.setEntry(i, 1e-8);
+        }
 
         for (int i = 0; i < K; i++) {
             if (vHat.getEntry(i) <= 0) vHat.setEntry(i, 1e-8);
@@ -248,6 +251,84 @@ public class CalibrationPrior extends Distribution {
         }
 
         return new double[]{a, b};
+    }
+
+    private RealVector nnls(RealMatrix A, RealVector b) {
+        int n = A.getColumnDimension();
+        double[] x = new double[n];
+        boolean[] passive = new boolean[n]; // true = in passive set P
+
+        for (int outerIter = 0; outerIter < 3 * n; outerIter++) {
+            // Gradient of residual: w = Aᵀ(b - Ax)
+            RealVector residual = b.subtract(A.operate(new ArrayRealVector(x)));
+            RealVector w = A.transpose().operate(residual);
+
+            // Find best candidate in zero set Z
+            int jStar = -1;
+            double maxW = 1e-10; // tolerance
+            for (int j = 0; j < n; j++) {
+                if (!passive[j] && w.getEntry(j) > maxW) {
+                    maxW = w.getEntry(j);
+                    jStar = j;
+                }
+            }
+            if (jStar == -1) break; // optimality condition met
+
+            passive[jStar] = true;
+
+            // Inner loop: solve on passive set, enforce positivity
+            for (int innerIter = 0; innerIter < 3 * n; innerIter++) {
+                // Build sub-matrix A_P from passive columns
+                int pSize = 0;
+                for (boolean p : passive) if (p) pSize++;
+                int[] pIdx = new int[pSize];
+                int k = 0;
+                for (int j = 0; j < n; j++) if (passive[j]) pIdx[k++] = j;
+
+                RealMatrix Ap = new Array2DRowRealMatrix(A.getRowDimension(), pSize);
+                for (int c = 0; c < pSize; c++)
+                    Ap.setColumnVector(c, A.getColumnVector(pIdx[c]));
+
+                // Unconstrained LS solve on passive set
+                RealVector sp;
+                try {
+                    sp = new QRDecomposition(Ap).getSolver().solve(b);
+                } catch (Exception e) {
+                    sp = new SingularValueDecomposition(Ap).getSolver().solve(b);
+                }
+
+                // Check if all passive entries are positive
+                boolean allPositive = true;
+                for (int c = 0; c < pSize; c++) {
+                    if (sp.getEntry(c) <= 0) { allPositive = false; break; }
+                }
+                if (allPositive) {
+                    for (int c = 0; c < pSize; c++) x[pIdx[c]] = sp.getEntry(c);
+                    break;
+                }
+
+                // Step to boundary: α = min_{j∈P, s_j≤0} x_j / (x_j - s_j)
+                double alpha = Double.POSITIVE_INFINITY;
+                for (int c = 0; c < pSize; c++) {
+                    if (sp.getEntry(c) <= 0) {
+                        double xj = x[pIdx[c]];
+                        alpha = Math.min(alpha, xj / (xj - sp.getEntry(c)));
+                    }
+                }
+
+                // Update x and move near-zero passive entries back to Z
+                for (int c = 0; c < pSize; c++) {
+                    x[pIdx[c]] += alpha * (sp.getEntry(c) - x[pIdx[c]]);
+                }
+                for (int c = 0; c < pSize; c++) {
+                    if (Math.abs(x[pIdx[c]]) < 1e-12) {
+                        x[pIdx[c]] = 0.0;
+                        passive[pIdx[c]] = false;
+                    }
+                }
+            }
+        }
+        return new ArrayRealVector(x);
     }
 
     private void collectLeafTaxa(Node node, Set<String> leafIDs) {

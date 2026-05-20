@@ -1,6 +1,7 @@
 # -------------------------------
 # Hybrid tree simulation: multiplicative Beta + LogNormal for non-overlapping nodes
 # -------------------------------
+library(nnls)
 library(nleqslv)
 library(ggplot2)
 library(ggpubr)
@@ -129,9 +130,8 @@ for(idx in seq_along(edges)){
   v_edge <- sigma2_vec[i] - sigma2_vec[par_i]
   if(v_edge < 0){
     warning(sprintf(
-      "Node %d: sigma2_child (%.6f) < sigma2_parent (%.6f); child is more precisely calibrated than its overlapping parent. vEdge clamped to 1e-8.",
+      "Node %d: sigma2_child (%.6f) < sigma2_parent (%.6f); child is more precisely calibrated than its overlapping parent.",
       i, sigma2_vec[i], sigma2_vec[par_i]))
-    v_edge <- 1e-8
   }
   b_mean[idx] <- m_edge
   b_var[idx] <- v_edge
@@ -142,7 +142,8 @@ for(idx in seq_along(edges)){
 # Step 4: solve for beta parameters
 # -------------------------------
 m_hat <- solve(A_mean, b_mean)
-v_hat <- solve(A_mean, b_var)  # non-negativity enforced upstream by clamping
+v_hat <- nnls(A_mean, b_var)$x        # non-negative least squares: min ||Av - b||² s.t. v ≥ 0
+v_hat <- pmax(v_hat, 1e-8)            # floor to avoid near-zero variance
 
 beta_params <- lapply(1:n_edges, function(j) invert_logmoments_to_beta(m_hat[j], v_hat[j]))
 edge_alpha <- sapply(beta_params, `[[`, "alpha")
