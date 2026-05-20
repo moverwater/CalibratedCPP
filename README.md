@@ -23,10 +23,10 @@ CalibratedCPP contains 3 subproject:
 ### calibratedcpp-beast
 
 The implementation has the following structure:
+- `CalibratedCoalescentPointProcess` extends `SpeciesTreeDistribution` and takes a list of `calibrations`, `tree`, and the `origin` age OR `conditionOnRoot` as inputs.
 - `CalibratedBirthDeathModel` extends `CalibratedCoalescentPointProcess` and implements `calculateLogNodeAgeDensity()` and `calculateLogNodeAgeCDF()` with node age density and CDF for the constant rate birth-death process.
 - `CalibratedBirthDeathSkylineModel` extends `CalibratedCoalescentPointProcess` and implements `calculateLogNodeAgeDensity()` and `calculateLogNodeAgeCDF()` with node age density and CDF for the birth-death process with piecewise constant rates.
-- `CalibratedAgeDependentBirthDeathModel` extends `CalibratedCoalescentPointProcess` and implements `calculateLogNodeAgeDensity()` and `calculateLogNodeAgeCDF()` for the case when individuals have Erlang distributed lifetimes and give birth at a constant rate.
-- `CalibratedCoalescentPointProcess` extends `SpeciesTreeDistribution` and takes a list of `calibrations`, `tree`, and the `origin` age OR `conditionOnRoot` as inputs.
+- `CalibratedAgeDependentBirthDeathModel` extends `CalibratedCoalescentPointProcess` and implements `calculateLogNodeAgeDensity()` and `calculateLogNodeAgeCDF()` for the case when individuals have arbitrary lifetime distributions and give birth at a constant rate. The special case where individuals have Erlang distributed (Gamma distributed with integer shape parameter) lifetimes has a fast solution.
 
 ### calibratedcpp-lphy
 
