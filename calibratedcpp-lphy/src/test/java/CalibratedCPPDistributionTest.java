@@ -459,6 +459,61 @@ public class CalibratedCPPDistributionTest {
     }
 
     /**
+     * Replicates the fixed_stem_validation.lphy scenario (100 taxa, 4 calibrations, stemAge=3).
+     * Mirrors the R validation script lphy_added_fixed_stem_validation_100.R which compares
+     * CPP and lphyCPP trees on: tree height, cherries, Colless, gamma, tree length, beta.
+     * λ=2, μ=1, ρ=0.1, lifetime=1/μ=1.0  →  effectiveDeathRate = μ exactly.
+     */
+    @Test
+    void fixedStemValidation100TipDistributionsMatchCPP() {
+        final double lambda = 2.0, mu = 1.0, rho = 0.1, lifetime = 1.0 / mu;
+        final int n = 100;
+        final double stemAge = 3.0;
+
+        // clade1: leaf_1, leaf_2  @ age 1.0
+        String[] clade1 = {"leaf_1", "leaf_2"};
+        // clade2: leaf_45..leaf_51  @ age 1.2
+        String[] clade2 = new String[7];
+        for (int i = 0; i < 7; i++) clade2[i] = "leaf_" + (45 + i);
+        // clade3: leaf_45..leaf_55  @ age 1.5  (superset of clade2)
+        String[] clade3 = new String[11];
+        for (int i = 0; i < 11; i++) clade3[i] = "leaf_" + (45 + i);
+        // clade4: leaf_87..leaf_90  @ age 2.0
+        String[] clade4 = {"leaf_87", "leaf_88", "leaf_89", "leaf_90"};
+
+        Calibration[] cals = {
+                new Calibration(clade1, 1.0),
+                new Calibration(clade2, 1.2),
+                new Calibration(clade3, 1.5),
+                new Calibration(clade4, 2.0)
+        };
+
+        CalibratedCPPTree cpp = new CalibratedCPPTree(
+                new Value<>("", lambda), new Value<>("", mu), null, null,
+                new Value<>("", rho), new Value<>("", n),
+                new Value<>("", new CalibrationArray(cals)),
+                null, new Value<>("", stemAge));
+
+        CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
+                new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
+                new Value<>("", lifetime),
+                new Value<>("", new CalibrationArray(cals)),
+                null, new Value<>("", stemAge));
+
+        final int N100 = 1000;
+        Stats cs = collect(N100, () -> cpp.sample().value());
+        Stats as = collect(N100, () -> ad.sample().value());
+
+        assertKS(cs.rootAge(),        as.rootAge(),        "100tip: root age (tree height)");
+        assertKS(cs.length(),         as.length(),         "100tip: total tree length");
+        assertKS(cs.meanNonRootAge(), as.meanNonRootAge(), "100tip: mean non-root internal age");
+        assertKS(cs.gamma(),          as.gamma(),          "100tip: gamma statistic");
+        assertKS(cs.colless(),        as.colless(),        "100tip: Colless imbalance");
+        assertKS(cs.cherries(),       as.cherries(),       "100tip: number of cherries");
+        assertKS(cs.beta(),           as.beta(),           "100tip: Aldous beta statistic");
+    }
+
+    /**
      * Disjoint calibrations (two independent clades).
      * Tests the multi-maximal-calibration code path.
      */

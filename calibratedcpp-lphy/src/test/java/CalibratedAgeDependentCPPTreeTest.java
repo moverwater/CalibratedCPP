@@ -274,4 +274,27 @@ public class CalibratedAgeDependentCPPTreeTest {
         g.sample(); // triggers rootConditioned = true
         assertTrue(g.getRootCondition());
     }
+
+    // -------------------------------------------------------------------------
+    // Subcritical regime (effectiveDeathRate >> lambda)
+    // -------------------------------------------------------------------------
+
+    /**
+     * When effectiveDeathRate = 1/lifetime >> lambda, the CPP survival CDF saturates
+     * well below 1 (asymptote ≈ lambda * lifetime). Previously, the closed-form
+     * inverseCDF would blow up to +Inf for p near the asymptote, causing
+     * times[0] = conditionAge to become the minimum and crashing coalesce() with
+     * IndexOutOfBoundsException: Index -1 out of bounds.
+     */
+    @RepeatedTest(30)
+    void subcriticalRegimeDoesNotCrash() {
+        // lambda=0.05, lifetime=0.01 → effectiveDeathRate=100 >> lambda=0.05
+        // CDF asymptote ≈ lambda * lifetime = 0.0005 (deeply subcritical)
+        CalibratedAgeDependentCPPTree g = generate(
+                0.05, 1.0, 5, 0.01, 5.0,
+                new Calibration(new String[]{"a", "b", "c"}, 2.0));
+        TimeTree tree = assertDoesNotThrow(() -> g.sample().value(),
+                "sample() must not throw in subcritical regime");
+        assertAgesOrder(tree);
+    }
 }

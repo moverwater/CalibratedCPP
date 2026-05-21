@@ -249,7 +249,7 @@ public class CPPTest {
         assertEquals(1.826258, transform(0.4, birthRate, deathRate, 10), 1e-6);
 
         List<Double> list = new ArrayList<>(Arrays.asList(0.0, 1.0, 2.0, 5.0, 0.0));
-        assertEquals(0, indexOfMin(list));
+        assertEquals(0, indexOfMin(list)); // first occurrence of the minimum value
 
         boolean[] list2 = new boolean[]{true, false, true, false, false};
         List<Integer> results = checkTrues(list2);
