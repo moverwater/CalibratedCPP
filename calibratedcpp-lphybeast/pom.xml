@@ -19,6 +19,24 @@
             <artifactId>lphybeast</artifactId>
             <version>${lphybeast.vision}</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hipparchus</groupId>
+            <artifactId>hipparchus-core</artifactId>
+            <version>4.0.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.wendykierp</groupId>
+            <artifactId>JTransforms</artifactId>
+            <version>3.1</version>
+        </dependency>
 
         <dependency>
             <groupId>io.github.moverwater</groupId>
