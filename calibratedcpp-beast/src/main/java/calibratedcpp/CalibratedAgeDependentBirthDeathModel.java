@@ -9,6 +9,8 @@ import beast.base.spec.inference.distribution.Gamma;
 import beast.base.spec.inference.distribution.ScalarDistribution;
 import beast.base.spec.type.RealScalar;
 import java.util.Arrays;
+
+import calibratedcpp.distribution.Erlang;
 import org.hipparchus.analysis.integration.gauss.GaussIntegrator;
 import org.hipparchus.analysis.integration.gauss.GaussIntegratorFactory;
 import org.hipparchus.analysis.interpolation.SplineInterpolator;
@@ -56,13 +58,8 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
 
     @Override
     public void initAndValidate() {
-        ScalarDistribution dist = lifetimeDistributionInput.get();
-        lifetimesAreErlang = false;
-        if (dist instanceof Gamma specG) {
-            double alpha = specG.alphaInput.get().get();
-            lifetimesAreErlang = Math.abs(alpha - Math.round(alpha)) < 1e-10;
-        }
-        useNumericalSolver = (dist != null) && !lifetimesAreErlang;
+        lifetimesAreErlang = lifetimeDistributionInput.get() instanceof Erlang;
+        useNumericalSolver  = !lifetimesAreErlang && lifetimeDistributionInput.get() != null;
         super.initAndValidate();
     }
 
