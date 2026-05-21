@@ -6,6 +6,7 @@ import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.util.TruncatedLogNormal;
 import calibratedcpp.lphybeast.tobeast.generators.CPPToBEAST;
+import calibratedcpp.lphybeast.tobeast.generators.CalibratedAgeDependentCPPToBEAST;
 import calibratedcpp.lphybeast.tobeast.generators.CalibratedCPPToBEAST;
 import jebl.evolution.sequences.SequenceType;
 import lphy.core.model.Generator;
@@ -20,8 +21,7 @@ public class LBcalibratedcppImpl implements LPhyBEASTMapping {
     @Override
     public List<Class<? extends GeneratorToBEAST>> getGeneratorToBEASTs() {
         return List.of(
-                CalibratedCPPToBEAST.class, CPPToBEAST.class
-                //CalibratedCPPToBEAST_broken.class, CPPToBEAST.class
+                CalibratedCPPToBEAST.class, CPPToBEAST.class, CalibratedAgeDependentCPPToBEAST.class
         );
     }
 
