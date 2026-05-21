@@ -18,7 +18,7 @@ $$Q(t) = \frac{\rho\lambda(1-e^{-(\lambda-\mu)t})}{\rho\lambda+(\lambda(1-\rho)-
 The Calibrated CPP is a calibrated tree prior using the CPP. Calibrated tree priors are used for molecular clock dating by conditioning on the existence and ages of the most recent common ancestors of monophyletic clades.
 
 ## Project structure
-CalibratedCPP contains 3 subproject:
+CalibratedCPP contains 4 subprojects:
 
 ### calibratedcpp-beast
 

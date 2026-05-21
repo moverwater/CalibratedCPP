@@ -3,7 +3,10 @@ package calibratedcpp;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.UnitInterval;
+import beast.base.spec.inference.parameter.RealVectorParam;
+import beast.base.spec.type.RealScalar;
+import beast.base.spec.type.RealVector;
 
 import java.util.*;
 
@@ -24,8 +27,8 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
             new Input<>("reproductiveNumber", "Skyline parameter for the reproductiveNumber (λ/µ)", (SkylineParameter) null);
     public Input<SkylineParameter> turnoverInput =
             new Input<>("turnover", "Skyline parameter for the turnover (µ/λ)", (SkylineParameter) null);
-    public Input<RealParameter> samplingProbabilityInput =
-            new Input<>("rho", "Sampling probability (⍴)", (RealParameter) null);
+    public Input<RealScalar<UnitInterval>> samplingProbabilityInput =
+            new Input<>("rho", "Sampling probability (⍴)", (RealScalar<UnitInterval>) null);
 
 
     protected double[] intervalStartTimes, lambda, r, cumulativeIntegral, cumulativeExpR;
@@ -50,8 +53,8 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
             // Check if the SkylineParameter itself exists
             if (sp != null) {
                 // Now it is safe to access fields
-                RealParameter rateP = sp.valuesInput.get();
-                RealParameter timeP = sp.changeTimesInput.get();
+                RealVector<?> rateP = sp.valuesInput.get();
+                RealVector<?> timeP = sp.changeTimesInput.get();
 
                   if (rateP != null) {
                     specifiedRates++;
@@ -59,8 +62,8 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
                     whichSpecified.append(skylineInputs[i].getName());
 
                     if (timeP != null) {
-                        int rateDim = rateP.getDimension();
-                        int timeDim = timeP.getDimension();
+                        int rateDim = rateP.size();
+                        int timeDim = timeP.size();
                         if (rateDim != timeDim + 1) {
                             throw new IllegalArgumentException("Dimension mismatch for " + skylineInputs[i].getName() +
                                     ": Explicit change times provided (" + timeDim + "), so rate dimension must be (" + (timeDim + 1) + "). Found: " + rateDim);
@@ -97,9 +100,9 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
     private boolean updateIntervals() {
         super.updateModel();
 
-        rho = samplingProbabilityInput.get().getValue();
+        rho = samplingProbabilityInput.get().get();
         double rootHeight = treeInput.get().getRoot().getHeight();
-        double originVal = !conditionOnRoot ? originInput.get().getValue() : 0.0;
+        double originVal = !conditionOnRoot ? originInput.get().get() : 0.0;
         double maxT = maxTime;
 
         if (!conditionOnRoot && rootHeight >= originVal) return false;
@@ -173,17 +176,18 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
      * * @param reverse If TRUE: Input is already Age (Distance from Present).
      * If FALSE: Input is Distance from Root (needs conversion).
      */
-    private List<Double> processInput(Input<RealParameter> rateInput, Input<RealParameter> timeInput,
+    private List<Double> processInput(Input<? extends RealVector<?>> rateInput, Input<? extends RealVector<?>> timeInput,
                                       boolean relative, boolean reverse, double maxTime) {
         List<Double> times = new ArrayList<>();
         if (rateInput.get() == null) return times;
 
-        RealParameter rateP = rateInput.get();
-        RealParameter timeP = timeInput.get();
+        RealVector<?> rateP = rateInput.get();
+        RealVector<?> timeP = timeInput.get();
 
         if (timeP != null) {
             // --- Explicit Change Times ---
-            Double[] vals = timeP.getValues();
+            double[] vals = new double[timeP.size()];
+            for (int i = 0; i < timeP.size(); i++) vals[i] = timeP.get(i);
             Arrays.sort(vals);
             for (double v : vals) {
                 double tAge;
@@ -204,7 +208,7 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
         } else {
             // --- Implicit Equidistant Times ---
             // If explicit times are missing, we assume equidistant intervals over maxTime.
-            int numIntervals = rateP.getDimension();
+            int numIntervals = rateP.size();
             if (numIntervals > 1) {
                 double width = maxTime / numIntervals;
                 for (int i = 1; i < numIntervals; i++) {
@@ -221,7 +225,7 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
      * Enforces Rates: Root -> Present.
      * * @param t The current time (Age).
      */
-    private double getVal(RealParameter p, List<Double> cuts, double t) {
+    private double getVal(RealVector<?> p, List<Double> cuts, double t) {
         if (p == null) return 0;
 
         // Find which time interval 't' falls into based on the cuts (which are Ages).
@@ -241,9 +245,9 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
         // So, if we are at intervalIndex 0 (Present), we need the LAST rate index.
         // If we are at intervalIndex Max (Root), we need the FIRST rate index.
 
-        int pIdx = p.getDimension() - 1 - intervalIndex;
+        int pIdx = p.size() - 1 - intervalIndex;
 
-        return p.getValue(Math.max(0, Math.min(pIdx, p.getDimension() - 1)));
+        return p.get(Math.max(0, Math.min(pIdx, p.size() - 1)));
     }
 
     // Helper to extract times without crashing on null inputs

@@ -2,10 +2,12 @@ package calibratedcpp;
 
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
-import beast.base.inference.distribution.Exponential;
-import beast.base.inference.distribution.Gamma;
-import beast.base.inference.parameter.IntegerParameter;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.domain.UnitInterval;
+import beast.base.spec.inference.distribution.Exponential;
+import beast.base.spec.inference.distribution.Gamma;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,27 +34,27 @@ public class CalibratedAgeDependentBirthDeathModelTest {
             Tree tree, double lambda, double mu, double rho, double origin) {
         CalibratedBirthDeathModel bd = new CalibratedBirthDeathModel();
         bd.initByName("tree", tree,
-                "origin", new RealParameter(String.valueOf(origin)),
-                "birthRate",  new RealParameter(String.valueOf(lambda)),
-                "deathRate",  new RealParameter(String.valueOf(mu)),
-                "rho",        new RealParameter(String.valueOf(rho)));
+                "origin",    new RealScalarParam<>(origin, PositiveReal.INSTANCE),
+                "birthRate", new RealScalarParam<>(lambda, PositiveReal.INSTANCE),
+                "deathRate", new RealScalarParam<>(mu, NonNegativeReal.INSTANCE),
+                "rho",       new RealScalarParam<>(rho, UnitInterval.INSTANCE));
         return bd;
     }
 
     /**
      * Erlang(alpha=1, beta=1/mu) closed-form path.
-     * beta is BEAST Gamma's scale parameter, so theta = 1/beta = mu = death rate.
+     * beta is BEAST3 Gamma's scale parameter, so theta = 1/beta = mu = death rate.
      */
     private static CalibratedAgeDependentBirthDeathModel erlangModel(
             Tree tree, double lambda, double mu, double rho, double origin) {
         Gamma gamma = new Gamma();
-        gamma.initByName("alpha", new IntegerParameter("1.0"),
-                         "beta",  new RealParameter(String.valueOf(1.0 / mu)));
+        gamma.initByName("alpha", new RealScalarParam<>(1.0, PositiveReal.INSTANCE),
+                         "theta",  new RealScalarParam<>(1.0 / mu, PositiveReal.INSTANCE));
         CalibratedAgeDependentBirthDeathModel model = new CalibratedAgeDependentBirthDeathModel();
         model.initByName("tree", tree,
-                "origin", new RealParameter(String.valueOf(origin)),
-                "birthRate",           new RealParameter(String.valueOf(lambda)),
-                "rho",                 new RealParameter(String.valueOf(rho)),
+                "origin",              new RealScalarParam<>(origin, PositiveReal.INSTANCE),
+                "birthRate",           new RealScalarParam<>(lambda, PositiveReal.INSTANCE),
+                "rho",                 new RealScalarParam<>(rho, UnitInterval.INSTANCE),
                 "lifetimeDistribution", gamma);
         return model;
     }
@@ -64,12 +66,12 @@ public class CalibratedAgeDependentBirthDeathModelTest {
     private static CalibratedAgeDependentBirthDeathModel videModel(
             Tree tree, double lambda, double mu, double rho, double origin) {
         Exponential expDist = new Exponential();
-        expDist.initByName("mean", new RealParameter(String.valueOf(1.0 / mu)));
+        expDist.initByName("mean", new RealScalarParam<>(1.0 / mu, PositiveReal.INSTANCE));
         CalibratedAgeDependentBirthDeathModel model = new CalibratedAgeDependentBirthDeathModel();
         model.initByName("tree", tree,
-                "origin",              new RealParameter(String.valueOf(origin)),
-                "birthRate",           new RealParameter(String.valueOf(lambda)),
-                "rho",                 new RealParameter(String.valueOf(rho)),
+                "origin",              new RealScalarParam<>(origin, PositiveReal.INSTANCE),
+                "birthRate",           new RealScalarParam<>(lambda, PositiveReal.INSTANCE),
+                "rho",                 new RealScalarParam<>(rho, UnitInterval.INSTANCE),
                 "lifetimeDistribution", expDist,
                 "gridSize",            20000);
         return model;
@@ -223,12 +225,12 @@ public class CalibratedAgeDependentBirthDeathModelTest {
         CalibratedBirthDeathModel bdSuper = bdModel(tree, 2.0, 1.0, 0.1, 20.0);
 
         Exponential expDist = new Exponential();
-        expDist.initByName("mean", new RealParameter("1.0"));
+        expDist.initByName("mean", new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
         CalibratedAgeDependentBirthDeathModel videSuper = new CalibratedAgeDependentBirthDeathModel();
         videSuper.initByName("tree", tree,
-                "origin", new RealParameter("20.0"),
-                "birthRate",           new RealParameter("2.0"),
-                "rho",                 new RealParameter("0.1"),
+                "origin",              new RealScalarParam<>(20.0, PositiveReal.INSTANCE),
+                "birthRate",           new RealScalarParam<>(2.0, PositiveReal.INSTANCE),
+                "rho",                 new RealScalarParam<>(0.1, UnitInterval.INSTANCE),
                 "lifetimeDistribution", expDist,
                 "gridSize",            2000);
 
@@ -241,12 +243,12 @@ public class CalibratedAgeDependentBirthDeathModelTest {
         CalibratedBirthDeathModel bdSub = bdModel(tree2, 1.0, 2.0, 0.1, 20.0);
 
         Exponential expDist2 = new Exponential();
-        expDist2.initByName("mean", new RealParameter("0.5")); // mean = 1/mu = 1/2
+        expDist2.initByName("mean", new RealScalarParam<>(0.5, PositiveReal.INSTANCE)); // mean = 1/mu = 1/2
         CalibratedAgeDependentBirthDeathModel videSub = new CalibratedAgeDependentBirthDeathModel();
         videSub.initByName("tree", tree2,
-                "origin", new RealParameter("20.0"),
-                "birthRate",           new RealParameter("1.0"),
-                "rho",                 new RealParameter("0.1"),
+                "origin",              new RealScalarParam<>(20.0, PositiveReal.INSTANCE),
+                "birthRate",           new RealScalarParam<>(1.0, PositiveReal.INSTANCE),
+                "rho",                 new RealScalarParam<>(0.1, UnitInterval.INSTANCE),
                 "lifetimeDistribution", expDist2,
                 "gridSize",            20000);
 

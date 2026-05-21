@@ -1,5 +1,5 @@
 # Force standard Intel architecture so JavaFX 17 can be downloaded via Rosetta 2
-FROM maven:3.9.6-eclipse-temurin-17
+FROM maven:3.9.16-eclipse-temurin-25
 
 # Set working directory
 WORKDIR /app
@@ -17,4 +17,4 @@ RUN xmlstarlet ed --inplace \
     pom.xml
 
 # Run the tests specifically for the beast module
-RUN mvn clean test
+RUN mvn clean test -Drevision=0.0.1

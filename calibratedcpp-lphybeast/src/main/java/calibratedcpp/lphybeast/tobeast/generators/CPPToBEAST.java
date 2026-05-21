@@ -1,6 +1,8 @@
 package calibratedcpp.lphybeast.tobeast.generators;
 
 import beast.base.core.BEASTInterface;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import calibratedcpp.CalibratedBirthDeathModel;
 import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.SkylineParameter;
@@ -14,43 +16,42 @@ public class CPPToBEAST implements GeneratorToBEAST<CPPTree, CalibratedBirthDeat
         CalibratedBirthDeathSkylineModel cpp = new CalibratedBirthDeathSkylineModel();
         cpp.setInputValue("tree", value);
 
-        // set origin and condition on root
         if (generator.getRootAge() != null) {
             cpp.setInputValue("conditionOnRoot", true);
-            cpp.setInputValue("origin", context.getAsRealParameter(generator.getRootAge()));
+            cpp.setInputValue("origin", context.getAsRealScalar(generator.getRootAge()));
         } else {
-            cpp.setInputValue("origin", generator.getConditionAge());
+            cpp.setInputValue("origin", new RealScalarParam<>(generator.getConditionAge(), PositiveReal.INSTANCE));
             cpp.setInputValue("conditionOnRoot", false);
         }
 
-        if (generator.getBirthRate() != null){
+        if (generator.getBirthRate() != null) {
             SkylineParameter b = new SkylineParameter();
-            b.setInputValue("values", context.getAsRealParameter(generator.getBirthRate()));
+            b.setInputValue("values", context.getAsRealScalar(generator.getBirthRate()));
             b.initAndValidate();
             cpp.setInputValue("birthRate", b);
         }
 
-        if (generator.getDeathRate() != null){
+        if (generator.getDeathRate() != null) {
             SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealParameter(generator.getDeathRate()));
+            d.setInputValue("values", context.getAsRealScalar(generator.getDeathRate()));
             cpp.setInputValue("deathRate", d);
         }
 
-        if (generator.getTurnover() != null){
+        if (generator.getTurnover() != null) {
             SkylineParameter t = new SkylineParameter();
-            t.setInputValue("values", context.getAsRealParameter(generator.getTurnover()));
+            t.setInputValue("values", context.getAsRealScalar(generator.getTurnover()));
             t.initAndValidate();
             cpp.setInputValue("turnover", t);
         }
 
-        if (generator.getDiversificationRate() != null){
+        if (generator.getDiversificationRate() != null) {
             SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealParameter(generator.getDiversificationRate()));
+            d.setInputValue("values", context.getAsRealScalar(generator.getDiversificationRate()));
             d.initAndValidate();
             cpp.setInputValue("diversificationRate", d);
         }
 
-        cpp.setInputValue("rho", context.getAsRealParameter(generator.getSamplingProbability()));
+        cpp.setInputValue("rho", context.getAsRealScalar(generator.getSamplingProbability()));
 
         cpp.initAndValidate();
         return cpp;

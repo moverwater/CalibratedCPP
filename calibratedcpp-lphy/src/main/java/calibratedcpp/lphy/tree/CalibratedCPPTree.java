@@ -127,20 +127,20 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         cladeCalibrations.sort((c1, c2) -> Double.compare(c2.getAge(), c1.getAge()));
 
         // if root calibration is already in clade calibration
-        if (cladeCalibrations.get(0).getTaxa().length == n){
+        if (cladeCalibrations.getFirst().getTaxa().length == n){
             rootConditioned = true;
-            rootAge = cladeCalibrations.get(0).getAge();
+            rootAge = cladeCalibrations.getFirst().getAge();
             // if only one root calibration, then return cpp
             if (cladeCalibrations.size() == 1){
                 CPPTree cpp = new CPPTree(new Value<>("", birthRate), new Value<>("", deathRate), null, null,
-                        getSamplingProb(), new Value<>("", cladeCalibrations.get(0).getTaxa()), getN(),
-                        new Value<>("", cladeCalibrations.get(0).getAge()), null);
+                        getSamplingProb(), new Value<>("", cladeCalibrations.getFirst().getTaxa()), getN(),
+                        new Value<>("", cladeCalibrations.getFirst().getAge()), null);
                 tree = cpp.sample().value();
                 return new RandomVariable<>("", tree, this);
             } else {
                 // else remove the root calibration from cladeCalibrations
-                backUpNames.addAll(Arrays.asList(cladeCalibrations.get(0).getTaxa()));
-                cladeCalibrations.remove(cladeCalibrations.get(0));
+                backUpNames.addAll(Arrays.asList(cladeCalibrations.getFirst().getTaxa()));
+                cladeCalibrations.remove(cladeCalibrations.getFirst());
             }
         }
 
@@ -193,7 +193,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             } else {
                 int idx = 0;
                 while (Double.isNaN(conditionAge) || Double.isInfinite(conditionAge) || conditionAge == 0.0) {
-                    conditionAge = simRandomStem(birthRate, deathRate, maximalCalibrations.get(0).getAge(), n);
+                    conditionAge = simRandomStem(birthRate, deathRate, maximalCalibrations.getFirst().getAge(), n);
                     idx++;
                     if (idx > 200){
                         throw new RuntimeException("The stem age cannot be sampled because of the bad parameter combination. Please provide a stemAge.");
@@ -236,7 +236,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             double[] weights = getWeights(s, w);
 
             if (A.size() == 1){
-                l[i] = A.get(0);
+                l[i] = A.getFirst();
             } else {
                 // sample one element from A with probability weights
                 l[i] = A.get(sampleIndex(weights));
@@ -307,7 +307,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
 
 
         if (rootConditioned){
-            if (Math.abs(times.get(0) - rootAge) > 1e-8){
+            if (Math.abs(times.getFirst() - rootAge) > 1e-8){
                 // shouldn't have this thrown theoretically
                 throw new RuntimeException("The max age is not root age when root conditioned");
             }
@@ -364,9 +364,9 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         // combine sub-CPPs into the final tree
         coalesce(nodeList, times);
 
-        tree.setRoot(nodeList.get(0), true);
-        if (!rootConditioned && conditionAge != nodeList.get(0).getAge()) {
-            tree.getRoot().setRootStem(times.get(0) );
+        tree.setRoot(nodeList.getFirst(), true);
+        if (!rootConditioned && conditionAge != nodeList.getFirst().getAge()) {
+            tree.getRoot().setRootStem(times.getFirst() );
         }
 
         return new RandomVariable<>("CPPTree", tree, this);

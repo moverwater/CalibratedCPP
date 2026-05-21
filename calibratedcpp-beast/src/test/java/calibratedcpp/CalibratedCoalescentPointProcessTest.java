@@ -17,6 +17,8 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import calibration.CalibrationClade;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
@@ -46,18 +48,18 @@ public class CalibratedCoalescentPointProcessTest {
 
         cpp = new calibratedcpp.CalibratedBirthDeathModel();
         cpp.initByName("tree", tree,
-                "origin", new RealParameter("6.5"),
-                "birthRate", new RealParameter("3.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1")
+                "origin", new RealScalarParam<>(6.5, Real.INSTANCE),
+                "birthRate", new RealScalarParam<>(3.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE)
         );
 
         rootConditionedCPP = new calibratedcpp.CalibratedBirthDeathModel();
         rootConditionedCPP.initByName("tree", tree,
                 "conditionOnRoot", true,
-                "birthRate", new RealParameter("3.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1")
+                "birthRate", new RealScalarParam<>(3.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE)
         );
 
         // Create taxa objects
@@ -217,11 +219,11 @@ public class CalibratedCoalescentPointProcessTest {
         CalibrationForest calibrationForest = new CalibrationForest(calibrations);
         cpp = new calibratedcpp.CalibratedBirthDeathModel();
         cpp.initByName("tree", tree,
-                "origin", new RealParameter("6.5"),
+                "origin", new RealScalarParam<>(6.5, Real.INSTANCE),
                 "calibrations", calibrations,
-                "birthRate", new RealParameter("3.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1"));
+                "birthRate", new RealScalarParam<>(3.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE));
 
         assertEquals(cpp.calculateUnConditionedTreeLogLikelihood(tree) -
                         cpp.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
@@ -230,13 +232,13 @@ public class CalibratedCoalescentPointProcessTest {
 
         rootConditionedCPP = new calibratedcpp.CalibratedBirthDeathModel();
         rootConditionedCPP.initByName("tree", tree,
-                "origin", new RealParameter("6.5"),
+                "origin", new RealScalarParam<>(6.5, Real.INSTANCE),
                 "calibrations", calibrations,
                 "conditionOnRoot", true,
                 "conditionOnCalibrations", true,
-                "birthRate", new RealParameter("3.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1"));
+                "birthRate", new RealScalarParam<>(3.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE));
 
         assertEquals(rootConditionedCPP.calculateUnConditionedTreeLogLikelihood(tree) -
                         rootConditionedCPP.calculateMarginalLogDensityOfCalibrations(tree, calibrationForest) -
@@ -249,13 +251,13 @@ public class CalibratedCoalescentPointProcessTest {
                 new Taxon("A"), new Taxon("B"), new Taxon("J")
         )));
         nonmonophyleticCPP.initByName("tree", tree,
-                "origin", new RealParameter("6.5"),
+                "origin", new RealScalarParam<>(6.5, Real.INSTANCE),
                 "calibrations", badClade,
                 "conditionOnRoot", true,
                 "conditionOnCalibrations", true,
-                "birthRate", new RealParameter("3.0"),
-                "deathRate", new RealParameter("2.0"),
-                "rho", new RealParameter("0.1"));
+                "birthRate", new RealScalarParam<>(3.0, Real.INSTANCE),
+                "deathRate", new RealScalarParam<>(2.0, Real.INSTANCE),
+                "rho", new RealScalarParam<>(0.1, Real.INSTANCE));
 
         assertEquals(Double.NEGATIVE_INFINITY, nonmonophyleticCPP.calculateTreeLogLikelihood(tree), 1e-4);
 
@@ -305,22 +307,24 @@ public class CalibratedCoalescentPointProcessTest {
             logNfactorial += Math.log(i);
         }
 
-        RealParameter turnover = new RealParameter("0.0");
-        RealParameter birthRate = new RealParameter("2.0");
-        RealParameter rho = new RealParameter("1.0");
-
+        RealScalarParam<Real> cppTurnover = new RealScalarParam<>(0.0, Real.INSTANCE);
+        RealScalarParam<Real> cppBirthRate = new RealScalarParam<>(2.0, Real.INSTANCE);
+        RealScalarParam<Real> cppRho = new RealScalarParam<>(1.0, Real.INSTANCE);
+        RealParameter hdTurnover = new RealParameter("0.0");
+        RealParameter hdBirthRate = new RealParameter("2.0");
+        RealParameter hdRho = new RealParameter("1.0");
 
         cpp.initByName("tree", tree,
-                "birthRate", birthRate,
-                "turnover", turnover,
-                "rho", rho,
+                "birthRate", cppBirthRate,
+                "turnover", cppTurnover,
+                "rho", cppRho,
                 "calibrations", calibrationsClades,
                 "conditionOnRoot", true);
         heled_and_drummond.initByName("tree", tree,
                 "calibrations", calibrationPoints,
-                "birthRate", birthRate,
-                "relativeDeathRate", turnover,
-                "sampleProbability", rho);
+                "birthRate", hdBirthRate,
+                "relativeDeathRate", hdTurnover,
+                "sampleProbability", hdRho);
         assertEquals(cpp.calculateTreeLogLikelihood(tree),
                 heled_and_drummond.calculateTreeLogLikelihood(tree) + logNfactorial, 1e-10,
                 "Calibrated CPP tree log likelihood does not math Heled and Drummond Tree log likelihood.");
@@ -330,9 +334,12 @@ public class CalibratedCoalescentPointProcessTest {
     public void heledAndDrummondComparison() {
         cpp = new calibratedcpp.CalibratedBirthDeathModel();
         CalibratedBirthDeathModel heled_and_drummond = new CalibratedBirthDeathModel();
-        RealParameter rho = new RealParameter("1.0");
-        RealParameter turnover = new RealParameter("0.0");
-        RealParameter birthRate = new RealParameter("1.0");
+        RealParameter hdRho = new RealParameter("1.0");
+        RealParameter hdTurnover = new RealParameter("0.0");
+        RealParameter hdBirthRate = new RealParameter("1.0");
+        RealScalarParam<Real> cppRho = new RealScalarParam<>(1.0, Real.INSTANCE);
+        RealScalarParam<Real> cppTurnover = new RealScalarParam<>(0.0, Real.INSTANCE);
+        RealScalarParam<Real> cppBirthRate = new RealScalarParam<>(1.0, Real.INSTANCE);
         Tree tree = new TreeParser();
         tree.initByName("newick", "((((((((((((leaf_36:0.0257564750822701,leaf_40:0.0257564750822701):0.0408766525906903,leaf_8:0.0666331276729604):0.33784921072051,(((leaf_69:0.161465975796346,leaf_41:0.161465975796346):0.167664175344224,(leaf_82:0.0546036773493572,leaf_14:0.0546036773493572):0.274526473791213):0.0628134879891438,leaf_76:0.391943639129714):0.0125386992637559):0.40429517583965,leaf_97:0.808777514233121):0.0797578949429036,((((leaf_25:0.0265891826814647,leaf_93:0.0265891826814647):0.408929550049297,(leaf_60:0.0668468415852558,leaf_4:0.0668468415852558):0.368671891145506):0.103624686904037,((leaf_3:0.00856185800216441,leaf_44:0.00856185800216441):0.261366839599589,(leaf_32:0.0900877169305987,leaf_19:0.0900877169305987):0.179840980671155):0.269214722033045):0.246537911198444,((leaf_23:0.434973653613092,((((leaf_24:0.0441479803365146,leaf_27:0.0441479803365146):0.19461883594281,((leaf_39:0.0629976251906552,leaf_64:0.0629976251906552):0.125878956425076,leaf_35:0.188876581615731):0.0498902346635939):0.0920611869103335,leaf_84:0.330828003189658):0.0938282048312802,(leaf_66:0.346435089735903,leaf_95:0.346435089735903):0.0782211182850354):0.0103174455921539):0.204772868083289,(leaf_6:0.555436362376936,(leaf_58:0.165879919804176,(leaf_57:0.160837145962567,((leaf_98:0.00789646768020438,leaf_42:0.00789646768020438):0.00303307664476509,leaf_56:0.0109295443249695):0.149907601637597):0.00504277384160948):0.38955644257276):0.0843101593194453):0.14593480913686):0.102854078342782):0.0435164129237676,(((leaf_78:0.30658437310568,leaf_75:0.30658437310568):0.196584430365379,(((leaf_20:0.277245201712736,(leaf_16:0.0604484643090907,leaf_30:0.0604484643090907):0.216796737403645):0.0313505036545378,leaf_81:0.308595705367274):0.0551891550134793,(((((leaf_74:0.126414472170799,(leaf_31:0.0281822278476253,leaf_18:0.0281822278476253):0.0982322443231737):0.137886945558104,(leaf_77:0.206138359238225,leaf_80:0.206138359238225):0.0581630584906775):0.0378316760404452,leaf_9:0.302133093769348):0.0131602232339091,(leaf_43:0.0777015544992117,leaf_65:0.0777015544992117):0.237591762504045):0.020637879755451,(leaf_70:0.0398131209514894,leaf_1:0.0398131209514894):0.296118075807219):0.0278536636220449):0.139383943090305):0.293294993665746,leaf_12:0.796463797136805):0.135588024962987):0.12642423310104,((((leaf_17:0.336027213306863,leaf_21:0.336027213306863):0.160126882550966,((((leaf_83:0.0796139233613961,leaf_99:0.0796139233613961):0.0605244795635852,leaf_11:0.140138402924981):0.0120162169621776,leaf_91:0.152154619887159):0.0710648878320053,(leaf_59:0.118183002992202,(leaf_34:0.021817066471393,leaf_92:0.021817066471393):0.0963659365208089):0.105036504726962):0.272934588138665):0.00899466370199514,(leaf_2:0.467853907337959,leaf_15:0.467853907337959):0.0372948522218648):0.0138473059376347,leaf_10:0.518996065497459):0.539479989703373):0.0123539804084682,(((leaf_13:0.0340387079715563,leaf_63:0.0340387079715563):0.0134229850965503,leaf_33:0.0474616930681066):0.0477769201156261,leaf_96:0.0952386131837327):0.975591422425567):0.185759267653266,(leaf_100:0.141102866301929,leaf_71:0.141102866301929):1.11548643696064):0.289572462272809,(((leaf_62:0.288881440067835,leaf_29:0.288881440067835):0.246345551450539,((((leaf_85:0.128008687886708,leaf_38:0.128008687886708):0.0159728161929468,leaf_67:0.143981504079655):0.0784370353526523,leaf_94:0.222418539432307):0.241808948635236,((leaf_68:0.0958255274549801,leaf_28:0.0958255274549801):0.35486637290526,(leaf_73:0.20833072778014,leaf_7:0.20833072778014):0.2423611725801):0.0135355877073033):0.0709995034508305):0.494591261350899,(((leaf_26:0.165867740396315,(leaf_5:0.0157430030157796,leaf_79:0.0157430030157796):0.150124737380536):0.129225280882201,leaf_37:0.295093021278516):0.322675115432227,(leaf_86:0.428185040694139,(leaf_22:0.414453988225309,(leaf_61:0.176570020060729,leaf_72:0.176570020060729):0.23788396816458):0.0137310524688301):0.189583096016604):0.41205011615853):0.516343512666102):0.0763871229425035,(((leaf_54:0.133197288572896,leaf_55:0.133197288572896):0.276552982984382,leaf_52:0.409750271557278):1.09024972844272,(leaf_53:1.4230695138519,(((leaf_45:0.189963610986554,(leaf_51:0.151644855185039,(leaf_47:0.131318550225172,(leaf_50:0.0204962210877418,leaf_46:0.0204962210877418):0.11082232913743):0.0203263049598669):0.038318755801515):0.30109173844668,leaf_48:0.491055349433234):0.708944650566766,leaf_49:1.2):0.223069513851897):0.0769304861481035):0.122548888477878):0.624676687025677,((leaf_89:0.2621349808486,leaf_88:0.2621349808486):1.7378650191514,(leaf_90:1.03897286705537,leaf_87:1.03897286705537):0.961027132944629):0.247225575503555);",
                 "IsLabelledNewick", true,
@@ -426,17 +433,17 @@ public class CalibratedCoalescentPointProcessTest {
         calibrationPoints.add(calibrationPoint3);
         calibrationPoints.add(calibrationPoint4);
 
-        cpp.initByName("birthRate", birthRate,
-                "turnover", turnover,
-                "rho", rho,
+        cpp.initByName("birthRate", cppBirthRate,
+                "turnover", cppTurnover,
+                "rho", cppRho,
                 "tree", tree,
                 "calibrations", calibrationClades,
                 "conditionOnRoot", true);
 
-        heled_and_drummond.initByName("birthRate", birthRate,
+        heled_and_drummond.initByName("birthRate", hdBirthRate,
                 "tree", tree,
-                "relativeDeathRate", turnover,
-                "sampleProbability", rho,
+                "relativeDeathRate", hdTurnover,
+                "sampleProbability", hdRho,
                 "calibrations", calibrationPoints);
 
         double logNFactorial = 0.0;
@@ -453,10 +460,10 @@ public class CalibratedCoalescentPointProcessTest {
                 double currentBirthRate = 1.0 + incr;
                 String birthRateValue = String.valueOf(currentBirthRate);
 
-                cpp.birthRateInput.get().setValue(currentBirthRate);
+                cppBirthRate.set(currentBirthRate);
                 cpp.updateParameters();
 
-                heled_and_drummond.birthRateInput.get().setValue(currentBirthRate);
+                hdBirthRate.setValue(currentBirthRate);
 
                 double cppVal = cpp.calculateTreeLogLikelihood(tree);
                 double heled_and_drummondVal = heled_and_drummond.calculateTreeLogLikelihood(tree) + logNFactorial;
@@ -466,7 +473,7 @@ public class CalibratedCoalescentPointProcessTest {
                 writer.printf("%d,%s,%.8f,%.8f%n", i, birthRateValue, cppVal, heled_and_drummondVal);
 
                 assertEquals(cppVal, heled_and_drummondVal, 1e-9,
-                        "Tree Log-Likelihoods do not match for birthRate(" + birthRate.getValue() + ")");
+                        "Tree Log-Likelihoods do not match for birthRate(" + currentBirthRate + ")");
             }
         } catch (IOException e) {
             e.printStackTrace();

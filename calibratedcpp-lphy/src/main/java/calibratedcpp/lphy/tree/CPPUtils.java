@@ -38,10 +38,20 @@ public class CPPUtils {
     public static double inverseCDF(double b, double d, double rho, double p) {
         double r = b - d;
         double A = rho * b;
+        double B = b * (1 - rho) - d;
         double t;
 
         if (Math.abs(r) < 1e-10) {
             t = p / (A * (1.0 - p));
+        } else if (r < 0) {
+            // Subcritical: mirrors CalibratedBirthDeathModel.calculateLogNodeAgeCDF which uses
+            // Math.log1p(-exp_rt) and Math.log(-A*exp_rt - B) for numerical stability.
+            // A + p*B = |B|*(p_max - p), so log(u) = log|B| + log(p_max-p) - log(A) - log1p(-p)
+            // where u = exp(r*t), p_max = A/|B|.
+            double absB = -B;             // d - b*(1-rho) > 0 for r < 0
+            double pmax = A / absB;
+            double logU = Math.log(absB) + Math.log(pmax - p) - Math.log(A) - Math.log1p(-p);
+            t = logU / r;
         } else {
             t = Math.log(1 + ((b - d) * p) / (b * rho * (1 - p))) / (b - d);
         }
@@ -140,22 +150,46 @@ public class CPPUtils {
     }
 
     public static double[] sampleTimes(double birthRate, double deathRate, double samplingProbability, double lowerTime, double upperTime, int nSims) {
-        // Calculate the CDF values at lowerTime and upperTime
-        double Qlower = CDF(birthRate, deathRate, samplingProbability, lowerTime);
-        double Qupper = CDF(birthRate, deathRate, samplingProbability, upperTime);
+        double r = birthRate - deathRate;
+        double A = samplingProbability * birthRate;
+        double B = birthRate * (1 - samplingProbability) - deathRate;
 
-        // Array to store the result
+        // True CDF supremum: p_max = A/(-B) < 1 in the subcritical regime (r < 0).
+        double pmax = (r < -1e-10) ? A / (-B) : 1.0;
+
+        double Qlower = CDF(birthRate, deathRate, samplingProbability, lowerTime);
+        double Qupper = Double.isInfinite(upperTime) ? pmax : CDF(birthRate, deathRate, samplingProbability, upperTime);
+        double hiEff  = Double.isInfinite(upperTime) ? lowerTime * 10 + 100 : upperTime;
+
         double[] times = new double[nSims];
 
-        double eps = 1e-12;
-        Qlower = Math.max(eps, Math.min(1.0 - eps, Qlower));
-        Qupper = Math.max(Qlower + eps, Math.min(1.0 - eps, Qupper));
+        // Degenerate case: CDF is flat on [lowerTime, upperTime] (both endpoints past the
+        // saturation time). No CDF-based inversion can return a t in [lowerTime, upperTime]
+        // because every p < p_max maps to t near the saturation boundary, not the requested
+        // window. Instead, sample directly from the conditional density on [lowerTime, upperTime].
+        // From CalibratedBirthDeathModel.calculateLogNodeAgeDensity for r < 0:
+        //   log f(t) ≈ const + r·t  (as exp_rt → 0)
+        // so f(t) ∝ exp(r·t) = exp(-|r|·t) — a truncated exponential with rate |r|.
+        // Inverting its CDF: t = lowerTime - log1p(-u·scale)/|r|,
+        //   scale = -expm1(-|r|·(hi-lo)) = 1 - exp(-|r|·(hi-lo)), ≈ 1 for large |r|·(hi-lo).
+        if (r < -1e-10 && Qupper - Qlower < 1e-9) {
+            double absR  = -r;
+            double scale = -Math.expm1(-absR * (hiEff - lowerTime));
+            for (int i = 0; i < nSims; i++) {
+                times[i] = lowerTime - Math.log1p(-Math.random() * scale) / absR;
+            }
+            return times;
+        }
 
-        // Generate the samples
+        // Normal case: clamp p strictly below p_max so the stable inverseCDF
+        // (which uses log(p_max - p), mirroring CalibratedBirthDeathModel's
+        // Math.log1p(-exp_rt) and Math.log(-A·exp_rt - B)) always gets a valid argument.
+        double eps = 1e-12;
+        Qlower = Math.max(eps, Math.min(pmax - 2 * eps, Qlower));
+        Qupper = Math.max(Qlower + eps, Math.min(pmax - eps, Qupper));
+
         for (int i = 0; i < nSims; i++) {
-            // Generate a random probability between Qlower and Qupper
-            double p = Math.random()*(Qupper - Qlower) + Qlower;
-            // Use InverseCDF to get the sample time
+            double p = Math.random() * (Qupper - Qlower) + Qlower;
             times[i] = inverseCDF(birthRate, deathRate, samplingProbability, p);
         }
 

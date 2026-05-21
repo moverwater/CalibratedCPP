@@ -5,7 +5,8 @@ import beast.base.core.Input;
 import beast.base.evolution.speciation.SpeciesTreeDistribution;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.type.RealScalar;
 import calibration.CalibrationClade;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
@@ -21,8 +22,8 @@ import java.util.function.IntUnaryOperator;
 
 @Description("A general class of birth-death processes with incomplete extant sampling and conditioning on clade calibrations")
 public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistribution {
-    public Input<RealParameter> originInput =
-            new Input<>("origin", "Age of the origin (time of process start)", (RealParameter) null);
+    public Input<RealScalar<PositiveReal>> originInput =
+            new Input<>("origin", "Age of the origin (time of process start)", (RealScalar<PositiveReal>) null);
 
     public Input<Boolean> conditionOnRootInput =
             new Input<>("conditionOnRoot", "Whether the model is conditioned on the root age (default: false)", false);
@@ -65,8 +66,8 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
             }
         }
 
-        RealParameter originParam = originInput.get();
-        origin = (originParam != null) ? originParam.getValue() : null;
+        RealScalar<?> originParam = originInput.get();
+        origin = (originParam != null) ? originParam.get() : null;
 
         if (origin == null && !conditionOnRoot) {
             throw new IllegalArgumentException("You must either provide an origin age or set conditionOnRoot=true.");
@@ -243,7 +244,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
                     return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
                 }
                 if (c.getCalibrationClade().providedAge) {
-                    if (Math.abs(mrca.getHeight() - c.getCalibrationClade().getAge().getValue()) > 1e-4) {
+                    if (Math.abs(mrca.getHeight() - c.getCalibrationClade().getAge().get()) > 1e-4) {
                         return Double.NEGATIVE_INFINITY; // tmrca of clade is not the calibration age!
                     }
                 }
@@ -654,7 +655,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
     }
 
     public void updateModel() {
-        origin = (originInput.get() != null) ? originInput.get().getValue() : null;
+        origin = (originInput.get() != null) ? originInput.get().get() : null;
         rootAge = tree.getRoot().getHeight();
         maxTime = (conditionOnRoot) ? rootAge : origin;
     }

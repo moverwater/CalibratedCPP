@@ -8,6 +8,8 @@ import beast.base.evolution.tree.TreeParser;
 import beast.base.inference.distribution.ParametricDistribution;
 import beast.base.inference.distribution.Uniform;
 import beast.base.inference.parameter.RealParameter;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import calibration.CalibrationClade;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
@@ -84,9 +86,13 @@ public class LikelihoodBenchmark {
             calibrationPoints.add(calibrationPoint);
         }
 
-        RealParameter turnover = new RealParameter("0.0");
-        RealParameter birthRate = new RealParameter("2.0");
-        RealParameter rho = new RealParameter("1.0");
+        RealParameter turnoverRP = new RealParameter("0.0");
+        RealParameter birthRateRP = new RealParameter("2.0");
+        RealParameter rhoRP = new RealParameter("1.0");
+
+        RealScalarParam<Real> turnover = new RealScalarParam<>(0.0, Real.INSTANCE);
+        RealScalarParam<Real> birthRate = new RealScalarParam<>(2.0, Real.INSTANCE);
+        RealScalarParam<Real> rho = new RealScalarParam<>(1.0, Real.INSTANCE);
 
         cpp.initByName("tree", tree,
                 "birthRate", birthRate,
@@ -96,9 +102,9 @@ public class LikelihoodBenchmark {
                 "conditionOnRoot", true);
         heled_and_drummond.initByName("tree", tree,
                 "calibrations", calibrationPoints,
-                "birthRate", birthRate,
-                "relativeDeathRate", turnover,
-                "sampleProbability", rho);
+                "birthRate", birthRateRP,
+                "relativeDeathRate", turnoverRP,
+                "sampleProbability", rhoRP);
 
         double cppVal = cpp.calculateTreeLogLikelihood(tree);
         double hdVal = heled_and_drummond.calculateTreeLogLikelihood(tree);
@@ -123,7 +129,7 @@ public class LikelihoodBenchmark {
     public double measureHeledAndDrummond() {
         // 1. Change the parameter slightly to invalidate the cache
         // We toggle between 2.0 and 2.0000001
-        double newVal = (cpp.birthRateInput.get().getValue() > 2.0) ? 2.0 : 2.0000001;
+        double newVal = (cpp.birthRateInput.get().get() > 2.0) ? 2.0 : 2.0000001;
         heled_and_drummond.birthRateInput.get().setValue(newVal);
 
         // 2. Measure the calculation
