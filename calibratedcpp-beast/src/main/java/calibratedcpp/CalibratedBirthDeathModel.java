@@ -28,8 +28,8 @@ public class CalibratedBirthDeathModel extends CalibratedCoalescentPointProcess 
     public Input<RealScalar<PositiveReal>> reproductiveNumberInput =
             new Input<>("reproductiveNumber", "Reproductive number (lambda / mu)", (RealScalar<PositiveReal>) null);
 
-    public Input<RealScalar<UnitInterval>> turnoverInput =
-            new Input<RealScalar<UnitInterval>>("turnover", "Turnover (mu / lambda)", (RealScalar<UnitInterval>) null);
+    public Input<RealScalar<NonNegativeReal>> turnoverInput =
+            new Input<>("turnover", "Turnover (mu / lambda)", (RealScalar<NonNegativeReal>) null);
 
     public Input<RealScalar<UnitInterval>> rhoInput =
             new Input<>("rho", "Probability with which each individual in the population is sampled.", (RealScalar<UnitInterval>) null);
