@@ -3,11 +3,13 @@ package calibratedcpp;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.PositiveInt;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.inference.distribution.Exponential;
-import beast.base.spec.inference.distribution.Gamma;
+import beast.base.spec.inference.parameter.IntScalarParam;
 import beast.base.spec.inference.parameter.RealScalarParam;
+import calibratedcpp.distribution.Erlang;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,15 +49,15 @@ public class CalibratedAgeDependentBirthDeathModelTest {
      */
     private static CalibratedAgeDependentBirthDeathModel erlangModel(
             Tree tree, double lambda, double mu, double rho, double origin) {
-        Gamma gamma = new Gamma();
-        gamma.initByName("alpha", new RealScalarParam<>(1.0, PositiveReal.INSTANCE),
-                         "theta",  new RealScalarParam<>(1.0 / mu, PositiveReal.INSTANCE));
+        Erlang erlang = new Erlang();
+        erlang.initByName("shape", new IntScalarParam<>(1, PositiveInt.INSTANCE),
+                         "scale",  new RealScalarParam<>(1.0 / mu, PositiveReal.INSTANCE));
         CalibratedAgeDependentBirthDeathModel model = new CalibratedAgeDependentBirthDeathModel();
         model.initByName("tree", tree,
                 "origin",              new RealScalarParam<>(origin, PositiveReal.INSTANCE),
                 "birthRate",           new RealScalarParam<>(lambda, PositiveReal.INSTANCE),
                 "rho",                 new RealScalarParam<>(rho, UnitInterval.INSTANCE),
-                "lifetimeDistribution", gamma);
+                "lifetimeDistribution", erlang);
         return model;
     }
 

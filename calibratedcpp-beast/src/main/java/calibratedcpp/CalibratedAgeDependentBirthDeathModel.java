@@ -5,7 +5,6 @@ import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.UnitInterval;
-import beast.base.spec.inference.distribution.Gamma;
 import beast.base.spec.inference.distribution.ScalarDistribution;
 import beast.base.spec.type.RealScalar;
 import java.util.Arrays;
@@ -40,7 +39,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     protected double rho;
 
     // --- Erlang closed-form fields ---
-    protected Gamma gammaDistribution;
+    protected Erlang erlangDistribution;
     protected int n;        // Erlang shape (positive integer)
     protected double theta; // Erlang rate (1/scale)
     protected Complex[] roots;
@@ -85,18 +84,14 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     // -------------------------------------------------------------------------
 
     private void preCalcErlang() {
-        gammaDistribution = (Gamma) lifetimeDistributionInput.get();
-        double shapeParam = gammaDistribution.alphaInput.get().get();
+        erlangDistribution = (Erlang) lifetimeDistributionInput.get();
+        double shapeParam = erlangDistribution.shapeInput.get().get();
         n = (int) Math.round(shapeParam);
         if (Math.abs(n - shapeParam) > 1e-10){
             throw new IllegalArgumentException("Shape parameter must be an integer.");
         }
         // thetaInput → input name "theta" (scale); betaInput → input name "lambda" (rate)
-        if (gammaDistribution.thetaInput.get() != null) {
-            theta = 1.0 / gammaDistribution.thetaInput.get().get();  // rate = 1/scale
-        } else {
-            theta = gammaDistribution.betaInput.get().get();          // rate provided directly
-        }
+        theta = 1.0 / erlangDistribution.scaleInput.get().get();  // rate = 1/scale
 
         double[] coeffs = buildRnCoefficients(n, theta, birthRate);
         try {
