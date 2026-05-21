@@ -1,5 +1,5 @@
 # Force standard Intel architecture so JavaFX 17 can be downloaded via Rosetta 2
-FROM maven:3.9.6-eclipse-temurin-17
+FROM maven:3.9.9-eclipse-temurin-25
 
 # Set working directory
 WORKDIR /app

@@ -76,6 +76,7 @@
                 <configuration>
                     <release>25</release>
                     <encoding>UTF-8</encoding>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
                     <compilerArgs>
                         <arg>--add-reads</arg>
                         <arg>calibratedcpp.beast=ALL-UNNAMED</arg>
