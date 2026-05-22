@@ -8,7 +8,7 @@ import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.inference.parameter.RealScalarParam;
 import beast.base.spec.type.RealScalar;
-import calibratedcpp.CalibratedBirthDeathModel;
+import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
@@ -25,11 +25,11 @@ import java.util.List;
 
 import static lphybeast.tobeast.TaxaUtils.getTaxonSet;
 
-public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, CalibratedBirthDeathModel> {
+public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree, CalibratedBirthDeathSkylineModel> {
     @Override
-    public CalibratedBirthDeathModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
+    public CalibratedBirthDeathSkylineModel generatorToBEAST(CalibratedCPPTree generator, BEASTInterface value, BEASTContext context) {
         List<TaxonSet> taxonSets = new ArrayList<>();
-        CalibratedBirthDeathModel model = new CalibratedBirthDeathModel();
+        CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
         model.setInputValue("tree", value);
         boolean rootConditioned = generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
@@ -41,27 +41,28 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
 
         if (generator.getBirthRate() != null) {
             SkylineParameter b = new SkylineParameter();
-            b.setInputValue("values", context.getAsRealScalar(generator.getBirthRate()));
+            b.setInputValue("values", context.getAsRealVector(generator.getBirthRate()));
             b.initAndValidate();
             model.setInputValue("birthRate", b);
         }
 
         if (generator.getDeathRate() != null) {
             SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealScalar(generator.getDeathRate()));
+            d.setInputValue("values", context.getAsRealVector(generator.getDeathRate()));
+            d.initAndValidate();
             model.setInputValue("deathRate", d);
         }
 
         if (generator.getTurnover() != null) {
             SkylineParameter t = new SkylineParameter();
-            t.setInputValue("values", context.getAsRealScalar(generator.getTurnover()));
+            t.setInputValue("values", context.getAsRealVector(generator.getTurnover()));
             t.initAndValidate();
             model.setInputValue("turnover", t);
         }
 
         if (generator.getDiversificationRate() != null) {
             SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealScalar(generator.getDiversificationRate()));
+            d.setInputValue("values", context.getAsRealVector(generator.getDiversificationRate()));
             d.initAndValidate();
             model.setInputValue("diversificationRate", d);
         }
@@ -135,7 +136,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
     }
 
     @Override
-    public Class<CalibratedBirthDeathModel> getBEASTClass() {
-        return CalibratedBirthDeathModel.class;
+    public Class<CalibratedBirthDeathSkylineModel> getBEASTClass() {
+        return CalibratedBirthDeathSkylineModel.class;
     }
 }
