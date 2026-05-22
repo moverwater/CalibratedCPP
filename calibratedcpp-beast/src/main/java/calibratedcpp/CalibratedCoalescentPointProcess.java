@@ -189,10 +189,10 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
             }
             rootCladeSizes[i] = rootNodes.get(i).taxa.getTaxonSet().size();
             rootCDFs[i] = calculateLogNodeAgeCDF(rootNodes.get(i).getCommonAncestor(tree).getHeight());
+            logDiff[i] = logDiffExp(logQ_t, rootCDFs[i]);
             if (Double.isInfinite(logDiff[i])) {
                 return Double.POSITIVE_INFINITY;
             }
-            logDiff[i] = logDiffExp(logQ_t, rootCDFs[i]);
             weights[i] = logDiff[i] - logQ_t;
         }
 
@@ -260,8 +260,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
     }
 
     private double logDiffExp(double a, double b) {
-        if (b > a) throw new IllegalArgumentException("logDiffExp: b must be <= a");
-        if (a == b) return Double.NEGATIVE_INFINITY;
+        if (b >= a) return Double.NEGATIVE_INFINITY;
         return a + Math.log1p(-Math.exp(b - a));
     }
 

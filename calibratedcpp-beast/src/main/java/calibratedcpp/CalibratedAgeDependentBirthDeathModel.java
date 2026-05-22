@@ -26,7 +26,7 @@ import org.hipparchus.exception.MathIllegalStateException;
         "are handled via closed-form partial fractions; all other distributions use a numerical Volterra IDE solver.")
 public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentPointProcess {
 
-    public Input<ScalarDistribution> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
+    public Input<ScalarDistribution<RealScalar<PositiveReal>, Double>> lifetimeDistributionInput = new Input<>("lifetimeDistribution",
             "Distribution of the lifetime of an individual.");
     public Input<RealScalar<UnitInterval>> rhoInput = new Input<>("rho", "Extant sampling probability.");
     public Input<RealScalar<PositiveReal>> birthRateInput = new Input<>("birthRate", "The birth rate.");
@@ -188,7 +188,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         int N = gridSizeInput.get();
         if (N % 2 != 0) N++;  // Richardson requires an even step count
 
-        ScalarDistribution dist = lifetimeDistributionInput.get();
+        ScalarDistribution<RealScalar<PositiveReal>, Double> dist = lifetimeDistributionInput.get();
         double[] gridG_fine = computeGridG(N, dist);
         double[] gridG_coarse = computeGridG(N / 2, dist);
 
@@ -208,6 +208,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
                 gValues[j] = dist.density(coarseT[j]);
                 sValues[j] = 1.0 - dist.cumulativeProbability(coarseT[j]);
             }
+            coarseT[M] = maxTime;
         } catch (MathIllegalStateException e){
             throw new RuntimeException("Failed to evaluate lifetime distribution", e);
         }
@@ -218,7 +219,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         survivalSpline    = interp.interpolate(coarseT, sValues);
     }
 
-    private double[] computeGridG(int N, ScalarDistribution dist) {
+    private double[] computeGridG(int N, ScalarDistribution<RealScalar<PositiveReal>, Double> dist) {
         double h = maxTime / N;
         double[] gridG      = new double[N + 1];
         double[] gridGPrime = new double[N + 1];
@@ -327,6 +328,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
 
     @Override
     public double calculateLogNodeAgeDensity(double time) {
+        time = Math.min(time, maxTime);
         if (lifetimesAreErlang) {
             double[] s       = computeScaledSums(time);
             double maxExp    = s[0], scaledF = s[1], scaledFP = s[2];
@@ -344,6 +346,7 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
 
     @Override
     public double calculateLogNodeAgeCDF(double time) {
+        time = Math.min(time, maxTime);
         if (lifetimesAreErlang) {
             double[] s       = computeScaledSums(time);
             double maxExp    = s[0], scaledF = s[1];
