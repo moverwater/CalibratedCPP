@@ -453,10 +453,10 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         double[] la = new double[k];
         for (int j = 0; j < k; j++) la[j] = -lx[j];
 
-        // laij[i][j] = log(1/min(x_i, x_j)) = -log(min(x_i, x_j)) = -min(lx[i], lx[j])
+        // laij[i][j] = log(a_{i,j}) = log(1/max(x_i,x_j)) = -max(lx[i], lx[j])
         double[][] laij = new double[k][k];
 
-        // Cost 0: log(1/max(x_i, x_j)) = -log(max(x_i, x_j)) = -max(lx[i], lx[j])
+        // logCost0[i][j] = log(C^{(0)}_{i,j}) = log(1/min(x_i,x_j)) = -min(lx[i], lx[j])
         double[][] logCost0 = new double[k][k];
 
         // Cost 1: log(1/x_i + 1/x_j) = log( exp(-lx[i]) + exp(-lx[j]) )
