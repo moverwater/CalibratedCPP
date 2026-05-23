@@ -20,6 +20,12 @@
     </properties>
 
     <dependencies>
+<!--   For BDSKY tests   -->
+        <dependency>
+            <groupId>beast2</groupId>
+            <artifactId>bdsky</artifactId>
+            <version>1.5.1</version>
+        </dependency>
         <dependency>
             <groupId>io.github.compevol</groupId>
             <artifactId>beast-pkgmgmt</artifactId>
@@ -45,13 +51,6 @@
             <artifactId>beast-fx</artifactId>
             <version>${beast.version}</version>
         </dependency>
-        <dependency>
-            <groupId>beast2</groupId>
-            <artifactId>bdsky</artifactId>
-            <version>1.5.1</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/BDSKY.v1.5.1.jar</systemPath>
-        </dependency>
 <!--        <dependency>-->
 <!--            <groupId>substmodels</groupId>-->
 <!--            <artifactId>substmodels</artifactId>-->
@@ -75,6 +74,12 @@
         </dependency>
     </dependencies>
 
+    <repositories>
+      <repository>
+        <id>project-local</id>
+        <url>file://${project.basedir}/repo</url>
+      </repository>
+    </repositories>
     <build>
         <plugins>
             <plugin>
