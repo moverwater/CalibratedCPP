@@ -41,28 +41,28 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
 
         if (generator.getBirthRate() != null) {
             SkylineParameter b = new SkylineParameter();
-            b.setInputValue("values", context.getAsRealVector(generator.getBirthRate()));
+            b.setInputValue("values", context.getAsRealTensor(generator.getBirthRate()));
             b.initAndValidate();
             model.setInputValue("birthRate", b);
         }
 
         if (generator.getDeathRate() != null) {
             SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealVector(generator.getDeathRate()));
+            d.setInputValue("values", context.getAsRealTensor(generator.getDeathRate()));
             d.initAndValidate();
             model.setInputValue("deathRate", d);
         }
 
         if (generator.getTurnover() != null) {
             SkylineParameter t = new SkylineParameter();
-            t.setInputValue("values", context.getAsRealVector(generator.getTurnover()));
+            t.setInputValue("values", context.getAsRealTensor(generator.getTurnover()));
             t.initAndValidate();
             model.setInputValue("turnover", t);
         }
 
         if (generator.getDiversificationRate() != null) {
             SkylineParameter d = new SkylineParameter();
-            d.setInputValue("values", context.getAsRealVector(generator.getDiversificationRate()));
+            d.setInputValue("values", context.getAsRealTensor(generator.getDiversificationRate()));
             d.initAndValidate();
             model.setInputValue("diversificationRate", d);
         }

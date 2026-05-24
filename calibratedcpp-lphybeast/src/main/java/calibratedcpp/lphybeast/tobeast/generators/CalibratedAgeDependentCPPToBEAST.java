@@ -54,7 +54,18 @@ public class CalibratedAgeDependentCPPToBEAST
         model.setInputValue("birthRate", context.getAsRealScalar(generator.getBirthRate()));
         model.setInputValue("rho",       context.getAsRealScalar(generator.getSamplingProb()));
 
-        model.setInputValue("lifetimeDistribution", buildLifetimeDistribution(generator.getLifetime()));
+        model.setInputValue("lifetimeDistribution",
+                buildLifetimeDistribution(generator.getLifetime(), context));
+
+        // Remove the 'lifetime' state node and its auto-generated prior; the distribution
+        // parameters are wired directly into lifetimeDistribution instead.
+        Value<Number> lifetimeValue = generator.getLifetime();
+        BEASTInterface lifetimeBEAST = context.getBEASTObject(lifetimeValue);
+        if (lifetimeBEAST != null) context.removeBEASTObject(lifetimeBEAST);
+        if (lifetimeValue.getGenerator() != null) {
+            BEASTInterface lifetimePrior = context.getBEASTObject(lifetimeValue.getGenerator());
+            if (lifetimePrior != null) context.removeBEASTObject(lifetimePrior);
+        }
 
         // calibration clades
         List<CalibrationClade> calibrations = new ArrayList<>();
@@ -91,9 +102,11 @@ public class CalibratedAgeDependentCPPToBEAST
 
     /**
      * Inspects the generator of the LPhy {@code lifetime} value and constructs the
-     * corresponding BEAST {@link ScalarDistribution}.
+     * corresponding BEAST {@link ScalarDistribution} with its parameters wired from
+     * the BEAST context. Named LPhy parameters (e.g. {@code shape.lifetime ~ LogNormal(...)})
+     * become live BEAST state nodes; anonymous constants are inlined.
      *
-     * <p>Supported LPhy distributions and their BEAST equivalents:
+     * <p>Supported LPhy distributions:
      * <ul>
      *   <li>{@code Gamma(shape, scale)}      → BEAST {@code Gamma(alpha=shape, theta=scale)}</li>
      *   <li>{@code LogNormal(meanlog, sdlog)} → BEAST {@code LogNormal(M=meanlog, S=sdlog)}</li>
@@ -101,7 +114,7 @@ public class CalibratedAgeDependentCPPToBEAST
      *   <li>constant {@code v}               → BEAST {@code Uniform(lower=v−0.01, upper=v+0.01)}</li>
      * </ul>
      */
-    private ScalarDistribution buildLifetimeDistribution(Value<Number> lifetime) {
+    private ScalarDistribution buildLifetimeDistribution(Value<Number> lifetime, BEASTContext context) {
         Generator<?> gen = lifetime.getGenerator();
         if (gen == null) {
             double v = lifetime.value().doubleValue();
@@ -109,11 +122,11 @@ public class CalibratedAgeDependentCPPToBEAST
         }
 
         if (gen instanceof lphy.base.distribution.Gamma g) {
-            return buildGamma(g);
+            return buildGamma(g, context);
         } else if (gen instanceof lphy.base.distribution.LogNormal ln) {
-            return buildLogNormal(ln);
+            return buildLogNormal(ln, context);
         } else if (gen instanceof lphy.base.distribution.Exp e) {
-            return buildExponential(e);
+            return buildExponential(e, context);
         } else {
             throw new IllegalArgumentException(
                     "Unsupported lifetime distribution: " + gen.getClass().getSimpleName()
@@ -129,35 +142,26 @@ public class CalibratedAgeDependentCPPToBEAST
         return u;
     }
 
-    private Gamma buildGamma(lphy.base.distribution.Gamma g) {
-        // LPhy Gamma is parameterised as Gamma(shape, scale)
-        double shape = ((Value<Number>) g.getParams().get("shape")).value().doubleValue();
-        double scale = ((Value<Number>) g.getParams().get("scale")).value().doubleValue();
+    private Gamma buildGamma(lphy.base.distribution.Gamma g, BEASTContext context) {
         Gamma beastGamma = new Gamma();
-        beastGamma.setInputValue("alpha", new RealScalarParam<>(shape, PositiveReal.INSTANCE));
-        beastGamma.setInputValue("theta", new RealScalarParam<>(scale, PositiveReal.INSTANCE));
+        beastGamma.setInputValue("alpha", context.getAsRealScalar(g.getShape()));
+        beastGamma.setInputValue("theta", context.getAsRealScalar(g.getScale()));
         beastGamma.initAndValidate();
         return beastGamma;
     }
 
-    private LogNormal buildLogNormal(lphy.base.distribution.LogNormal ln) {
-        // LPhy LogNormal is parameterised as LogNormal(meanlog, sdlog)
-        double meanLog = ((Value<Number>) ln.getParams().get(lphy.base.distribution.LogNormal.meanLogParamName))
-                .value().doubleValue();
-        double sdLog   = ((Value<Number>) ln.getParams().get(lphy.base.distribution.LogNormal.sdLogParamName))
-                .value().doubleValue();
+    private LogNormal buildLogNormal(lphy.base.distribution.LogNormal ln, BEASTContext context) {
         LogNormal beastLN = new LogNormal();
-        beastLN.setInputValue("M", new RealScalarParam<>(meanLog, Real.INSTANCE));
-        beastLN.setInputValue("S", new RealScalarParam<>(sdLog,   PositiveReal.INSTANCE));
+        beastLN.setInputValue("M", context.getAsRealScalar(ln.getMeanLog()));
+        beastLN.setInputValue("S", context.getAsRealScalar(ln.getSDLog()));
         beastLN.initAndValidate();
         return beastLN;
     }
 
-    private Exponential buildExponential(lphy.base.distribution.Exp e) {
-        // LPhy Exp is parameterised as Exp(mean)
-        double mean = ((Value<Number>) e.getParams().get("mean")).value().doubleValue();
+    private Exponential buildExponential(lphy.base.distribution.Exp e, BEASTContext context) {
         Exponential beastExp = new Exponential();
-        beastExp.setInputValue("mean", new RealScalarParam<>(mean, PositiveReal.INSTANCE));
+        beastExp.setInputValue("mean", context.getAsRealScalar(
+                (Value<?>) e.getParams().get("mean")));
         beastExp.initAndValidate();
         return beastExp;
     }
