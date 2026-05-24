@@ -4,9 +4,8 @@ import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.spec.domain.UnitInterval;
-import beast.base.spec.inference.parameter.RealVectorParam;
 import beast.base.spec.type.RealScalar;
-import beast.base.spec.type.RealVector;
+import beast.base.spec.type.Tensor;
 
 import java.util.*;
 
@@ -53,8 +52,8 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
             // Check if the SkylineParameter itself exists
             if (sp != null) {
                 // Now it is safe to access fields
-                RealVector<?> rateP = sp.valuesInput.get();
-                RealVector<?> timeP = sp.changeTimesInput.get();
+                Tensor<?, ?> rateP = sp.valuesInput.get();
+                Tensor<?, ?> timeP = sp.changeTimesInput.get();
 
                   if (rateP != null) {
                     specifiedRates++;
@@ -173,21 +172,18 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
 
     /**
      * Processes input times, converting them all to "Age" (Time from Present).
-     * * @param reverse If TRUE: Input is already Age (Distance from Present).
+     * @param reverse If TRUE: Input is already Age (Distance from Present).
      * If FALSE: Input is Distance from Root (needs conversion).
      */
-    private List<Double> processInput(Input<? extends RealVector<?>> rateInput, Input<? extends RealVector<?>> timeInput,
+    private List<Double> processInput(Tensor<?, ?> rateP, Tensor<?, ?> timeP,
                                       boolean relative, boolean reverse, double maxTime) {
         List<Double> times = new ArrayList<>();
-        if (rateInput.get() == null) return times;
-
-        RealVector<?> rateP = rateInput.get();
-        RealVector<?> timeP = timeInput.get();
+        if (rateP == null) return times;
 
         if (timeP != null) {
             // --- Explicit Change Times ---
             double[] vals = new double[timeP.size()];
-            for (int i = 0; i < timeP.size(); i++) vals[i] = timeP.get(i);
+            for (int i = 0; i < timeP.size(); i++) vals[i] = (Double) timeP.get(i);
             Arrays.sort(vals);
             for (double v : vals) {
                 double tAge;
@@ -225,7 +221,7 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
      * Enforces Rates: Root -> Present.
      * * @param t The current time (Age).
      */
-    private double getVal(RealVector<?> p, List<Double> cuts, double t) {
+    private double getVal(Tensor<?, ?> p, List<Double> cuts, double t) {
         if (p == null) return 0;
 
         // Find which time interval 't' falls into based on the cuts (which are Ages).
@@ -247,14 +243,15 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
 
         int pIdx = p.size() - 1 - intervalIndex;
 
-        return p.get(Math.max(0, Math.min(pIdx, p.size() - 1)));
+        return (Double) p.get(Math.max(0, Math.min(pIdx, p.size() - 1)));
     }
 
     // Helper to extract times without crashing on null inputs
     private List<Double> processSafe(Input<SkylineParameter> input, double maxT) {
         SkylineParameter sp = input.get();
         if (sp == null) return new ArrayList<>();
-        return processInput(sp.valuesInput, sp.changeTimesInput, sp.isRelative, sp.isReverse, maxT);
+        return processInput(sp.valuesInput.get(), sp.changeTimesInput.get(),
+                sp.isRelative, sp.isReverse, maxT);
     }
 
     // Helper to get value without crashing on null inputs
