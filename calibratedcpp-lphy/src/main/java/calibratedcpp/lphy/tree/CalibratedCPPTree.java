@@ -27,6 +27,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
     Value<String[]> otherNames;
     Value<Number> diversification;
     Value<Number> turnover;
+    Value<Number> rootAge;
     double conditionAge;
     boolean rootConditioned = false;
 
@@ -35,6 +36,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
     public static final String calibrationsName = "calibrations";
     public static final String stemAgeName = "stemAge";
     public static final String otherTaxaNames = "otherNames";
+    public static final String rootAgeName = "rootAge";
 
     public CalibratedCPPTree(@ParameterInfo(name = BirthDeathConstants.lambdaParamName, description = "per-lineage birth rate.", optional = true) Value<Number> birthRate,
                              @ParameterInfo(name = BirthDeathConstants.muParamName, description = "per-lineage death rate.", optional = true) Value<Number> deathRate,
@@ -42,13 +44,14 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
                              @ParameterInfo(name = BirthDeathConstants.turnoverParamName, description = "turnover (mu/lambda), optional alternative to lambda/mu.", optional = true) Value<Number> turnover,
                              @ParameterInfo(name = BirthDeathConstants.rhoParamName, description = "sampling probability") Value<Number> rho,
                              @ParameterInfo(name = DistributionConstants.nParamName, description = "the total number of taxa.") Value<Integer> n,
-                             @ParameterInfo(name = calibrationsName, description = "an array of calibrations generated from a MRCA prior (i.e. ConditionedMRCAPrior or MRCAPrior)") Value<CalibrationArray> calibrations,
+                             @ParameterInfo(name = calibrationsName, description = "an array of calibrations generated from a MRCA prior (i.e. ConditionedMRCAPrior or MRCAPrior)", optional = true) Value<CalibrationArray> calibrations,
                              @ParameterInfo(name = otherTaxaNames, description = "a string array of taxa names for non-calibrated tips", optional = true) Value<String[]> otherNames,
-                             @ParameterInfo(name = stemAgeName, description = "the stem age working as condition time", optional = true) Value<Number> stemAge) {
+                             @ParameterInfo(name = stemAgeName, description = "the stem age working as condition time", optional = true) Value<Number> stemAge,
+                             @ParameterInfo(name = rootAgeName, description = "the root age to condition on when no calibrations are provided", optional = true) Value<Number> rootAge) {
         super(n, null, null);
-        // check legal params
-        if (calibrations == null){
-            throw new NullPointerException("Calibrations should not be null!");
+
+        if (calibrations == null && rootAge == null) {
+            throw new IllegalArgumentException("Either calibrations or rootAge must be provided.");
         }
 
         int count = 0;
@@ -63,7 +66,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             );
         }
 
-        if (stemAge != null && calibrations.value().getCalibrationArray()[0].getTaxa().length == n.value()) {
+        if (stemAge != null && calibrations != null && calibrations.value().getCalibrationArray()[0].getTaxa().length == n.value()) {
             LoggerUtils.log.warning("Stem age will be ignored if root calibration is provided.");
         }
 
@@ -75,6 +78,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         this.turnover = turnover;
         this.otherNames = otherNames;
         this.stemAge = stemAge;
+        this.rootAge = rootAge;
     }
 
     @GeneratorInfo(name = "CalibratedCPP", examples = {"CalibratedCPPTree.lphy"},
@@ -106,6 +110,13 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             birthRate = deathRate / getTurnover().value().doubleValue();
         } else {
             throw new IllegalArgumentException("Invalid parameter combination, should provide either two of birth rate, death rate, diversification, and turnover.");
+        }
+
+        // if no calibrations, delegate to CPPTree conditioned on rootAge
+        if (getCalibrations() == null) {
+            CPPTree cpp = new CPPTree(new Value<>("", birthRate), new Value<>("", deathRate),
+                    null, null, getSamplingProb(), getOtherNames(), getN(), getRootAge(), null);
+            return new RandomVariable<>("", cpp.sample().value(), this);
         }
 
         // obtain pass in parameters
@@ -259,7 +270,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
             CalibratedCPPTree calibratedCPPTree = new CalibratedCPPTree(new Value<>("", birthRate), new Value<>("", deathRate),
                     null, null, getSamplingProb(),
                     new Value<>("n", subcladeTaxa.length),
-                    new Value<>("", new CalibrationArray(clades)), null, null);
+                    new Value<>("", new CalibrationArray(clades)), null, null, null);
 
             // put clade into nodeList
             TimeTree subTree = calibratedCPPTree.sample().value();
@@ -446,7 +457,8 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         if (turnover != null) map.put(BirthDeathConstants.turnoverParamName, turnover);
         map.put(BirthDeathConstants.rhoParamName, rho);
         map.put(DistributionConstants.nParamName, n);
-        map.put(calibrationsName, calibrations);
+        if (calibrations != null) map.put(calibrationsName, calibrations);
+        if (rootAge != null) map.put(rootAgeName, rootAge);
         if (stemAge != null) map.put(stemAgeName, stemAge);
         if (otherNames != null) map.put(otherTaxaNames, otherNames);
         return map;
@@ -462,6 +474,7 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
         else if (paramName.equals(calibrationsName)) calibrations = value;
         else if (paramName.equals(otherTaxaNames)) otherNames = value;
         else if (paramName.equals(stemAgeName)) stemAge = value;
+        else if (paramName.equals(rootAgeName)) rootAge = value;
         else throw new IllegalArgumentException("Unknown parameter name: " + paramName);
     }
 
@@ -494,6 +507,8 @@ public class CalibratedCPPTree extends TaxaConditionedTreeGenerator implements G
     }
 
     public Value<Number> getStemAge(){return getParams().get(stemAgeName);}
+
+    public Value<Number> getRootAge(){return getParams().get(rootAgeName);}
 
     public Value<String[]> getOtherNames(){
         return getParams().get(otherTaxaNames);

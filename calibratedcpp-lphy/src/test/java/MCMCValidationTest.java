@@ -201,13 +201,13 @@ public class MCMCValidationTest {
                 new Value<>("", lambda), new Value<>("", mu), null, null,
                 new Value<>("", rho), new Value<>("", n),
                 new Value<>("", new CalibrationArray(cals)),
-                null, new Value<>("", stemAge));
+                null, new Value<>("", stemAge), null);
 
         CalibratedAgeDependentCPPTree adGen = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
                 new Value<>("", lifetime),
                 new Value<>("", new CalibrationArray(cals)),
-                null, new Value<>("", stemAge));
+                null, new Value<>("", stemAge), null);
 
         runValidation("fixed-stem", STEM_MCMC_PATH,
                 () -> cppGen.sample().value(),
@@ -245,13 +245,13 @@ public class MCMCValidationTest {
                 new Value<>("", lambda), new Value<>("", mu), null, null,
                 new Value<>("", rho), new Value<>("", n),
                 new Value<>("", new CalibrationArray(cals)),
-                null, null);   // no stem age — root conditioned
+                null, null, null);   // no stem age — root conditioned
 
         CalibratedAgeDependentCPPTree adGen = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
                 new Value<>("", lifetime),
                 new Value<>("", new CalibrationArray(cals)),
-                null, null);   // no stem age — root conditioned
+                null, null, null);   // no stem age — root conditioned
 
         runValidation("fixed-root", ROOT_MCMC_PATH,
                 () -> cppGen.sample().value(),

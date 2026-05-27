@@ -42,9 +42,11 @@ public class CalibratedAgeDependentCPPToBEAST
         CalibratedAgeDependentBirthDeathModel model = new CalibratedAgeDependentBirthDeathModel();
         model.setInputValue("tree", value);
 
-        boolean rootConditioned = generator.getRootCondition();
+        // When no calibrations are provided rootAge drives conditioning, so conditionOnRoot=true.
+        boolean hasCalibrations = generator.getCalibrations() != null;
+        boolean rootConditioned = !hasCalibrations || generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
-        model.setInputValue("conditionOnCalibrations", true); // users can override in XML
+        model.setInputValue("conditionOnCalibrations", hasCalibrations);
 
         if (!rootConditioned) {
             model.setInputValue("origin", new RealScalarParam<>(
@@ -65,6 +67,13 @@ public class CalibratedAgeDependentCPPToBEAST
         if (lifetimeValue.getGenerator() != null) {
             BEASTInterface lifetimePrior = context.getBEASTObject(lifetimeValue.getGenerator());
             if (lifetimePrior != null) context.removeBEASTObject(lifetimePrior);
+        }
+
+        if (!hasCalibrations) {
+            // rootAge-only mode: no calibration clades or CalibrationPrior needed.
+            model.setInputValue("calibrations", new ArrayList<>());
+            model.initAndValidate();
+            return model;
         }
 
         // calibration clades

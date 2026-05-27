@@ -31,9 +31,12 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         List<TaxonSet> taxonSets = new ArrayList<>();
         CalibratedBirthDeathSkylineModel model = new CalibratedBirthDeathSkylineModel();
         model.setInputValue("tree", value);
-        boolean rootConditioned = generator.getRootCondition();
+
+        // When no calibrations are provided rootAge drives conditioning, so conditionOnRoot=true.
+        boolean hasCalibrations = generator.getCalibrations() != null;
+        boolean rootConditioned = !hasCalibrations || generator.getRootCondition();
         model.setInputValue("conditionOnRoot", rootConditioned);
-        model.setInputValue("conditionOnCalibrations", true); // users should change this in XML
+        model.setInputValue("conditionOnCalibrations", hasCalibrations);
 
         if (!rootConditioned) {
             model.setInputValue("origin", new RealScalarParam<>(generator.getOrigin().value(), PositiveReal.INSTANCE));
@@ -68,6 +71,13 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         }
 
         model.setInputValue("rho", context.getAsRealScalar(generator.getSamplingProb()));
+
+        if (!hasCalibrations) {
+            // rootAge-only mode: no calibration clades or CalibrationPrior needed.
+            model.setInputValue("calibrations", new ArrayList<>());
+            model.initAndValidate();
+            return model;
+        }
 
         // get clade calibrations
         List<CalibrationClade> calibrations = new ArrayList<>();

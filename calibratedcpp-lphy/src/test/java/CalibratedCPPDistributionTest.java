@@ -1,5 +1,6 @@
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.CalibrationArray;
+import calibratedcpp.lphy.tree.CPPTree;
 import calibratedcpp.lphy.tree.CalibratedAgeDependentCPPTree;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
 import lphy.base.evolution.tree.TimeTree;
@@ -354,14 +355,14 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", rho), new Value<>("", n),
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(all, rootAge)})),
-                null, null);
+                null, null, null);
 
         CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
                 new Value<>("", lifetime),
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(all, rootAge)})),
-                null, null);
+                null, null, null);
 
         Stats cs = collect(N, () -> cpp.sample().value());
         Stats as = collect(N, () -> ad.sample().value());
@@ -394,14 +395,14 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", rho), new Value<>("", n),
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(clade, cladeAge)})),
-                null, new Value<>("", stemAge));
+                null, new Value<>("", stemAge), null);
 
         CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
                 new Value<>("", lifetime),
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(clade, cladeAge)})),
-                null, new Value<>("", stemAge));
+                null, new Value<>("", stemAge), null);
 
         Stats cs = collect(N, () -> cpp.sample().value());
         Stats as = collect(N, () -> ad.sample().value());
@@ -435,7 +436,7 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(outer, 4.0),
                         new Calibration(inner, 2.0)})),
-                null, new Value<>("", 10.0));
+                null, new Value<>("", 10.0), null);
 
         CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
@@ -443,7 +444,7 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(outer, 4.0),
                         new Calibration(inner, 2.0)})),
-                null, new Value<>("", 10.0));
+                null, new Value<>("", 10.0), null);
 
         Stats cs = collect(N, () -> cpp.sample().value());
         Stats as = collect(N, () -> ad.sample().value());
@@ -492,13 +493,13 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", lambda), new Value<>("", mu), null, null,
                 new Value<>("", rho), new Value<>("", n),
                 new Value<>("", new CalibrationArray(cals)),
-                null, new Value<>("", stemAge));
+                null, new Value<>("", stemAge), null);
 
         CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
                 new Value<>("", lifetime),
                 new Value<>("", new CalibrationArray(cals)),
-                null, new Value<>("", stemAge));
+                null, new Value<>("", stemAge), null);
 
         final int N100 = 1000;
         Stats cs = collect(N100, () -> cpp.sample().value());
@@ -511,6 +512,51 @@ public class CalibratedCPPDistributionTest {
         assertKS(cs.colless(),        as.colless(),        "100tip: Colless imbalance");
         assertKS(cs.cherries(),       as.cherries(),       "100tip: number of cherries");
         assertKS(cs.beta(),           as.beta(),           "100tip: Aldous beta statistic");
+    }
+
+    /**
+     * No-calibrations path: when calibrations is null and rootAge is provided, both
+     * CalibratedCPPTree and CalibratedAgeDependentCPPTree delegate to CPPTree.
+     * All three should therefore produce identical tree distributions.
+     */
+    @Test
+    void noCalibrationRootAgeMatchesCPPTree() {
+        final double lambda = 2.0, mu = 0.5, rho = 0.3, lifetime = 1.0 / mu;
+        final int n = 8;
+        final double rootAge = 6.0;
+
+        CPPTree reference = new CPPTree(
+                new Value<>("", lambda), new Value<>("", mu), null, null,
+                new Value<>("", rho), null, new Value<>("", n),
+                new Value<>("", rootAge), null);
+
+        CalibratedCPPTree cpp = new CalibratedCPPTree(
+                new Value<>("", lambda), new Value<>("", mu), null, null,
+                new Value<>("", rho), new Value<>("", n),
+                null, null, null, new Value<>("", rootAge));
+
+        CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
+                new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
+                new Value<>("", lifetime),
+                null, null, null, new Value<>("", rootAge));
+
+        Stats refStats = collect(N, () -> reference.sample().value());
+        Stats cppStats = collect(N, () -> cpp.sample().value());
+        Stats adStats  = collect(N, () -> ad.sample().value());
+
+        // CalibratedCPPTree (rootAge only) must match CPPTree
+        assertKS(refStats.length(),   cppStats.length(),   "no-cal: CPP vs ref tree length");
+        assertKS(refStats.gamma(),    cppStats.gamma(),    "no-cal: CPP vs ref gamma");
+        assertKS(refStats.colless(),  cppStats.colless(),  "no-cal: CPP vs ref Colless");
+        assertKS(refStats.cherries(), cppStats.cherries(), "no-cal: CPP vs ref cherries");
+        assertKS(refStats.beta(),     cppStats.beta(),     "no-cal: CPP vs ref beta");
+
+        // CalibratedAgeDependentCPPTree (rootAge only) must also match CPPTree
+        assertKS(refStats.length(),   adStats.length(),    "no-cal: AD vs ref tree length");
+        assertKS(refStats.gamma(),    adStats.gamma(),     "no-cal: AD vs ref gamma");
+        assertKS(refStats.colless(),  adStats.colless(),   "no-cal: AD vs ref Colless");
+        assertKS(refStats.cherries(), adStats.cherries(),  "no-cal: AD vs ref cherries");
+        assertKS(refStats.beta(),     adStats.beta(),      "no-cal: AD vs ref beta");
     }
 
     /**
@@ -530,7 +576,7 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(c1, 3.0),
                         new Calibration(c2, 2.0)})),
-                null, new Value<>("", 8.0));
+                null, new Value<>("", 8.0), null);
 
         CalibratedAgeDependentCPPTree ad = new CalibratedAgeDependentCPPTree(
                 new Value<>("", lambda), new Value<>("", rho), new Value<>("", n),
@@ -538,7 +584,7 @@ public class CalibratedCPPDistributionTest {
                 new Value<>("", new CalibrationArray(new Calibration[]{
                         new Calibration(c1, 3.0),
                         new Calibration(c2, 2.0)})),
-                null, new Value<>("", 8.0));
+                null, new Value<>("", 8.0), null);
 
         Stats cs = collect(N, () -> cpp.sample().value());
         Stats as = collect(N, () -> ad.sample().value());

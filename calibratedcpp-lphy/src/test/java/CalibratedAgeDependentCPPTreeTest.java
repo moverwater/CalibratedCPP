@@ -44,7 +44,8 @@ public class CalibratedAgeDependentCPPTreeTest {
                 new Value<>("", meanLifetime),
                 new Value<>("", new CalibrationArray(cals)),
                 null,
-                new Value<>("", stemAge));
+                new Value<>("", stemAge),
+                null);
     }
 
     private static CalibratedAgeDependentCPPTree generateNoStem(
@@ -56,7 +57,7 @@ public class CalibratedAgeDependentCPPTreeTest {
                 new Value<>("", n),
                 new Value<>("", meanLifetime),
                 new Value<>("", new CalibrationArray(cals)),
-                null, null);
+                null, null, null);
     }
 
     /** Every internal node must be strictly older than each of its children. */
@@ -90,12 +91,12 @@ public class CalibratedAgeDependentCPPTreeTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void nullCalibrationsThrows() {
-        assertThrows(NullPointerException.class, () ->
+    void nullCalibrationsAndRootAgeThrows() {
+        assertThrows(IllegalArgumentException.class, () ->
                 new CalibratedAgeDependentCPPTree(
                         new Value<>("", 1.0), new Value<>("", 0.5), new Value<>("", 3),
                         new Value<>("", 1.0),
-                        null, null, null));
+                        null, null, null, null));
     }
 
     @Test
@@ -106,7 +107,7 @@ public class CalibratedAgeDependentCPPTreeTest {
                         null,
                         new Value<>("", new CalibrationArray(new Calibration[]{
                                 new Calibration(new String[]{"a", "b", "c"}, 2.0)})),
-                        null, null));
+                        null, null, null));
     }
 
     // -------------------------------------------------------------------------
@@ -240,7 +241,8 @@ public class CalibratedAgeDependentCPPTreeTest {
                 new Value<>("", 1.0),
                 new Value<>("", new CalibrationArray(new Calibration[]{new Calibration(clade, 2.0)})),
                 new Value<>("", others),
-                new Value<>("", 8.0));
+                new Value<>("", 8.0),
+                null);
 
         TimeTree tree = g.sample().value();
 
@@ -273,6 +275,49 @@ public class CalibratedAgeDependentCPPTreeTest {
                 new Calibration(all, 5.0));
         g.sample(); // triggers rootConditioned = true
         assertTrue(g.getRootCondition());
+    }
+
+    // -------------------------------------------------------------------------
+    // rootAge without calibrations
+    // -------------------------------------------------------------------------
+
+    @RepeatedTest(10)
+    void rootAgeOnlyNoCalibrationsSamplesCorrectly() {
+        double rootAge = 5.0;
+        int n = 6;
+        CalibratedAgeDependentCPPTree g = new CalibratedAgeDependentCPPTree(
+                new Value<>("", 1.5), new Value<>("", 0.5), new Value<>("", n),
+                new Value<>("", 1.0),
+                null, null, null,
+                new Value<>("", rootAge));
+
+        TimeTree tree = g.sample().value();
+
+        assertEquals(n, tree.getLeafNodes().size(), "leaf count");
+        assertEquals(rootAge, tree.getRoot().getAge(), 1e-8, "root age must match provided rootAge");
+        assertAgesOrder(tree);
+    }
+
+    @RepeatedTest(10)
+    void rootAgeOnlyWithOtherNamesSamplesCorrectly() {
+        double rootAge = 4.0;
+        String[] names = {"alpha", "beta", "gamma", "delta"};
+        CalibratedAgeDependentCPPTree g = new CalibratedAgeDependentCPPTree(
+                new Value<>("", 2.0), new Value<>("", 0.8), new Value<>("", names.length),
+                new Value<>("", 0.5),
+                null,
+                new Value<>("", names),
+                null,
+                new Value<>("", rootAge));
+
+        TimeTree tree = g.sample().value();
+
+        assertEquals(names.length, tree.getLeafNodes().size(), "leaf count");
+        assertEquals(rootAge, tree.getRoot().getAge(), 1e-8, "root age must match provided rootAge");
+        List<String> treeNames = Arrays.asList(tree.getTaxaNames());
+        for (String name : names) {
+            assertTrue(treeNames.contains(name), "taxon '" + name + "' missing from tree");
+        }
     }
 
     // -------------------------------------------------------------------------
