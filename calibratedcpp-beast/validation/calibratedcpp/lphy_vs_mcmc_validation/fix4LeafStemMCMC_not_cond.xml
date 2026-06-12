@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+model {
+  taxa_cherry = ["leaf_1", "leaf_2"];
+  calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxa_cherry], lowerBounds=[1.0], upperBounds=[1.001]);
+  tree ~ CalibratedCPP(calibrations=calibrations, lambda=2.0, mu=1.0, n=4, rho=0.5, stemAge=3.0);
+}
+
+-->
+<beast namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood" required="" version="2.8">
+
+    <run id="MCMC" spec="MCMC" chainLength="20000000" preBurnin="30">
+        <state id="State" spec="State">
+            <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser" IsLabelledNewick="true" newick="((leaf_2:1.0003181709935345,leaf_1:1.0003181709935345):1.599832289139909,(1:0.15142507734705002,0:0.15142507734705002):2.4487253827863933)[&amp;stemAge=3.0];">
+                <taxonset id="TaxonSet" spec="TaxonSet">
+                    <taxon id="leaf_2" spec="Taxon"/>
+                    <taxon id="leaf_1" spec="Taxon"/>
+                    <taxon id="1" spec="Taxon"/>
+                    <taxon id="0" spec="Taxon"/>
+                </taxonset>
+            </stateNode>
+        </state>
+        <distribution id="posterior" spec="CompoundDistribution">
+            <distribution id="prior" spec="CompoundDistribution">
+                <distribution id="CalibrationPrior" spec="calibrationprior.CalibrationPrior" tree="@tree">
+                    <calibration id="CalibrationCladePrior" spec="calibrationprior.CalibrationCladePrior">
+                        <upperAge id="RealScalarParam" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.001"/>
+                        <lowerAge id="RealScalarParam1" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.0"/>
+                        <confidenceLevel id="RealScalarParam2" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="UnitInterval" value="0.9"/>
+                        <taxa id="TaxonSet1" spec="TaxonSet">
+                            <taxon idref="leaf_1"/>
+                            <taxon idref="leaf_2"/>
+                        </taxa>
+                    </calibration>
+                </distribution>
+            </distribution>
+            <distribution id="likelihood" spec="CompoundDistribution">
+                <distribution id="CalibratedBirthDeathSkylineModel" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" tree="@tree" conditionOnCalibrations="false">
+                    <birthRate id="SkylineParameter" spec="calibratedcpp.SkylineParameter">
+                        <values id="RealScalarParam3" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="2.0"/>
+                    </birthRate>
+                    <deathRate id="SkylineParameter1" spec="calibratedcpp.SkylineParameter">
+                        <values id="RealScalarParam4" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+                    </deathRate>
+                    <rho id="RealScalarParam5" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="0.5"/>
+                    <origin id="RealScalarParam6" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="3.0"/>
+                    <calibrations id="CalibrationClade" spec="calibration.CalibrationClade" taxa="@TaxonSet1"/>
+                </distribution>
+            </distribution>
+        </distribution>
+        <operator id="tree.intervalScale" spec="beast.base.spec.evolution.operator.IntervalScaleOperator" scaleFactor="0.1" tree="@tree" weight="2.157669279974593"/>
+        <operator id="tree.narrowExchange" spec="Exchange" tree="@tree" weight="2.157669279974593"/>
+        <operator id="tree.rootAgeScale" spec="beast.base.spec.evolution.operator.ScaleTreeOperator" rootOnly="true" tree="@tree" upper="0.975" weight="1.0"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.26001504601334435" tree="@tree" weight="2.157669279974593"/>
+        <operator id="tree.uniform" spec="kernel.BactrianNodeOperator" tree="@tree" weight="2.157669279974593"/>
+        <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.2457309396155174"/>
+        <operator id="tree.wilsonBalding" spec="WilsonBalding" tree="@tree" weight="1.2457309396155174"/>
+        <logger id="ScreenLogger" spec="Logger" logEvery="200000">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+        </logger>
+        <logger id="Logger" spec="Logger" fileName="fix4LeafStemMCMC.log" logEvery="2000">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+            <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
+        </logger>
+        <logger id="tree.treeLogger" spec="Logger" fileName="fix4LeafStemMCMC.trees" logEvery="2000" mode="tree">
+            <log idref="tree"/>
+        </logger>
+    </run>
+
+</beast>
+

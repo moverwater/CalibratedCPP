@@ -1,0 +1,20 @@
+model{
+    // Clade numbering matches calibrationprior_simulation.r (clade1 = root)
+    taxa_clade1  = ["leaf_1","leaf_2","leaf_3","leaf_4","leaf_5","leaf_6","leaf_7","leaf_8","leaf_9","leaf_10","leaf_11"];
+    taxa_clade2  = ["leaf_1","leaf_2","leaf_3","leaf_4","leaf_5","leaf_6","leaf_7","leaf_8"];
+    taxa_clade3  = ["leaf_9","leaf_10","leaf_11"];
+    taxa_clade4  = ["leaf_9","leaf_10"];
+    taxa_clade5  = ["leaf_7","leaf_8"];
+    taxa_clade6  = ["leaf_1","leaf_2","leaf_3","leaf_4","leaf_5","leaf_6"];
+    taxa_clade7  = ["leaf_5","leaf_6"];
+    taxa_clade8  = ["leaf_1","leaf_2","leaf_3","leaf_4"];
+    taxa_clade9  = ["leaf_1","leaf_2","leaf_3"];
+    taxa_clade10 = ["leaf_1","leaf_2"];
+
+    calibrations ~ ConditionedMRCAPrior(
+        calibrationTaxa = [taxa_clade1, taxa_clade2, taxa_clade6, taxa_clade8, taxa_clade9, taxa_clade10, taxa_clade7, taxa_clade5, taxa_clade3, taxa_clade4],
+        rootFlag        = true,
+        upperBounds     = [10.5, 9.6, 8.0, 3.2, 2.5, 2.5, 2.5, 9.5, 5.0, 5.0],
+        lowerBounds     = [10.0, 9.4, 6.8, 2.0, 1.7, 1.6, 1.8, 8.0, 4.8, 4.0]
+    );
+}

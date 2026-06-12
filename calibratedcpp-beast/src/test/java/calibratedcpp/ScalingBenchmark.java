@@ -208,7 +208,7 @@ public class ScalingBenchmark {
                 .include(ScalingBenchmark.class.getSimpleName())
                 .param("nLeaves", sizes)
                 .resultFormat(ResultFormatType.CSV)
-                .result("calibratedcpp-beast/validation/calibratedcpp/validation_and_benchmark/scaling_benchmark.csv")
+                .result("calibratedcpp-beast/validation/calibratedcpp/heled-and-drummond_validation_and_benchmark/scaling_benchmark.csv")
                 .build();
 
         new Runner(opt).run();

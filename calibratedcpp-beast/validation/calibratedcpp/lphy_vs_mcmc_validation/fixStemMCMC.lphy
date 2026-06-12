@@ -1,0 +1,24 @@
+model {
+    // Fixed-stem validation: λ=2, μ=1, ρ=0.1, stemAge=3, n=100
+    // Matches MCMCValidationTest.java fixedStemValidation()
+    taxa_clade1 = ["leaf_1",  "leaf_2"];
+    taxa_clade2 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51"];
+    taxa_clade3 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50",
+                   "leaf_51", "leaf_52", "leaf_53", "leaf_54", "leaf_55"];
+    taxa_clade4 = ["leaf_87", "leaf_88", "leaf_89", "leaf_90"];
+
+    calibrations ~ ConditionedMRCAPrior(
+        calibrationTaxa = [taxa_clade1, taxa_clade2, taxa_clade3, taxa_clade4],
+        upperBounds     = [1.001, 1.201, 1.501, 2.001],
+        lowerBounds     = [1.0,   1.2,   1.5,   2.0  ]
+    );
+
+    tree ~ CalibratedCPP(
+        calibrations = calibrations,
+        lambda       = 2.0,
+        mu           = 1.0,
+        rho          = 0.1,
+        n            = 100,
+        stemAge      = 3.0
+    );
+}

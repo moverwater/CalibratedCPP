@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+model {
+  taxa_clade1 = ["leaf_1", "leaf_2"];
+  taxa_clade2 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51"];
+  taxa_clade3 = ["leaf_45", "leaf_46", "leaf_47", "leaf_48", "leaf_49", "leaf_50", "leaf_51", "leaf_52", "leaf_53", "leaf_54", "leaf_55"];
+  taxa_clade4 = ["leaf_87", "leaf_88", "leaf_89", "leaf_90"];
+  calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxa_clade1, taxa_clade2, taxa_clade3, taxa_clade4], lowerBounds=[1.0, 1.2, 1.5, 2.0], upperBounds=[1.001, 1.201, 1.501, 2.001]);
+  tree ~ CalibratedCPP(calibrations=calibrations, lambda=2.0, mu=1.0, n=100, rho=0.1, stemAge=3.0);
+}
+
+-->
+<beast namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood" required="" version="2.8">
+
+    <run id="MCMC" spec="MCMC" chainLength="20000000" preBurnin="990">
+        <state id="State" spec="State">
+            <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser" IsLabelledNewick="true" newick="((((((((54:0.6152639710843405,10:0.6152639710843405):0.420325844316609,3:1.0355898154009495):0.35710570481631,28:1.3926955202172595):0.8148186045047112,22:2.2075141247219707):0.4459181993139967,((((leaf_53:1.0983110293606075,leaf_55:1.0983110293606075):0.40271650979289375,((((leaf_45:0.7681375513165498,leaf_48:0.7681375513165498):0.012575687144882108,(leaf_46:0.2800261198570618,(leaf_49:0.15826557443019018,leaf_47:0.15826557443019018):0.12176054542687159):0.5006871186043702):0.4198345463362654,(leaf_51:0.9646677503200932,leaf_50:0.9646677503200932):0.23588003447760408):0.05523310295210293,(leaf_52:0.507465458594708,leaf_54:0.507465458594708):0.7483154291550922):0.24524665140370105):0.4903610520307182,79:1.9913885911842195):0.02269818491020903,((62:0.5226559608829591,6:0.5226559608829591):1.2440839831553288,(((25:0.237518887576476,82:0.237518887576476):0.2745613692699268,30:0.5120802568464028):0.3082510036787135,72:0.8203312605251163):0.9464086835131715):0.24734683205614072):0.6393455479415389):0.1681063694018854,(((1:1.8490800195470203,((68:1.1391364943631823,32:1.1391364943631823):0.15303224588880204,58:1.2921687402519844):0.5569112792950359):0.0711468750228208,39:1.920226894569841):0.4927991193866148,(((78:0.742781175603984,65:0.742781175603984):0.7508307747330453,(80:0.24641719879091747,23:0.24641719879091747):1.247194751546112):0.2206451240102052,44:1.7142570743472345):0.6987689396092214):0.4085126794813969):0.16256429716950027,((((37:2.6042320872342097,(((77:0.34417453713521684,69:0.34417453713521684):0.8853624701093882,(63:1.0534508964449267,(67:0.3624373572815549,27:0.3624373572815549):0.6910135391633718):0.17608611079967829):0.5389968124514055,(((81:0.4247063286019261,76:0.4247063286019261):1.0814999588232348,43:1.506206287425161):0.04731952825921826,(((60:0.30997682757234674,74:0.30997682757234674):0.635219639202637,(15:0.14850248661328339,11:0.14850248661328339):0.7966939801617003):0.18941835982056254,75:1.1346148265955462):0.41891098908883295):0.21500800401163134):0.8356982675381992):0.0444141751170255,((((20:1.1010127757013928,26:1.1010127757013928):0.4038062556641071,((((35:0.0022007646951069035,70:0.0022007646951069035):0.08661100251212886,14:0.08881176720723577):0.6846511300379017,47:0.7734628972451374):0.6632835048205474,55:1.4367464020656848):0.06807262929981506):0.10739979601311656,12:1.6122188273786164):0.9642982612642534,((56:1.2719277209434263,(21:1.0336247259020614,(34:0.49708562221720687,24:0.49708562221720687):0.5365391036848546):0.23830299504136487):0.7850435672779319,((59:0.20736935720890995,13:0.20736935720890995):0.9079496289033999,(41:0.7895359762687439,(4:0.27838035027374114,8:0.27838035027374114):0.5111556259950027):0.3257830098435659):0.9416523021090484):0.5195458004215117):0.07212917370836536):0.021944027686604084,(((38:1.1173167976615785,36:1.1173167976615785):1.0526714701525457,((49:0.5655145883008712,29:0.5655145883008712):1.4900519553908962,(48:1.2633860237182812,(66:0.18365299500020932,51:0.18365299500020932):1.079733028718072):0.7921805199734862):0.11442172412235685):0.3518551505981167,((46:0.7618501047970709,(61:0.23976818287757015,53:0.23976818287757015):0.5220819219195008):0.3645269486088083,73:1.1263770534058792):1.3954663650063617):0.1487468716255984):0.037909859322204476,(2:1.826413797134931,(52:0.33116148017696784,45:0.33116148017696784):1.4952523169579632):0.8820863522251128):0.27560284124730927):0.012382318449321694,((64:2.6977813831205015,(leaf_1:1.000649640736857,leaf_2:1.000649640736857):1.6971317423836445):0.2307854708297672,(((((31:1.192335478058722,16:1.192335478058722):0.024129643435992776,18:1.2164651214947149):0.008233717356697978,((33:0.11017571607353069,42:0.11017571607353069):0.2869755020977398,9:0.3971512181712705):0.8275476206801423):0.26662432398035474,(71:1.1526692104668377,0:1.1526692104668377):0.3386539523649299):1.4036112307391133,((((leaf_87:1.6320254781171153,(leaf_88:1.6300477819463932,leaf_89:1.6300477819463932):0.0019776961707220764):0.3683488535570971,leaf_90:2.0003743316742124):0.6057251557540275,((7:0.7733149196552482,5:0.7733149196552482):1.6465848301597286,(57:1.4421163134704023,17:1.4421163134704023):0.9777834363445745):0.18619973761326314):0.20186446722827212,(40:1.965723797950642,(19:1.302934681287723,50:1.302934681287723):0.662789116662919):0.8422401567058702):0.08697043891436884):0.03363246037938783):0.06791845510640604)[&amp;stemAge=3.0];">
+                <taxonset id="TaxonSet" spec="TaxonSet">
+                    <taxon id="54" spec="Taxon"/>
+                    <taxon id="10" spec="Taxon"/>
+                    <taxon id="3" spec="Taxon"/>
+                    <taxon id="28" spec="Taxon"/>
+                    <taxon id="22" spec="Taxon"/>
+                    <taxon id="leaf_53" spec="Taxon"/>
+                    <taxon id="leaf_55" spec="Taxon"/>
+                    <taxon id="leaf_45" spec="Taxon"/>
+                    <taxon id="leaf_48" spec="Taxon"/>
+                    <taxon id="leaf_46" spec="Taxon"/>
+                    <taxon id="leaf_49" spec="Taxon"/>
+                    <taxon id="leaf_47" spec="Taxon"/>
+                    <taxon id="leaf_51" spec="Taxon"/>
+                    <taxon id="leaf_50" spec="Taxon"/>
+                    <taxon id="leaf_52" spec="Taxon"/>
+                    <taxon id="leaf_54" spec="Taxon"/>
+                    <taxon id="79" spec="Taxon"/>
+                    <taxon id="62" spec="Taxon"/>
+                    <taxon id="6" spec="Taxon"/>
+                    <taxon id="25" spec="Taxon"/>
+                    <taxon id="82" spec="Taxon"/>
+                    <taxon id="30" spec="Taxon"/>
+                    <taxon id="72" spec="Taxon"/>
+                    <taxon id="1" spec="Taxon"/>
+                    <taxon id="68" spec="Taxon"/>
+                    <taxon id="32" spec="Taxon"/>
+                    <taxon id="58" spec="Taxon"/>
+                    <taxon id="39" spec="Taxon"/>
+                    <taxon id="78" spec="Taxon"/>
+                    <taxon id="65" spec="Taxon"/>
+                    <taxon id="80" spec="Taxon"/>
+                    <taxon id="23" spec="Taxon"/>
+                    <taxon id="44" spec="Taxon"/>
+                    <taxon id="37" spec="Taxon"/>
+                    <taxon id="77" spec="Taxon"/>
+                    <taxon id="69" spec="Taxon"/>
+                    <taxon id="63" spec="Taxon"/>
+                    <taxon id="67" spec="Taxon"/>
+                    <taxon id="27" spec="Taxon"/>
+                    <taxon id="81" spec="Taxon"/>
+                    <taxon id="76" spec="Taxon"/>
+                    <taxon id="43" spec="Taxon"/>
+                    <taxon id="60" spec="Taxon"/>
+                    <taxon id="74" spec="Taxon"/>
+                    <taxon id="15" spec="Taxon"/>
+                    <taxon id="11" spec="Taxon"/>
+                    <taxon id="75" spec="Taxon"/>
+                    <taxon id="20" spec="Taxon"/>
+                    <taxon id="26" spec="Taxon"/>
+                    <taxon id="35" spec="Taxon"/>
+                    <taxon id="70" spec="Taxon"/>
+                    <taxon id="14" spec="Taxon"/>
+                    <taxon id="47" spec="Taxon"/>
+                    <taxon id="55" spec="Taxon"/>
+                    <taxon id="12" spec="Taxon"/>
+                    <taxon id="56" spec="Taxon"/>
+                    <taxon id="21" spec="Taxon"/>
+                    <taxon id="34" spec="Taxon"/>
+                    <taxon id="24" spec="Taxon"/>
+                    <taxon id="59" spec="Taxon"/>
+                    <taxon id="13" spec="Taxon"/>
+                    <taxon id="41" spec="Taxon"/>
+                    <taxon id="4" spec="Taxon"/>
+                    <taxon id="8" spec="Taxon"/>
+                    <taxon id="38" spec="Taxon"/>
+                    <taxon id="36" spec="Taxon"/>
+                    <taxon id="49" spec="Taxon"/>
+                    <taxon id="29" spec="Taxon"/>
+                    <taxon id="48" spec="Taxon"/>
+                    <taxon id="66" spec="Taxon"/>
+                    <taxon id="51" spec="Taxon"/>
+                    <taxon id="46" spec="Taxon"/>
+                    <taxon id="61" spec="Taxon"/>
+                    <taxon id="53" spec="Taxon"/>
+                    <taxon id="73" spec="Taxon"/>
+                    <taxon id="2" spec="Taxon"/>
+                    <taxon id="52" spec="Taxon"/>
+                    <taxon id="45" spec="Taxon"/>
+                    <taxon id="64" spec="Taxon"/>
+                    <taxon id="leaf_1" spec="Taxon"/>
+                    <taxon id="leaf_2" spec="Taxon"/>
+                    <taxon id="31" spec="Taxon"/>
+                    <taxon id="16" spec="Taxon"/>
+                    <taxon id="18" spec="Taxon"/>
+                    <taxon id="33" spec="Taxon"/>
+                    <taxon id="42" spec="Taxon"/>
+                    <taxon id="9" spec="Taxon"/>
+                    <taxon id="71" spec="Taxon"/>
+                    <taxon id="0" spec="Taxon"/>
+                    <taxon id="leaf_87" spec="Taxon"/>
+                    <taxon id="leaf_88" spec="Taxon"/>
+                    <taxon id="leaf_89" spec="Taxon"/>
+                    <taxon id="leaf_90" spec="Taxon"/>
+                    <taxon id="7" spec="Taxon"/>
+                    <taxon id="5" spec="Taxon"/>
+                    <taxon id="57" spec="Taxon"/>
+                    <taxon id="17" spec="Taxon"/>
+                    <taxon id="40" spec="Taxon"/>
+                    <taxon id="19" spec="Taxon"/>
+                    <taxon id="50" spec="Taxon"/>
+                </taxonset>
+            </stateNode>
+        </state>
+        <distribution id="posterior" spec="CompoundDistribution">
+            <distribution id="prior" spec="CompoundDistribution">
+                <distribution id="CalibrationPrior" spec="calibrationprior.CalibrationPrior" tree="@tree">
+                    <calibration id="CalibrationCladePrior" spec="calibrationprior.CalibrationCladePrior">
+                        <upperAge id="RealScalarParam" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.001"/>
+                        <lowerAge id="RealScalarParam1" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.0"/>
+                        <confidenceLevel id="RealScalarParam2" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="UnitInterval" value="0.9"/>
+                        <taxa id="TaxonSet1" spec="TaxonSet">
+                            <taxon idref="leaf_1"/>
+                            <taxon idref="leaf_2"/>
+                        </taxa>
+                    </calibration>
+                    <calibration id="CalibrationCladePrior1" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam2">
+                        <upperAge id="RealScalarParam3" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.201"/>
+                        <lowerAge id="RealScalarParam4" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.2"/>
+                        <taxa id="TaxonSet2" spec="TaxonSet">
+                            <taxon idref="leaf_45"/>
+                            <taxon idref="leaf_46"/>
+                            <taxon idref="leaf_47"/>
+                            <taxon idref="leaf_48"/>
+                            <taxon idref="leaf_49"/>
+                            <taxon idref="leaf_50"/>
+                            <taxon idref="leaf_51"/>
+                        </taxa>
+                    </calibration>
+                    <calibration id="CalibrationCladePrior2" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam2">
+                        <upperAge id="RealScalarParam5" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.501"/>
+                        <lowerAge id="RealScalarParam6" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="1.5"/>
+                        <taxa id="TaxonSet3" spec="TaxonSet">
+                            <taxon idref="leaf_45"/>
+                            <taxon idref="leaf_46"/>
+                            <taxon idref="leaf_47"/>
+                            <taxon idref="leaf_48"/>
+                            <taxon idref="leaf_49"/>
+                            <taxon idref="leaf_50"/>
+                            <taxon idref="leaf_51"/>
+                            <taxon idref="leaf_52"/>
+                            <taxon idref="leaf_53"/>
+                            <taxon idref="leaf_54"/>
+                            <taxon idref="leaf_55"/>
+                        </taxa>
+                    </calibration>
+                    <calibration id="CalibrationCladePrior3" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam2">
+                        <upperAge id="RealScalarParam7" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="2.001"/>
+                        <lowerAge id="RealScalarParam8" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="2.0"/>
+                        <taxa id="TaxonSet4" spec="TaxonSet">
+                            <taxon idref="leaf_87"/>
+                            <taxon idref="leaf_88"/>
+                            <taxon idref="leaf_89"/>
+                            <taxon idref="leaf_90"/>
+                        </taxa>
+                    </calibration>
+                </distribution>
+            </distribution>
+            <distribution id="likelihood" spec="CompoundDistribution">
+                <distribution id="CalibratedBirthDeathSkylineModel" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" tree="@tree">
+                    <birthRate id="SkylineParameter" spec="calibratedcpp.SkylineParameter">
+                        <values id="RealScalarParam9" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="2.0"/>
+                    </birthRate>
+                    <deathRate id="SkylineParameter1" spec="calibratedcpp.SkylineParameter">
+                        <values id="RealScalarParam10" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+                    </deathRate>
+                    <rho id="RealScalarParam11" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="0.1"/>
+                    <origin id="RealScalarParam12" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="3.0"/>
+                    <calibrations id="CalibrationClade" spec="calibration.CalibrationClade" taxa="@TaxonSet1"/>
+                    <calibrations id="CalibrationClade1" spec="calibration.CalibrationClade" taxa="@TaxonSet2"/>
+                    <calibrations id="CalibrationClade2" spec="calibration.CalibrationClade" taxa="@TaxonSet3"/>
+                    <calibrations id="CalibrationClade3" spec="calibration.CalibrationClade" taxa="@TaxonSet4"/>
+                </distribution>
+            </distribution>
+        </distribution>
+        <operator id="tree.intervalScale" spec="beast.base.spec.evolution.operator.IntervalScaleOperator" scaleFactor="0.1" tree="@tree" weight="24.942767367291083"/>
+        <operator id="tree.narrowExchange" spec="Exchange" tree="@tree" weight="24.942767367291083"/>
+        <operator id="tree.rootAgeScale" spec="beast.base.spec.evolution.operator.ScaleTreeOperator" rootOnly="true" tree="@tree" upper="0.975" weight="1.0"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.2996485309056675" tree="@tree" weight="24.942767367291083"/>
+        <operator id="tree.uniform" spec="kernel.BactrianNodeOperator" tree="@tree" weight="24.942767367291083"/>
+        <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="2.5068424421341002"/>
+        <operator id="tree.wilsonBalding" spec="WilsonBalding" tree="@tree" weight="2.5068424421341002"/>
+        <logger id="ScreenLogger" spec="Logger" logEvery="200000">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+        </logger>
+        <logger id="Logger" spec="Logger" fileName="fixStemMCMC.log" logEvery="2000">
+            <log idref="posterior"/>
+            <log idref="likelihood"/>
+            <log idref="prior"/>
+            <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
+        </logger>
+        <logger id="tree.treeLogger" spec="Logger" fileName="fixStemMCMC.trees" logEvery="2000" mode="tree">
+            <log idref="tree"/>
+        </logger>
+    </run>
+
+</beast>
+

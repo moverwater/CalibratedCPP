@@ -1,0 +1,13 @@
+model {
+  taxa_cherry = ["leaf_1", "leaf_2"];
+  calibrations ~ ConditionedMRCAPrior(
+      calibrationTaxa = [taxa_cherry],
+      upperBounds     = [1.001],
+      lowerBounds     = [1.0]
+  );
+  tree ~ CalibratedCPP(
+      calibrations = calibrations,
+      lambda = 2.0, mu = 1.0, rho = 0.5,
+      n = 4, stemAge = 3.0
+  );
+}
