@@ -380,7 +380,7 @@ public class CalibrationPrior extends Distribution {
                 }
             }
         }
-        return logP;
+        return this.logP = logP;
     }
 
     private double logNormalLogPdf(double x, double mu, double sigma) {

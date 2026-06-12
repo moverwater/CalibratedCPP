@@ -244,7 +244,7 @@
             <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree" />
             <log id="RatesStat.branchRates" spec="beast.base.evolution.RateStatistic" branchratemodel="@branchRates.model" tree="@tree" />
             <log idref="D.treeLikelihood" />
-            <log idref="CalibrationPrior" />
+            <log id="CalibrationPriorLog" spec="calibrationprior.logger.MRCALogger" tree="@tree" calibrations="@CalibrationPrior"/>
         </logger>
         <logger id="TreeWithMetaDataLogger.tree" spec="Logger" fileName="$(filebase).trees" logEvery="50" mode="tree">
             <log id="TreeWithMetaDataLogger" spec="beast.base.spec.evolution.TreeWithMetaDataLogger" branchratemodel="@branchRates.model" tree="@tree" />
