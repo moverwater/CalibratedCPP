@@ -27,22 +27,21 @@ We also validate the likelihood computation by comparing log-likelihood values f
 
 Run benchmark (takes approximately 50 minutes):
 ```bash
-mvn clean test-compile
-java -Xss32m -cp "$(mvn dependency:build-classpath | grep -v '\[INFO\]' | tr '\n' ':'):target/classes:target/test-classes" \
-    calibratedcpp.LikelihoodBenchmark
+MAVEN_OPTS="-Xss32m" mvn -pl calibratedcpp-beast test-compile exec:java \
+  -Dexec.mainClass=calibratedcpp.LikelihoodBenchmark \
+  -Dexec.classpathScope=test
 ```
 
-
- Run validation:
+Run validation:
 ```bash
-mvn test-compile
-mvn test -Dtest=CalibratedCoalescentPointProcessTest#heledAndDrummondComparison
+mvn -pl calibratedcpp-beast test \
+  -Dtest=CalibratedCoalescentPointProcessTest#heledAndDrummondComparison
 ```
 
- Generate plot:
- ```bash
-python validation/calibratedcpp/heled-and-drummond_validation_and_benchmark/plot_output.py
- ```
+Generate plot:
+```bash
+python calibratedcpp-beast/validation/calibratedcpp/heled-and-drummond_validation_and_benchmark/plot_output.py
+```
 
 ## Output Files
 

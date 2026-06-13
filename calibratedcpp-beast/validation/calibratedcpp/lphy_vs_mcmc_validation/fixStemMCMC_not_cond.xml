@@ -174,7 +174,7 @@ model {
                 </distribution>
             </distribution>
             <distribution id="likelihood" spec="CompoundDistribution">
-                <distribution id="CalibratedBirthDeathSkylineModel" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" tree="@tree">
+                <distribution id="CalibratedBirthDeathSkylineModel" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" tree="@tree" conditionOnCalibrations="false">
                     <birthRate id="SkylineParameter" spec="calibratedcpp.SkylineParameter">
                         <values id="RealScalarParam9" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="2.0"/>
                     </birthRate>
@@ -202,13 +202,13 @@ model {
             <log idref="likelihood"/>
             <log idref="prior"/>
         </logger>
-        <logger id="Logger" spec="Logger" fileName="fixStemMCMC.log" logEvery="2000">
+        <logger id="Logger" spec="Logger" fileName="$(filebase).log" logEvery="2000">
             <log idref="posterior"/>
             <log idref="likelihood"/>
             <log idref="prior"/>
             <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
         </logger>
-        <logger id="tree.treeLogger" spec="Logger" fileName="fixStemMCMC.trees" logEvery="2000" mode="tree">
+        <logger id="tree.treeLogger" spec="Logger" fileName="$(filebase).trees" logEvery="2000" mode="tree">
             <log idref="tree"/>
         </logger>
     </run>

@@ -71,13 +71,13 @@ model {
             <log idref="likelihood"/>
             <log idref="prior"/>
         </logger>
-        <logger id="Logger" spec="Logger" fileName="fix4LeafRootMCMC.log" logEvery="2000">
+        <logger id="Logger" spec="Logger" fileName="$(filebase).log" logEvery="2000">
             <log idref="posterior"/>
             <log idref="likelihood"/>
             <log idref="prior"/>
             <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
         </logger>
-        <logger id="tree.treeLogger" spec="Logger" fileName="fix4LeafRootMCMC.trees" logEvery="2000" mode="tree">
+        <logger id="tree.treeLogger" spec="Logger" fileName="$(filebase).trees" logEvery="2000" mode="tree">
             <log idref="tree"/>
         </logger>
     </run>

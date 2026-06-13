@@ -12,11 +12,11 @@ model {
 
     <run id="MCMC" spec="MCMC" chainLength="20000000" preBurnin="30">
         <state id="State" spec="State">
-            <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser" IsLabelledNewick="true" newick="((leaf_1:1.0003443996069643,leaf_2:1.0003443996069643):2.000528056261267,(leaf_4:0.4713199859256695,leaf_3:0.4713199859256695):2.529552469942562):0.0;">
+            <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser" IsLabelledNewick="true" newick="(leaf_4:3.0006332374860305,((leaf_2:1.0005248706782779,leaf_1:1.0005248706782779):0.13620442692557888,leaf_3:1.1367292976038568):1.8639039398821737):0.0;">
                 <taxonset id="TaxonSet" spec="TaxonSet">
-                    <taxon id="leaf_1" spec="Taxon"/>
-                    <taxon id="leaf_2" spec="Taxon"/>
                     <taxon id="leaf_4" spec="Taxon"/>
+                    <taxon id="leaf_2" spec="Taxon"/>
+                    <taxon id="leaf_1" spec="Taxon"/>
                     <taxon id="leaf_3" spec="Taxon"/>
                 </taxonset>
             </stateNode>
@@ -62,7 +62,7 @@ model {
         <operator id="tree.intervalScale" spec="beast.base.spec.evolution.operator.IntervalScaleOperator" scaleFactor="0.1" tree="@tree" weight="2.157669279974593"/>
         <operator id="tree.narrowExchange" spec="Exchange" tree="@tree" weight="2.157669279974593"/>
         <operator id="tree.rootAgeScale" spec="beast.base.spec.evolution.operator.ScaleTreeOperator" rootOnly="true" tree="@tree" upper="0.975" weight="1.0"/>
-        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.30008724558682315" tree="@tree" weight="2.157669279974593"/>
+        <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="0.30006332374860306" tree="@tree" weight="2.157669279974593"/>
         <operator id="tree.uniform" spec="kernel.BactrianNodeOperator" tree="@tree" weight="2.157669279974593"/>
         <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.2457309396155174"/>
         <operator id="tree.wilsonBalding" spec="WilsonBalding" tree="@tree" weight="1.2457309396155174"/>

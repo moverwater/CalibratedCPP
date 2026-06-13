@@ -39,7 +39,8 @@ The validation uses 10 calibrated clades on 11 taxa.  Clade numbering matches
 From the project root:
 
 ```bash
-./run_beast.sh calibratedcpp-beast/validation/calibrationprior/test_calibration_prior.xml
+mvn -pl calibratedcpp-beast exec:exec \
+  -Dbeast.args="-overwrite -prefix validation/calibrationprior/ validation/calibrationprior/test_calibration_prior.xml"
 ```
 
 This produces `test_calibration_prior.log` with columns `mrca.clade1` … `mrca.clade10`.
