@@ -44,21 +44,21 @@ model {
     Cebidae = ["Cebus_capucinus_imitator", "Saimiri_boliviensis"];
 
     calibrationTaxa = [Euarchontoglires,Euarchonta,Primates,Lorisiformes,Cercopithecidae,Colobinae,Cercopithecinae,Papionini,Hominoidea,Hominidae,Homo_Pan,Callitrichidae_Cebidae, Cebidae];
-    upperBounds = [120.0, 110.0, 60.0, 40.0, 14.0, 10.0, 10.0, 8.0, 18.0, 15.0, 10.0, 20.0, 15.0];
-    lowerBounds = [119.0, 109.0, 59.0, 39.0, 13.0,  9.0,  9.0, 7.0, 17.0, 14.0,  9.0, 19.0, 14.0];
+    upperBounds = [125.816, 125.816, 66.095, 55.8, 25.235, 15.0, 15.0, 12.51, 25.235, 25.235, 15.0, 34.5, 34.5];
+    lowerBounds = [ 65.79,  65.79, 55.935, 18.5, 12.47,  8.125, 6.5,  5.33, 13.4,  12.3,  4.631, 13.183, 13.032];
 
     calibrations ~ ConditionedMRCAPrior(calibrationTaxa = [Euarchontoglires, Euarchonta, Primates, Lorisiformes,
                                                                       Cercopithecidae, Colobinae, Cercopithecinae, Papionini,
                                                                       Hominoidea, Hominidae, Homo_Pan, Callitrichidae_Cebidae, Cebidae], upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
-    lambda ~ LogNormal(meanlog = 0.1, sdlog = 1);
-    mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
-    tree ~ CalibratedCPP(calibrations = calibrations, mu = mu, lambda = lambda, rho = 0.5, n=n);
+    diversificationRate ~ LogNormal(meanlog = 0.0, sdlog = 1.25);
+    turnover ~ Beta(alpha = 1.0, beta = 1.0);
+    tree ~ CalibratedCPP(calibrations = calibrations, turnover = turnover, diversification = diversificationRate, rho = 0.05, n=n);
 
 
 
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
-    rates ~ Dirichlet(conc=[1.0, 2.0, 1.0, 1.0, 2.0, 1.0]);
-    Q = gtr(rates = rates, freq = π);
+    kappa ~ LogNormal(meanlog = 1.0 , sdlog = 1.25);
+    Q = hky(kappa = kappa, freq = π);
     
     gamma ~ LogNormal(meanlog=0, sdlog=2);
     siteRates ~ DiscretizeGamma(shape=gamma, ncat=4, replicates=L);

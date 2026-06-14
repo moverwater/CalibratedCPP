@@ -113,6 +113,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         calibrationPrior.setInputValue("calibration", cladeInput);
         calibrationPrior.initAndValidate();
 
+        context.addExtraLoggable(calibrationPrior);
         context.addBEASTObject(calibrationPrior, conditionedMRCAPrior);
 
         return model;

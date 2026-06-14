@@ -1,0 +1,425 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<beast namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood" required="" version="2.8">
+  <data id="D" spec="Alignment">
+    <sequence id="Sequence" spec="Sequence" taxon="Aotus_nancymaae" totalcount="4" value="?"/>
+    <sequence id="Sequence1" spec="Sequence" taxon="Callithrix_jacchus" totalcount="4" value="?"/>
+    <sequence id="Sequence2" spec="Sequence" taxon="Carlito_syrichta" totalcount="4" value="?"/>
+    <sequence id="Sequence3" spec="Sequence" taxon="Cebus_capucinus_imitator" totalcount="4" value="?"/>
+    <sequence id="Sequence4" spec="Sequence" taxon="Cercocebus_atys" totalcount="4" value="?"/>
+    <sequence id="Sequence5" spec="Sequence" taxon="Chlorocebus_sabaeus" totalcount="4" value="?"/>
+    <sequence id="Sequence6" spec="Sequence" taxon="Colobus_angolensis_palliatus" totalcount="4" value="?"/>
+    <sequence id="Sequence7" spec="Sequence" taxon="Galeopterus_variegatus" totalcount="4" value="?"/>
+    <sequence id="Sequence8" spec="Sequence" taxon="Gorilla_gorilla" totalcount="4" value="?"/>
+    <sequence id="Sequence9" spec="Sequence" taxon="Homo_sapiens" totalcount="4" value="?"/>
+    <sequence id="Sequence10" spec="Sequence" taxon="Macaca_fascicularis" totalcount="4" value="?"/>
+    <sequence id="Sequence11" spec="Sequence" taxon="Macaca_mulatta" totalcount="4" value="?"/>
+    <sequence id="Sequence12" spec="Sequence" taxon="Macaca_nemestrina" totalcount="4" value="?"/>
+    <sequence id="Sequence13" spec="Sequence" taxon="Mandrillus_leucophaeus" totalcount="4" value="?"/>
+    <sequence id="Sequence14" spec="Sequence" taxon="Microcebus_murinus" totalcount="4" value="?"/>
+    <sequence id="Sequence15" spec="Sequence" taxon="Mus_musculus" totalcount="4" value="?"/>
+    <sequence id="Sequence16" spec="Sequence" taxon="Nomascus_leucogenys" totalcount="4" value="?"/>
+    <sequence id="Sequence17" spec="Sequence" taxon="Otolemur_garnettii" totalcount="4" value="?"/>
+    <sequence id="Sequence18" spec="Sequence" taxon="Pan_paniscus" totalcount="4" value="?"/>
+    <sequence id="Sequence19" spec="Sequence" taxon="Pan_troglodytes" totalcount="4" value="?"/>
+    <sequence id="Sequence20" spec="Sequence" taxon="Papio_anubis" totalcount="4" value="?"/>
+    <sequence id="Sequence21" spec="Sequence" taxon="Piliocolobus_tephrosceles" totalcount="4" value="?"/>
+    <sequence id="Sequence22" spec="Sequence" taxon="Pongo_abelii" totalcount="4" value="?"/>
+    <sequence id="Sequence23" spec="Sequence" taxon="Propithecus_coquereli" totalcount="4" value="?"/>
+    <sequence id="Sequence24" spec="Sequence" taxon="Rhinopithecus_bieti" totalcount="4" value="?"/>
+    <sequence id="Sequence25" spec="Sequence" taxon="Rhinopithecus_roxellana" totalcount="4" value="?"/>
+    <sequence id="Sequence26" spec="Sequence" taxon="Saimiri_boliviensis" totalcount="4" value="?"/>
+    <sequence id="Sequence27" spec="Sequence" taxon="Theropithecus_gelada" totalcount="4" value="?"/>
+    <sequence id="Sequence28" spec="Sequence" taxon="Tupaia_chinensis" totalcount="4" value="?"/>
+  </data>
+  <run id="MCMC" spec="MCMC" chainLength="1000000" preBurnin="280">
+    <state id="State" spec="State">
+      <stateNode id="pi" spec="beast.base.spec.inference.parameter.SimplexParam" dimension="4" domain="UnitInterval">0.2703482583524489 0.3291284597124041 0.15974011623518872 0.24078316569995828</stateNode>
+      <stateNode id="kappa" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="0.18921525819075627"/>
+      <stateNode id="diversificationRate" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="0.0961872884410562"/>
+      <stateNode id="turnover" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="UnitInterval" value="0.36933396736490054"/>
+      <stateNode id="tree" spec="beast.base.evolution.tree.TreeParser" IsLabelledNewick="true" newick="(Mus_musculus:71.93878686398946,((((Colobus_angolensis_palliatus:10.997497856007175,(Rhinopithecus_roxellana:5.319527347115423,(Piliocolobus_tephrosceles:0.9863064674664197,Rhinopithecus_bieti:0.9863064674664197):4.333220879649003):5.677970508891752):6.672454864615105,(((Cercocebus_atys:2.722538434710102,Macaca_fascicularis:2.722538434710102):7.8531795684874615,(Theropithecus_gelada:8.107665513533608,((Macaca_nemestrina:3.0033296464991968,Mandrillus_leucophaeus:3.0033296464991968):1.5538684362565252,(Macaca_mulatta:2.556136675765559,Papio_anubis:2.556136675765559):2.001061406990163):3.5504674307778856):2.4680524896639557):1.5038618088561382,Chlorocebus_sabaeus:12.079579812053701):5.590372908568579):30.40134001754311,(((((((Pan_paniscus:2.724438992157421,Pan_troglodytes:2.724438992157421):0.16745272199410843,Homo_sapiens:2.8918917141515292):9.680944819856474,(Gorilla_gorilla:2.2273161474594256,Pongo_abelii:2.2273161474594256):10.345520386548579):1.4452654518593597,Nomascus_leucogenys:14.018101985867364):9.464653654363033,Carlito_syrichta:23.482755640230398):18.426950677053224,((Aotus_nancymaae:10.600471339002576,Callithrix_jacchus:10.600471339002576):7.168701576960606,(Saimiri_boliviensis:17.7604304777426,Cebus_capucinus_imitator:17.7604304777426):0.008742438220583182):24.14053340132044):1.669020062630267,((Propithecus_coquereli:8.607613584074187,Otolemur_garnettii:8.607613584074187):12.489669990626442,Microcebus_murinus:21.09728357470063):22.48144280521326):4.492566358251501):23.86749204001098,(Galeopterus_variegatus:15.825134982509821,Tupaia_chinensis:15.825134982509821):56.11364979566655):2.0858130937995156E-6):0.0;">
+        <taxonset id="TaxonSet" spec="TaxonSet">
+          <taxon id="Mus_musculus" spec="Taxon"/>
+          <taxon id="Colobus_angolensis_palliatus" spec="Taxon"/>
+          <taxon id="Rhinopithecus_roxellana" spec="Taxon"/>
+          <taxon id="Piliocolobus_tephrosceles" spec="Taxon"/>
+          <taxon id="Rhinopithecus_bieti" spec="Taxon"/>
+          <taxon id="Cercocebus_atys" spec="Taxon"/>
+          <taxon id="Macaca_fascicularis" spec="Taxon"/>
+          <taxon id="Theropithecus_gelada" spec="Taxon"/>
+          <taxon id="Macaca_nemestrina" spec="Taxon"/>
+          <taxon id="Mandrillus_leucophaeus" spec="Taxon"/>
+          <taxon id="Macaca_mulatta" spec="Taxon"/>
+          <taxon id="Papio_anubis" spec="Taxon"/>
+          <taxon id="Chlorocebus_sabaeus" spec="Taxon"/>
+          <taxon id="Pan_paniscus" spec="Taxon"/>
+          <taxon id="Pan_troglodytes" spec="Taxon"/>
+          <taxon id="Homo_sapiens" spec="Taxon"/>
+          <taxon id="Gorilla_gorilla" spec="Taxon"/>
+          <taxon id="Pongo_abelii" spec="Taxon"/>
+          <taxon id="Nomascus_leucogenys" spec="Taxon"/>
+          <taxon id="Carlito_syrichta" spec="Taxon"/>
+          <taxon id="Aotus_nancymaae" spec="Taxon"/>
+          <taxon id="Callithrix_jacchus" spec="Taxon"/>
+          <taxon id="Saimiri_boliviensis" spec="Taxon"/>
+          <taxon id="Cebus_capucinus_imitator" spec="Taxon"/>
+          <taxon id="Propithecus_coquereli" spec="Taxon"/>
+          <taxon id="Otolemur_garnettii" spec="Taxon"/>
+          <taxon id="Microcebus_murinus" spec="Taxon"/>
+          <taxon id="Galeopterus_variegatus" spec="Taxon"/>
+          <taxon id="Tupaia_chinensis" spec="Taxon"/>
+        </taxonset>
+      </stateNode>
+      <stateNode id="sigma" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="0.3013245945764897"/>
+      <stateNode id="branchRates" spec="beast.base.spec.inference.parameter.RealVectorParam" dimension="56" domain="Real">1.041296916794189 0.9829002135630874 1.1715445371953814 0.6380936453871628 0.5931209334749638 2.35257659988988 0.9183479437386196 0.9882714003454992 0.9882347076389885 1.3648932045722149 1.3707641182365125 0.7607688547043367 1.362453353759361 0.8184690794660431 1.0582228356548333 0.9125761089411532 1.111682959948036 0.6692785743599349 1.1300501945164532 0.7397037130650804 1.2907669301606188 1.4571090113966045 1.0216757597739468 1.1487815826536119 0.8974515906923519 0.9399171159428298 0.7550775113702008 0.6255580057070526 0.8964257067099339 0.7391731556972837 0.6058050528138568 1.138920388112044 1.5890959146930006 0.9896579583096401 1.5283132016062588 1.224038733121783 0.817024052200257 1.218555601389297 0.6283956223732252 1.0790734637175412 0.845519370201922 0.9228697158434513 0.8347562629592202 1.1558092618171212 0.799189601908645 0.8954663268198958 0.7337351924224802 0.7627586711072748 0.5030776686704834 1.5920880670199375 0.7571104929426085 1.1050051743587845 1.2425816683368855 1.0399654620214025 1.097940299970966 0.7790961569836315</stateNode>
+      <stateNode id="mRate" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="1.752244083579714E-4"/>
+      <stateNode id="gamma" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="PositiveReal" value="1.4503692333119937"/>
+    </state>
+    <distribution id="posterior" spec="CompoundDistribution">
+      <distribution id="prior" spec="CompoundDistribution">
+        <distribution id="kappa.prior" spec="beast.base.spec.inference.distribution.LogNormal" param="@kappa">
+          <M id="RealScalarParam" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+          <S id="RealScalarParam1" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.25"/>
+        </distribution>
+        <distribution id="turnover.prior" spec="beast.base.spec.inference.distribution.Beta" param="@turnover">
+          <alpha id="RealScalarParam2" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+          <beta id="RealScalarParam3" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+        </distribution>
+        <distribution id="mRate.prior" spec="beast.base.spec.inference.distribution.LogNormal" param="@mRate">
+          <M id="RealScalarParam4" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="-9.0"/>
+          <S id="RealScalarParam5" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="5.0"/>
+        </distribution>
+        <distribution id="sigma.prior" spec="beast.base.spec.inference.distribution.LogNormal" param="@sigma">
+          <M id="RealScalarParam6" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="-0.693"/>
+          <S id="RealScalarParam7" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="0.5"/>
+        </distribution>
+        <distribution id="gamma.prior" spec="beast.base.spec.inference.distribution.LogNormal" param="@gamma">
+          <M id="RealScalarParam8" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real"/>
+          <S id="RealScalarParam9" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="2.0"/>
+        </distribution>
+        <distribution id="pi.prior" spec="beast.base.spec.inference.distribution.Dirichlet" param="@pi">
+          <alpha id="RealVectorParam" spec="beast.base.spec.inference.parameter.RealVectorParam" dimension="4" domain="Real" estimate="false">3.0 3.0 3.0 3.0</alpha>
+        </distribution>
+        <distribution id="CalibratedBirthDeathSkylineModel" spec="calibratedcpp.CalibratedBirthDeathSkylineModel" conditionOnRoot="true" tree="@tree" conditionOnCalibrations="false">
+          <diversificationRate id="SkylineParameter" spec="calibratedcpp.SkylineParameter" values="@diversificationRate"/>
+          <turnover id="SkylineParameter1" spec="calibratedcpp.SkylineParameter" values="@turnover"/>
+          <rho id="RealScalarParam10" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="0.05"/>
+          <calibrations id="CalibrationClade" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet1" spec="TaxonSet">
+              <taxon idref="Aotus_nancymaae"/>
+              <taxon idref="Callithrix_jacchus"/>
+              <taxon idref="Carlito_syrichta"/>
+              <taxon idref="Cebus_capucinus_imitator"/>
+              <taxon idref="Cercocebus_atys"/>
+              <taxon idref="Chlorocebus_sabaeus"/>
+              <taxon idref="Colobus_angolensis_palliatus"/>
+              <taxon idref="Galeopterus_variegatus"/>
+              <taxon idref="Gorilla_gorilla"/>
+              <taxon idref="Homo_sapiens"/>
+              <taxon idref="Macaca_fascicularis"/>
+              <taxon idref="Macaca_mulatta"/>
+              <taxon idref="Macaca_nemestrina"/>
+              <taxon idref="Mandrillus_leucophaeus"/>
+              <taxon idref="Microcebus_murinus"/>
+              <taxon idref="Mus_musculus"/>
+              <taxon idref="Nomascus_leucogenys"/>
+              <taxon idref="Otolemur_garnettii"/>
+              <taxon idref="Pan_paniscus"/>
+              <taxon idref="Pan_troglodytes"/>
+              <taxon idref="Papio_anubis"/>
+              <taxon idref="Piliocolobus_tephrosceles"/>
+              <taxon idref="Pongo_abelii"/>
+              <taxon idref="Propithecus_coquereli"/>
+              <taxon idref="Rhinopithecus_bieti"/>
+              <taxon idref="Rhinopithecus_roxellana"/>
+              <taxon idref="Saimiri_boliviensis"/>
+              <taxon idref="Theropithecus_gelada"/>
+              <taxon idref="Tupaia_chinensis"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade1" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet2" spec="TaxonSet">
+              <taxon idref="Tupaia_chinensis"/>
+              <taxon idref="Galeopterus_variegatus"/>
+              <taxon idref="Otolemur_garnettii"/>
+              <taxon idref="Microcebus_murinus"/>
+              <taxon idref="Propithecus_coquereli"/>
+              <taxon idref="Carlito_syrichta"/>
+              <taxon idref="Cebus_capucinus_imitator"/>
+              <taxon idref="Saimiri_boliviensis"/>
+              <taxon idref="Aotus_nancymaae"/>
+              <taxon idref="Callithrix_jacchus"/>
+              <taxon idref="Nomascus_leucogenys"/>
+              <taxon idref="Pongo_abelii"/>
+              <taxon idref="Gorilla_gorilla"/>
+              <taxon idref="Homo_sapiens"/>
+              <taxon idref="Pan_paniscus"/>
+              <taxon idref="Pan_troglodytes"/>
+              <taxon idref="Colobus_angolensis_palliatus"/>
+              <taxon idref="Piliocolobus_tephrosceles"/>
+              <taxon idref="Rhinopithecus_bieti"/>
+              <taxon idref="Rhinopithecus_roxellana"/>
+              <taxon idref="Chlorocebus_sabaeus"/>
+              <taxon idref="Macaca_nemestrina"/>
+              <taxon idref="Macaca_fascicularis"/>
+              <taxon idref="Macaca_mulatta"/>
+              <taxon idref="Cercocebus_atys"/>
+              <taxon idref="Mandrillus_leucophaeus"/>
+              <taxon idref="Papio_anubis"/>
+              <taxon idref="Theropithecus_gelada"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade2" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet3" spec="TaxonSet">
+              <taxon idref="Otolemur_garnettii"/>
+              <taxon idref="Microcebus_murinus"/>
+              <taxon idref="Propithecus_coquereli"/>
+              <taxon idref="Carlito_syrichta"/>
+              <taxon idref="Cebus_capucinus_imitator"/>
+              <taxon idref="Saimiri_boliviensis"/>
+              <taxon idref="Aotus_nancymaae"/>
+              <taxon idref="Callithrix_jacchus"/>
+              <taxon idref="Nomascus_leucogenys"/>
+              <taxon idref="Pongo_abelii"/>
+              <taxon idref="Gorilla_gorilla"/>
+              <taxon idref="Homo_sapiens"/>
+              <taxon idref="Pan_paniscus"/>
+              <taxon idref="Pan_troglodytes"/>
+              <taxon idref="Colobus_angolensis_palliatus"/>
+              <taxon idref="Piliocolobus_tephrosceles"/>
+              <taxon idref="Rhinopithecus_bieti"/>
+              <taxon idref="Rhinopithecus_roxellana"/>
+              <taxon idref="Chlorocebus_sabaeus"/>
+              <taxon idref="Macaca_nemestrina"/>
+              <taxon idref="Macaca_fascicularis"/>
+              <taxon idref="Macaca_mulatta"/>
+              <taxon idref="Cercocebus_atys"/>
+              <taxon idref="Mandrillus_leucophaeus"/>
+              <taxon idref="Papio_anubis"/>
+              <taxon idref="Theropithecus_gelada"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade3" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet4" spec="TaxonSet">
+              <taxon idref="Otolemur_garnettii"/>
+              <taxon idref="Microcebus_murinus"/>
+              <taxon idref="Propithecus_coquereli"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade4" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet5" spec="TaxonSet">
+              <taxon idref="Colobus_angolensis_palliatus"/>
+              <taxon idref="Piliocolobus_tephrosceles"/>
+              <taxon idref="Rhinopithecus_bieti"/>
+              <taxon idref="Rhinopithecus_roxellana"/>
+              <taxon idref="Chlorocebus_sabaeus"/>
+              <taxon idref="Macaca_nemestrina"/>
+              <taxon idref="Macaca_fascicularis"/>
+              <taxon idref="Macaca_mulatta"/>
+              <taxon idref="Cercocebus_atys"/>
+              <taxon idref="Mandrillus_leucophaeus"/>
+              <taxon idref="Papio_anubis"/>
+              <taxon idref="Theropithecus_gelada"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade5" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet6" spec="TaxonSet">
+              <taxon idref="Colobus_angolensis_palliatus"/>
+              <taxon idref="Piliocolobus_tephrosceles"/>
+              <taxon idref="Rhinopithecus_bieti"/>
+              <taxon idref="Rhinopithecus_roxellana"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade6" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet7" spec="TaxonSet">
+              <taxon idref="Chlorocebus_sabaeus"/>
+              <taxon idref="Macaca_nemestrina"/>
+              <taxon idref="Macaca_fascicularis"/>
+              <taxon idref="Macaca_mulatta"/>
+              <taxon idref="Cercocebus_atys"/>
+              <taxon idref="Mandrillus_leucophaeus"/>
+              <taxon idref="Papio_anubis"/>
+              <taxon idref="Theropithecus_gelada"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade7" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet8" spec="TaxonSet">
+              <taxon idref="Macaca_nemestrina"/>
+              <taxon idref="Macaca_fascicularis"/>
+              <taxon idref="Macaca_mulatta"/>
+              <taxon idref="Cercocebus_atys"/>
+              <taxon idref="Mandrillus_leucophaeus"/>
+              <taxon idref="Papio_anubis"/>
+              <taxon idref="Theropithecus_gelada"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade8" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet9" spec="TaxonSet">
+              <taxon idref="Nomascus_leucogenys"/>
+              <taxon idref="Pongo_abelii"/>
+              <taxon idref="Gorilla_gorilla"/>
+              <taxon idref="Homo_sapiens"/>
+              <taxon idref="Pan_paniscus"/>
+              <taxon idref="Pan_troglodytes"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade9" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet10" spec="TaxonSet">
+              <taxon idref="Pongo_abelii"/>
+              <taxon idref="Gorilla_gorilla"/>
+              <taxon idref="Homo_sapiens"/>
+              <taxon idref="Pan_paniscus"/>
+              <taxon idref="Pan_troglodytes"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade10" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet11" spec="TaxonSet">
+              <taxon idref="Homo_sapiens"/>
+              <taxon idref="Pan_paniscus"/>
+              <taxon idref="Pan_troglodytes"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade11" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet12" spec="TaxonSet">
+              <taxon idref="Cebus_capucinus_imitator"/>
+              <taxon idref="Saimiri_boliviensis"/>
+              <taxon idref="Aotus_nancymaae"/>
+              <taxon idref="Callithrix_jacchus"/>
+            </taxa>
+          </calibrations>
+          <calibrations id="CalibrationClade12" spec="calibration.CalibrationClade">
+            <taxa id="TaxonSet13" spec="TaxonSet">
+              <taxon idref="Cebus_capucinus_imitator"/>
+              <taxon idref="Saimiri_boliviensis"/>
+            </taxa>
+          </calibrations>
+        </distribution>
+        <distribution id="diversificationRate.prior" spec="beast.base.spec.inference.distribution.LogNormal" param="@diversificationRate">
+          <M id="RealScalarParam11" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real"/>
+          <S id="RealScalarParam12" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.25"/>
+        </distribution>
+        <distribution id="CalibrationPrior" spec="calibrationprior.CalibrationPrior" tree="@tree">
+          <calibration id="CalibrationCladePrior" spec="calibrationprior.CalibrationCladePrior" taxa="@TaxonSet1">
+            <upperAge id="RealScalarParam13" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="125.816"/>
+            <lowerAge id="RealScalarParam14" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="65.79"/>
+            <confidenceLevel id="RealScalarParam15" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="UnitInterval" value="0.9"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior1" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet2">
+            <upperAge id="RealScalarParam16" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="125.816"/>
+            <lowerAge id="RealScalarParam17" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="65.79"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior2" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet3">
+            <upperAge id="RealScalarParam18" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="66.095"/>
+            <lowerAge id="RealScalarParam19" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="55.935"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior3" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet4">
+            <upperAge id="RealScalarParam20" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="55.8"/>
+            <lowerAge id="RealScalarParam21" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="18.5"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior4" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet5">
+            <upperAge id="RealScalarParam22" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="25.235"/>
+            <lowerAge id="RealScalarParam23" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="12.47"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior5" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet6">
+            <upperAge id="RealScalarParam24" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="15.0"/>
+            <lowerAge id="RealScalarParam25" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="8.125"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior6" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet7">
+            <upperAge id="RealScalarParam26" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="15.0"/>
+            <lowerAge id="RealScalarParam27" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="6.5"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior7" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet8">
+            <upperAge id="RealScalarParam28" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="12.51"/>
+            <lowerAge id="RealScalarParam29" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="5.33"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior8" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet9">
+            <upperAge id="RealScalarParam30" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="25.235"/>
+            <lowerAge id="RealScalarParam31" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="13.4"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior9" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet10">
+            <upperAge id="RealScalarParam32" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="25.235"/>
+            <lowerAge id="RealScalarParam33" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="12.3"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior10" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet11">
+            <upperAge id="RealScalarParam34" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="15.0"/>
+            <lowerAge id="RealScalarParam35" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="4.631"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior11" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet12">
+            <upperAge id="RealScalarParam36" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="34.5"/>
+            <lowerAge id="RealScalarParam37" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="13.183"/>
+          </calibration>
+          <calibration id="CalibrationCladePrior12" spec="calibrationprior.CalibrationCladePrior" confidenceLevel="@RealScalarParam15" taxa="@TaxonSet13">
+            <upperAge id="RealScalarParam38" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="34.5"/>
+            <lowerAge id="RealScalarParam39" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="NonNegativeReal" value="13.032"/>
+          </calibration>
+        </distribution>
+        <distribution id="branchRates.prior" spec="beast.base.spec.inference.distribution.IID" param="@branchRates">
+          <distr id="LogNormalDistr.branchRates" spec="beast.base.spec.inference.distribution.LogNormal" S="@sigma" meanInRealSpace="true">
+            <M id="RealScalarParam40" spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+          </distr>
+        </distribution>
+      </distribution>
+      <distribution id="likelihood" spec="CompoundDistribution">
+        <distribution id="D.treeLikelihood" spec="beast.base.spec.evolution.likelihood.ThreadedTreeLikelihood" tree="@tree" useAmbiguities="true">
+          <data idref="D"/>
+          <siteModel id="SiteModel" spec="beast.base.spec.evolution.sitemodel.SiteModel" gammaCategoryCount="4" shape="@gamma">
+            <substModel id="HKY" spec="beast.base.spec.evolution.substitutionmodel.HKY" kappa="@kappa">
+              <frequencies id="Frequencies" spec="beast.base.spec.evolution.substitutionmodel.Frequencies" frequencies="@pi"/>
+            </substModel>
+          </siteModel>
+          <branchRateModel id="branchRates.model" spec="beast.base.spec.evolution.branchratemodel.UCRelaxedClockModel" clock.rate="@mRate" distr="@LogNormalDistr.branchRates" rates="@branchRates" tree="@tree"/>
+        </distribution>
+      </distribution>
+    </distribution>
+    <operator id="branchRates.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@branchRates" upper="10.0" weight="16.73908130811767"/>
+    <operator id="diversificationRate.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@diversificationRate" upper="10.0" weight="1.0"/>
+    <operator id="gamma.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@gamma" upper="10.0" weight="1.0"/>
+    <operator id="kappa.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@kappa" upper="10.0" weight="1.0"/>
+    <operator id="mRate.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@mRate" upper="10.0" weight="1.0"/>
+    <operator id="mRateUptreeDownOperator" spec="beast.base.spec.evolution.operator.UpDownOperator" scaleFactor="0.9" weight="10.560356962676234">
+      <up idref="mRate"/>
+      <down idref="tree"/>
+    </operator>
+    <operator id="pi.deltaExchange" spec="beast.base.spec.inference.operator.DeltaExchangeOperator" delta="0.25" rvparameter="@pi" weight="2.157669279974593"/>
+    <operator id="sigma.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@sigma" upper="10.0" weight="1.0"/>
+    <operator id="tree.intervalScale" spec="beast.base.spec.evolution.operator.IntervalScaleOperator" scaleFactor="0.1" tree="@tree" weight="10.304113218507691"/>
+    <operator id="tree.narrowExchange" spec="Exchange" tree="@tree" weight="10.304113218507691"/>
+    <operator id="tree.rootAgeScale" spec="beast.base.spec.evolution.operator.ScaleTreeOperator" rootOnly="true" tree="@tree" upper="0.975" weight="1.0"/>
+    <operator id="tree.subtreeSlide" spec="kernel.BactrianSubtreeSlide" size="7.193878686398946" tree="@tree" weight="10.304113218507691"/>
+    <operator id="tree.uniform" spec="kernel.BactrianNodeOperator" tree="@tree" weight="10.304113218507691"/>
+    <operator id="tree.wideExchange" spec="Exchange" isNarrow="false" tree="@tree" weight="1.9472943612303364"/>
+    <operator id="tree.wilsonBalding" spec="WilsonBalding" tree="@tree" weight="1.9472943612303364"/>
+    <operator id="turnover.scale" spec="beast.base.spec.inference.operator.ScaleOperator" parameter="@turnover" upper="10.0" weight="1.0"/>
+    <logger id="ScreenLogger" spec="Logger" logEvery="50000">
+      <log idref="posterior"/>
+      <log idref="likelihood"/>
+      <log idref="prior"/>
+      <log idref="pi"/>
+      <log idref="kappa"/>
+      <log idref="diversificationRate"/>
+      <log idref="turnover"/>
+      <log idref="sigma"/>
+      <log idref="mRate"/>
+      <log idref="gamma"/>
+    </logger>
+    <logger id="Logger" spec="Logger" fileName="$(filebase).log" logEvery="500">
+      <log idref="posterior"/>
+      <log idref="likelihood"/>
+      <log idref="prior"/>
+      <log idref="pi"/>
+      <log idref="kappa"/>
+      <log idref="diversificationRate"/>
+      <log idref="CalibrationPrior"/>
+      <log idref="turnover"/>
+      <log idref="sigma"/>
+      <log idref="mRate"/>
+      <log idref="gamma"/>
+      <log id="TreeStatLogger" spec="beast.base.evolution.tree.TreeStatLogger" tree="@tree"/>
+      <log id="RatesStat.branchRates" spec="beast.base.evolution.RateStatistic" branchratemodel="@branchRates.model" tree="@tree"/>
+      <log idref="D.treeLikelihood"/>
+    </logger>
+    <logger id="TreeWithMetaDataLogger.tree" spec="Logger" fileName="$(filebase).trees" logEvery="500" mode="tree">
+      <log id="TreeWithMetaDataLogger" spec="beast.base.spec.evolution.TreeWithMetaDataLogger" branchratemodel="@branchRates.model" tree="@tree"/>
+    </logger>
+  </run>
+</beast>

@@ -13,6 +13,7 @@ import org.hipparchus.linear.*;
 import org.hipparchus.special.Erf;
 import org.hipparchus.special.Gamma;
 
+import java.io.PrintStream;
 import java.util.*;
 
 /**
@@ -29,6 +30,7 @@ public class CalibrationPrior extends Distribution {
             new Input<>("calibration", "List of calibration clades", new ArrayList<>());
 
     private List<CalibrationNode> calibrationNodes = new ArrayList<>();
+    private Map<CalibrationNode, Double> cladeLogP = new LinkedHashMap<>();
 
     @Override
     public void initAndValidate() {
@@ -347,6 +349,7 @@ public class CalibrationPrior extends Distribution {
     public double calculateLogP() {
         TreeInterface tree = treeInput.get();
         double logP = 0;
+        cladeLogP.clear();
         for (CalibrationNode n : calibrationNodes) {
 
             // Check for monophyly
@@ -359,10 +362,10 @@ public class CalibrationPrior extends Distribution {
             }
 
             double t = mrca.getHeight();
+            double lp;
             if (n.parent == null) {
                 // root lognormal
-                double lp = logNormalLogPdf(t, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
-                logP += lp;
+                lp = logNormalLogPdf(t, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
             } else {
                 Node pNode = n.parent.getCommonAncestor(tree);
                 double tp = pNode.getHeight();
@@ -370,15 +373,17 @@ public class CalibrationPrior extends Distribution {
                     // overlapping → Beta
                     double r = t / tp;
                     if (r <= 0 || r >= 1) return Double.NEGATIVE_INFINITY;
-                    logP += betaLogPdf(r, n.getCalibrationCladePrior().alpha, n.getCalibrationCladePrior().beta) - Math.log(tp); // Jacobian for conversion of the joint density of tp and r to tp and t
+                    lp = betaLogPdf(r, n.getCalibrationCladePrior().alpha, n.getCalibrationCladePrior().beta) - Math.log(tp); // Jacobian for conversion of the joint density of tp and r to tp and t
                 } else {
                     // non-overlapping → truncated lognormal
-                    double lp = logNormalLogPdf(t, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
+                    lp = logNormalLogPdf(t, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
                     double lcdf = logNormalLogCdf(tp, n.getCalibrationCladePrior().mu, Math.sqrt(n.getCalibrationCladePrior().sigma2));
                     if (Double.isInfinite(lcdf)) return Double.NEGATIVE_INFINITY;
-                    logP += lp - lcdf;
+                    lp -= lcdf;
                 }
             }
+            cladeLogP.put(n, lp);
+            logP += lp;
         }
         return this.logP = logP;
     }
@@ -406,6 +411,29 @@ public class CalibrationPrior extends Distribution {
         if (x <= 0 || x >= 1) return Double.NEGATIVE_INFINITY;
         return (a - 1) * Math.log(x) + (b - 1) * Math.log(1 - x)
                 - (Gamma.logGamma(a) + Gamma.logGamma(b) - Gamma.logGamma(a + b));
+    }
+
+    @Override
+    public void init(final PrintStream out) {
+        for (CalibrationNode n : calibrationNodes) {
+            String id = n.getCalibrationClade().getTaxa().getID();
+            out.print("logP(mrca(" + id + "))\t");
+            out.print("mrca.age(" + id + ")\t");
+        }
+    }
+
+    @Override
+    public void log(final long sample, final PrintStream out) {
+        TreeInterface tree = treeInput.get();
+        for (CalibrationNode n : calibrationNodes) {
+            out.print(cladeLogP.getOrDefault(n, Double.NaN) + "\t");
+            out.print(n.getCommonAncestor(tree).getHeight() + "\t");
+        }
+    }
+
+    @Override
+    public void close(final PrintStream out) {
+        // nothing to do
     }
 
     public List<CalibrationCladePrior> getCalibrationCladePriors() {

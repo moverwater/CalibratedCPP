@@ -1,0 +1,73 @@
+data {
+    D = readNexus(file="primates.nex");
+    L = D.nchar();
+    taxa = D.taxa();
+    n = ntaxa(taxa=taxa);
+}
+model {
+    Euarchontoglires = D.getTaxaNames();
+
+    Euarchonta = ["Tupaia_chinensis","Galeopterus_variegatus","Otolemur_garnettii","Microcebus_murinus",
+               "Propithecus_coquereli","Carlito_syrichta","Cebus_capucinus_imitator",
+               "Saimiri_boliviensis","Aotus_nancymaae","Callithrix_jacchus","Nomascus_leucogenys","Pongo_abelii","Gorilla_gorilla",
+               "Homo_sapiens","Pan_paniscus","Pan_troglodytes","Colobus_angolensis_palliatus","Piliocolobus_tephrosceles","Rhinopithecus_bieti",
+               "Rhinopithecus_roxellana","Chlorocebus_sabaeus","Macaca_nemestrina", "Macaca_fascicularis",
+               "Macaca_mulatta", "Cercocebus_atys","Mandrillus_leucophaeus","Papio_anubis","Theropithecus_gelada"];
+    Primates = ["Otolemur_garnettii", "Microcebus_murinus", "Propithecus_coquereli", "Carlito_syrichta","Cebus_capucinus_imitator",
+               "Saimiri_boliviensis", "Aotus_nancymaae", "Callithrix_jacchus", "Nomascus_leucogenys",
+               "Pongo_abelii",
+               "Gorilla_gorilla",
+               "Homo_sapiens",
+               "Pan_paniscus",
+               "Pan_troglodytes",
+               "Colobus_angolensis_palliatus",
+               "Piliocolobus_tephrosceles",
+               "Rhinopithecus_bieti",
+               "Rhinopithecus_roxellana",
+               "Chlorocebus_sabaeus",
+               "Macaca_nemestrina",
+               "Macaca_fascicularis",
+               "Macaca_mulatta",
+               "Cercocebus_atys",
+               "Mandrillus_leucophaeus",
+               "Papio_anubis",
+                "Theropithecus_gelada"];
+    Lorisiformes = ["Otolemur_garnettii", "Microcebus_murinus", "Propithecus_coquereli"];
+    Cercopithecidae = ["Colobus_angolensis_palliatus", "Piliocolobus_tephrosceles", "Rhinopithecus_bieti","Rhinopithecus_roxellana","Chlorocebus_sabaeus", "Macaca_nemestrina", "Macaca_fascicularis", "Macaca_mulatta", "Cercocebus_atys", "Mandrillus_leucophaeus", "Papio_anubis","Theropithecus_gelada"];
+    Colobinae = ["Colobus_angolensis_palliatus","Piliocolobus_tephrosceles", "Rhinopithecus_bieti","Rhinopithecus_roxellana"];
+    Cercopithecinae = ["Chlorocebus_sabaeus", "Macaca_nemestrina", "Macaca_fascicularis", "Macaca_mulatta", "Cercocebus_atys", "Mandrillus_leucophaeus","Papio_anubis", "Theropithecus_gelada"];
+    Papionini = ["Macaca_nemestrina", "Macaca_fascicularis", "Macaca_mulatta", "Cercocebus_atys", "Mandrillus_leucophaeus", "Papio_anubis","Theropithecus_gelada"];
+    Hominoidea = ["Nomascus_leucogenys", "Pongo_abelii","Gorilla_gorilla", "Homo_sapiens", "Pan_paniscus","Pan_troglodytes"];
+    Hominidae = ["Pongo_abelii", "Gorilla_gorilla", "Homo_sapiens", "Pan_paniscus", "Pan_troglodytes"];
+    Homo_Pan = ["Homo_sapiens", "Pan_paniscus", "Pan_troglodytes"];
+    Callitrichidae_Cebidae = ["Cebus_capucinus_imitator","Saimiri_boliviensis", "Aotus_nancymaae","Callithrix_jacchus"];
+    Cebidae = ["Cebus_capucinus_imitator", "Saimiri_boliviensis"];
+
+    calibrationTaxa = [Euarchontoglires,Euarchonta,Primates,Lorisiformes,Cercopithecidae,Colobinae,Cercopithecinae,Papionini,Hominoidea,Hominidae,Homo_Pan,Callitrichidae_Cebidae, Cebidae];
+    upperBounds = [120.0, 110.0, 60.0, 40.0, 14.0, 10.0, 10.0, 8.0, 18.0, 15.0, 10.0, 20.0, 15.0];
+    lowerBounds = [119.0, 109.0, 59.0, 39.0, 13.0,  9.0,  9.0, 7.0, 17.0, 14.0,  9.0, 19.0, 14.0];
+
+    calibrations ~ ConditionedMRCAPrior(calibrationTaxa = [Euarchontoglires, Euarchonta, Primates, Lorisiformes,
+                                                                      Cercopithecidae, Colobinae, Cercopithecinae, Papionini,
+                                                                      Hominoidea, Hominidae, Homo_Pan, Callitrichidae_Cebidae, Cebidae], upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
+    diversificationRate ~ LogNormal(meanlog = 0.0, sdlog = 1.25);
+
+    turnover ~ Beta(alpha = 1.0, beta = 1.0);
+    tree ~ CalibratedCPP(calibrations = calibrations, turnover = turnover, diversification = diversificationRate, rho = 0.05, n=n);
+
+
+
+    π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);
+    kappa ~ LogNormal(meanlog = 1.0 , sdlog = 1.25);
+    Q = hky(kappa = kappa, freq = π);
+    
+    gamma ~ LogNormal(meanlog=0, sdlog=2);
+    siteRates ~ DiscretizeGamma(shape=gamma, ncat=4, replicates=L);
+    
+    sigma ~ LogNormal(meanlog=-0.693,sdlog=0.5);
+    branchRates ~ UCLN_Mean1(uclnSigma=sigma, tree=tree);
+    
+    mRate ~ LogNormal(meanlog=-9, sdlog=5);
+
+    D ~ PhyloCTMC(L = L, Q = Q, branchRates = branchRates, mu = mRate, tree = tree, siteRates = siteRates);
+}
