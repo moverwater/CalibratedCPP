@@ -22,6 +22,7 @@ import argparse
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
+from analytical_cherry_prob import cherryProb, cherryProb_root
 
 # ── Column mapping (TreeStat2 header → internal name) ────────────────────────
 
@@ -167,11 +168,17 @@ def make_figure_100leaf(stats_a, stats_b, label_a, label_b, title, stats_nc=None
     return fig
 
 
-def make_figure_4leaf_combined(stem_data, root_data, stat_subset):
+def make_figure_4leaf_combined(stem_data, root_data, stat_subset,
+                               stem_analytical_cherry_p=None,
+                               root_analytical_cherry_p=None):
     """2×3 figure combining origin- and root-conditioned 4-leaf scenarios.
 
     stem_data / root_data: dicts with keys 'lphy', 'mcmc', 'nc' (optional),
                            each mapping to a stats dict.
+    stem_analytical_cherry_p: if given, draw the analytical P on the cherry
+                              panel of the Origin Conditioned row.
+    root_analytical_cherry_p: if given, draw the analytical P on the cherry
+                              panel of the Root Conditioned row.
     """
     n = len(stat_subset)
     fig, axes = plt.subplots(2, n, figsize=(2 * n, 5))
@@ -184,6 +191,7 @@ def make_figure_4leaf_combined(stem_data, root_data, stat_subset):
     ]
 
     legend_handles = None
+    analytical_handle = None
     for row, (row_title, data) in enumerate(row_info):
         for col, s in enumerate(stat_subset):
             ax = axes[row, col]
@@ -198,10 +206,27 @@ def make_figure_4leaf_combined(stem_data, root_data, stat_subset):
             if legend_handles is None:
                 legend_handles, legend_labels = ax.get_legend_handles_labels()
 
+            analytical_p = (stem_analytical_cherry_p if row == 0
+                            else root_analytical_cherry_p)
+            if s == "cherries" and analytical_p is not None:
+                p2 = analytical_p
+                p1 = 1.0 - p2
+                line, = ax.plot([0.5, 1.5], [p1, p1], color="black",
+                                linestyle="--", linewidth=1.2)
+                ax.plot([1.5, 2.5], [p2, p2], color="black",
+                        linestyle="--", linewidth=1.2)
+                if analytical_handle is None:
+                    analytical_handle = line
+
     # Shared legend below the figure
-    if legend_handles:
-        fig.legend(legend_handles, legend_labels,
-                   loc="lower center", ncol=len(legend_handles),
+    all_handles = legend_handles or []
+    all_labels  = legend_labels  if legend_handles else []
+    if analytical_handle is not None:
+        all_handles = all_handles + [analytical_handle]
+        all_labels  = all_labels  + ["Analytical"]
+    if all_handles:
+        fig.legend(all_handles, all_labels,
+                   loc="lower center", ncol=len(all_handles),
                    fontsize=7, frameon=False,
                    bbox_to_anchor=(0.5, 0.0))
 
@@ -304,7 +329,17 @@ def main():
             if data["nc"]:
                 print_comparison(data["lphy"], data["nc"], "LPhy",
                                  "MCMC (not conditioned)", stat_subset=LEAF4_STATS)
-        fig = make_figure_4leaf_combined(stem_data, root_data, LEAF4_STATS)
+        analytical_stem_p = cherryProb(
+            birth_rate=2.0, death_rate=1.0, rho=0.5, time=3.0, cherryTime=1.0
+        )
+        analytical_root_p = cherryProb_root(
+            birth_rate=2.0, death_rate=1.0, rho=0.5, time=3.0, cherryTime=1.0
+        )
+        print(f"\n  Analytical P (stem conditioned) = {analytical_stem_p:.4f}")
+        print(f"  Analytical P (root conditioned) = {analytical_root_p:.4f}")
+        fig = make_figure_4leaf_combined(stem_data, root_data, LEAF4_STATS,
+                                         stem_analytical_cherry_p=analytical_stem_p,
+                                         root_analytical_cherry_p=analytical_root_p)
         fig.savefig("fix4Leaf_distributions.pdf", bbox_inches="tight")
         plt.close(fig)
         print("  Saved: fix4Leaf_distributions.pdf")

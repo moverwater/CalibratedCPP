@@ -14,7 +14,6 @@ open module calibratedcpp.beast {
     exports calibratedcpp;
     exports calibration;
     exports calibrationprior;
-    exports calibrationprior.logger;
     exports calibratedcpp.beauti;
 
     // CalibratedCoalescentPointProcess (abstract), CalibrationNode/Forest (no default ctor),
@@ -26,6 +25,5 @@ open module calibratedcpp.beast {
         calibratedcpp.SkylineParameter,
         calibrationprior.CalibrationPrior,
         calibrationprior.CalibrationCladePrior,
-        calibrationprior.logger.MRCALogger,
         calibration.CalibrationClade;
 }

@@ -10,7 +10,6 @@
         <provider classname="calibratedcpp.distribution.Erlang"/>
         <provider classname="calibrationprior.CalibrationPrior"/>
         <provider classname="calibrationprior.CalibrationCladePrior"/>
-        <provider classname="calibrationprior.logger.MRCALogger"/>
         <provider classname="calibration.CalibrationNode"/>
         <provider classname="calibration.CalibrationClade"/>
         <provider classname="calibration.CalibrationForest"/>
