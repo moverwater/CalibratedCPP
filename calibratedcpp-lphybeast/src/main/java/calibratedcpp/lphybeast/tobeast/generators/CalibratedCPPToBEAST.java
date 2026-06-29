@@ -12,7 +12,6 @@ import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
-import calibration.CalibrationClade;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
 import calibrationprior.CalibrationCladePrior;
 import calibrationprior.CalibrationPrior;
@@ -80,19 +79,14 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         }
 
         // get clade calibrations
-        List<CalibrationClade> calibrations = new ArrayList<>();
         Calibration[] calibrationsFromGenerator = generator.getCalibrations().value().getCalibrationArray();
 
         for (Calibration calibration : calibrationsFromGenerator) {
-            CalibrationClade calibrationClade = new CalibrationClade();
             TaxonSet taxonSet = getTaxonSet((TreeInterface) value, calibration.getTaxa());
             taxonSets.add(taxonSet);
-            calibrationClade.setInputValue("taxa", taxonSet);
-            calibrationClade.initAndValidate();
-            calibrations.add(calibrationClade);
         }
 
-        model.setInputValue("calibrations", calibrations);
+        model.setInputValue("calibrations", taxonSets);
         model.initAndValidate();
 
         /*

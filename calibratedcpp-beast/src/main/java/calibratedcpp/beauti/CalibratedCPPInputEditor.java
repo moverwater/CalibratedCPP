@@ -1,539 +1,954 @@
 package calibratedcpp.beauti;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.evolution.alignment.Taxon;
+import beast.base.evolution.alignment.TaxonSet;
+import beast.base.inference.StateNode;
+import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.PositiveReal;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.parameter.RealScalarParam;
+import beast.base.spec.inference.parameter.RealVectorParam;
+import beast.base.spec.type.Tensor;
 import beastfx.app.beauti.TreeDistributionInputEditor;
 import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.util.FXUtils;
+import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.CalibratedCoalescentPointProcess;
+import calibratedcpp.SkylineParameter;
+import calibration.ConstraintTree;
+import calibrationprior.CalibrationCladePrior;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Separator;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
-import javafx.scene.web.WebView;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import netscape.javascript.JSObject;
 
 public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
 
-    List<String> taxa = Arrays.asList("Apple", "Banana", "Cherry");
-    String chart = "";
-    String d3 = "";
+    // ── Calibration state ─────────────────────────────────────────────────────────
 
-    private Stage popupStage;
-    private WebView webView;
-    
-    private Object calibrations = null, idCounter = null;
-
-    public CalibratedCPPInputEditor(BeautiDoc doc) {
-        super(doc);
+    static class CalibrationEntry {
+        String label;
+        final String color;
+        final List<String> directTaxa = new ArrayList<>();
+        final List<CalibrationEntry> directChildCals = new ArrayList<>();
+        Double lower, upper;
+        // checkbox references — populated when the card is built, used for in-place updates
+        final Map<String, CheckBox> taxaCbMap = new HashMap<>();
+        final Map<CalibrationEntry, CheckBox> childCalCbMap = new HashMap<>();
+        CalibrationEntry(String label, String color) { this.label = label; this.color = color; }
     }
 
-    public CalibratedCPPInputEditor() {
-		super();
-	}
+    private static final String[] COLORS = {
+        "#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f",
+        "#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac"
+    };
 
-	@Override
-    public Class<?> type() {
-        return CalibratedCoalescentPointProcess.class;
-    }
+    private List<String> taxa = Arrays.asList("Apple", "Banana", "Cherry");
+    private final List<CalibrationEntry> calibrationEntries = new ArrayList<>();
+    private int colorIndex = 0;
 
-	@Override
-	public void init(Input<?> input, BEASTInterface beastObject, int listItemNr, ExpandOption isExpandOption,
-			boolean addButtons) {
-		super.init(input, beastObject, listItemNr, isExpandOption, addButtons);
+    private VBox skylineEditorsBox;
 
-		try {
-			loadjs();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-        CalibratedCoalescentPointProcess cpp = (CalibratedCoalescentPointProcess) m_beastObject;
-        taxa = cpp.treeInput.get().getTaxonset().asStringList();
+    // ── Parameterization tables ───────────────────────────────────────────────────
+
+    private static final String[][] PARAM_PAIRS = {
+        {"Diversification rate + Turnover",            "diversificationRate", "turnover"},
+        {"Birth rate + Death rate",                    "birthRate",           "deathRate"},
+        {"Birth rate + Turnover",                      "birthRate",           "turnover"},
+        {"Birth rate + Reproductive number",           "birthRate",           "reproductiveNumber"},
+        {"Diversification rate + Death rate",          "diversificationRate", "deathRate"},
+        {"Diversification rate + Reproductive number", "diversificationRate", "reproductiveNumber"},
+        {"Death rate + Turnover",                      "deathRate",           "turnover"},
+        {"Death rate + Reproductive number",           "deathRate",           "reproductiveNumber"},
+        {"Birth rate + Diversification rate",          "birthRate",           "diversificationRate"},
+    };
+
+    private static final String[] ALL_RATE_NAMES =
+        {"birthRate", "deathRate", "diversificationRate", "reproductiveNumber", "turnover"};
+
+    public CalibratedCPPInputEditor(BeautiDoc doc) { super(doc); }
+    public CalibratedCPPInputEditor() { super(); }
+
+    @Override
+    public Class<?> type() { return CalibratedCoalescentPointProcess.class; }
+
+    @Override
+    public void init(Input<?> input, BEASTInterface beastObject, int listItemNr,
+                     ExpandOption isExpandOption, boolean addButtons) {
+        super.init(input, beastObject, listItemNr, isExpandOption, addButtons);
+
+        CalibratedBirthDeathSkylineModel cpp = (CalibratedBirthDeathSkylineModel) m_beastObject;
+        try { taxa = cpp.treeInput.get().getTaxonset().asStringList(); } catch (Exception ignored) {}
+
+        if (calibrationEntries.isEmpty()) initCalibrationsFromModel(cpp);
 
         Button calibrationButton = new Button("Manage calibrations");
-        pane.getChildren().add(calibrationButton);
         calibrationButton.setOnAction(e -> openPopup());
-	}
-	
-    private void loadjs() throws IOException {
-    	{
-	        InputStream instr = this.getClass().getClassLoader().getResourceAsStream("resources/chart.js");
-	
-	        // reading the files with buffered reader 
-	        InputStreamReader strrd = new InputStreamReader(instr);
-	       
-	        BufferedReader rr = new BufferedReader(strrd);
-	        String line;
-	        // outputting each line of the file.
-	        while ((line = rr.readLine()) != null) { 
-	            //System.out.println(line);
-	        	chart += line + "\n";
-	        }
-	        System.out.println("Chart " + chart.length());
-    	}
-    	{
-	        InputStream instr = this.getClass().getClassLoader().getResourceAsStream("resources/d3.v7.min.js");
-	    	
-	        // reading the files with buffered reader 
-	        InputStreamReader strrd = new InputStreamReader(instr);
-	       
-	        BufferedReader rr = new BufferedReader(strrd);
-	        String line;
-	        // outputting each line of the file.
-	        while ((line = rr.readLine()) != null) { 
-	            //System.out.println(line);
-	        	d3 += line + "\n";
-	        }
-	        System.out.println("d3 " + d3.length());
-    	}
+        pane.getChildren().add(calibrationButton);
+
+        HBox paramRow = FXUtils.newHBox();
+        paramRow.setSpacing(8);
+        paramRow.setPadding(new Insets(8, 0, 4, 0));
+        paramRow.getChildren().add(new Label("Parameterization:"));
+        ChoiceBox<String> paramChoice = new ChoiceBox<>();
+        for (String[] pair : PARAM_PAIRS) paramChoice.getItems().add(pair[0]);
+        paramChoice.getSelectionModel().select(detectCurrentPairIndex(cpp));
+        paramRow.getChildren().add(paramChoice);
+        pane.getChildren().add(paramRow);
+
+        skylineEditorsBox = FXUtils.newVBox();
+        skylineEditorsBox.setSpacing(10);
+        pane.getChildren().add(skylineEditorsBox);
+        refreshSkylineEditors(cpp);
+
+        paramChoice.getSelectionModel().selectedIndexProperty().addListener((obs, oldIdx, newIdx) -> {
+            if (newIdx.intValue() < 0) return;
+            String[] pair = PARAM_PAIRS[newIdx.intValue()];
+            try { switchParameterization(cpp, pair[1], pair[2]); } catch (Exception ex) { ex.printStackTrace(); }
+            refreshSkylineEditors(cpp);
+        });
     }
-    
+
+    // ── Model initialization ──────────────────────────────────────────────────────
+
+    private void initCalibrationsFromModel(CalibratedBirthDeathSkylineModel cpp) {
+        String partition = partitionOf(cpp);
+        List<CalibrationCladePrior> ccps = doc.pluginmap.entrySet().stream()
+            .filter(e -> e.getKey().startsWith("CalibrationCladePrior.") && e.getKey().endsWith("." + partition))
+            .filter(e -> e.getValue() instanceof CalibrationCladePrior)
+            .map(e -> (CalibrationCladePrior) e.getValue())
+            .toList();
+        if (ccps.isEmpty()) return;
+
+        Set<String> claimed = new LinkedHashSet<>();
+        for (CalibrationCladePrior ccp : ccps) {
+            String key = ccp.getID();
+            String label = key.substring("CalibrationCladePrior.".length(),
+                                         key.length() - ("." + partition).length());
+            CalibrationEntry entry = new CalibrationEntry(label, COLORS[colorIndex % COLORS.length]);
+            colorIndex++;
+            entry.lower = ccp.getLower();
+            entry.upper = ccp.getUpper();
+            TaxonSet ts = ccp.getTaxa();
+            if (ts != null) {
+                for (Taxon t : ts.getTaxonSet()) {
+                    String name = t.getID();
+                    if (taxa.contains(name) && !claimed.contains(name)) {
+                        entry.directTaxa.add(name);
+                        claimed.add(name);
+                    }
+                }
+            }
+            calibrationEntries.add(entry);
+        }
+    }
+
+    // ── Parameterization ─────────────────────────────────────────────────────────
+
+    private int detectCurrentPairIndex(CalibratedBirthDeathSkylineModel cpp) {
+        List<String> active = new ArrayList<>();
+        for (String name : ALL_RATE_NAMES)
+            if (getSkylineInput(cpp, name).get() != null) active.add(name);
+        if (active.size() == 2) {
+            for (int i = 0; i < PARAM_PAIRS.length; i++) {
+                if (PARAM_PAIRS[i][1].equals(active.get(0)) && PARAM_PAIRS[i][2].equals(active.get(1))) return i;
+                if (PARAM_PAIRS[i][1].equals(active.get(1)) && PARAM_PAIRS[i][2].equals(active.get(0))) return i;
+            }
+        }
+        return 0;
+    }
+
+    private void switchParameterization(CalibratedBirthDeathSkylineModel cpp, String p1, String p2) {
+        for (String name : ALL_RATE_NAMES) {
+            Input<SkylineParameter> in = getSkylineInput(cpp, name);
+            SkylineParameter old = in.get();
+            if (old != null) setEstimated(old.valuesInput.get(), false);
+            in.setValue(null, cpp);
+        }
+        String partition = partitionOf(cpp);
+        activateSkylineParam(cpp, p1, partition);
+        activateSkylineParam(cpp, p2, partition);
+    }
+
+    private void activateSkylineParam(CalibratedBirthDeathSkylineModel cpp, String paramName, String partition) {
+        String paramId = paramName + "." + partition;
+        String spId    = paramName + "SP." + partition;
+        RealScalarParam<?> scalar;
+        BEASTInterface existing = doc.pluginmap.get(paramId);
+        if (existing instanceof RealScalarParam<?> rsp) {
+            scalar = rsp;
+        } else {
+            scalar = new RealScalarParam<>(defaultValueFor(paramName), domainFor(paramName));
+            scalar.setID(paramId);
+            pluginPut(paramId, scalar);
+        }
+        setEstimated(scalar, true);
+        SkylineParameter sp;
+        BEASTInterface existingSP = doc.pluginmap.get(spId);
+        if (existingSP instanceof SkylineParameter esp) {
+            sp = esp;
+        } else {
+            sp = new SkylineParameter();
+            sp.valuesInput.setValue(scalar, sp);
+            sp.initAndValidate();
+            sp.setID(spId);
+            pluginPut(spId, sp);
+        }
+        getSkylineInput(cpp, paramName).setValue(sp, cpp);
+    }
+
+    /** Registers a plugin, using doc.addPlugin when the ID is new, or directly replacing a stale
+     *  placeholder when the ID already exists (avoiding BEAUti's "could not add entry" dialog). */
+    private void pluginPut(String id, BEASTInterface plugin) {
+        if (doc.pluginmap.containsKey(id))
+            doc.pluginmap.put(id, plugin);
+        else
+            doc.addPlugin(plugin);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Input<SkylineParameter> getSkylineInput(CalibratedBirthDeathSkylineModel cpp, String name) {
+        return (Input<SkylineParameter>) switch (name) {
+            case "birthRate"           -> cpp.birthRateInput;
+            case "deathRate"           -> cpp.deathRateInput;
+            case "diversificationRate" -> cpp.diversificationRateInput;
+            case "reproductiveNumber"  -> cpp.reproductiveNumberInput;
+            case "turnover"            -> cpp.turnoverInput;
+            default -> throw new IllegalArgumentException("Unknown rate: " + name);
+        };
+    }
+
+    private static String partitionOf(CalibratedBirthDeathSkylineModel cpp) {
+        return cpp.getID().replaceFirst("^CalibratedCPP\\.", "");
+    }
+
+    private static void setEstimated(Tensor<?, ?> tensor, boolean estimated) {
+        if (tensor instanceof StateNode sn) sn.isEstimatedInput.setValue(estimated, sn);
+    }
+
+    // ── Skyline editors ───────────────────────────────────────────────────────────
+
+    private void refreshSkylineEditors(CalibratedBirthDeathSkylineModel cpp) {
+        skylineEditorsBox.getChildren().clear();
+        for (String name : ALL_RATE_NAMES) {
+            SkylineParameter sp = getSkylineInput(cpp, name).get();
+            if (sp != null) skylineEditorsBox.getChildren().add(buildSkylineEditor(sp, name));
+        }
+    }
+
+    private VBox buildSkylineEditor(SkylineParameter sp, String paramName) {
+        VBox box = FXUtils.newVBox();
+        box.setSpacing(4);
+        box.setPadding(new Insets(6));
+        box.setStyle("-fx-border-color: #b0b0b0; -fx-border-radius: 4;");
+        box.getChildren().add(new Label(displayNameOf(paramName)));
+
+        int nChanges = sp.changeTimesInput.get() == null ? 0 : sp.changeTimesInput.get().size();
+
+        HBox epochRow = FXUtils.newHBox();
+        epochRow.setSpacing(6);
+        epochRow.getChildren().add(new Label("Epochs:"));
+        Spinner<Integer> epochSpinner = new Spinner<>(1, 100, nChanges + 1);
+        epochSpinner.setEditable(true);
+        epochSpinner.setPrefWidth(70);
+        epochRow.getChildren().add(epochSpinner);
+        box.getChildren().add(epochRow);
+
+        HBox flagsRow = FXUtils.newHBox();
+        flagsRow.setSpacing(12);
+        CheckBox agesCb = new CheckBox("Times are ages");
+        agesCb.setSelected(sp.timesAreAgesInput.get());
+        CheckBox relCb = new CheckBox("Relative to process length (0–1)");
+        relCb.setSelected(sp.timesAreRelativeInput.get());
+        relCb.setTooltip(new Tooltip("Change times as fractions of process length — must be between 0 and 1."));
+        Button distBtn = new Button("Distribute evenly");
+        distBtn.setTooltip(new Tooltip("Space change times evenly (fractions if relative, else 1, 2, ...)."));
+        flagsRow.getChildren().addAll(agesCb, relCb, distBtn);
+        box.getChildren().add(flagsRow);
+
+        HBox ctRow = FXUtils.newHBox();
+        ctRow.setSpacing(4);
+        VBox ctBox = FXUtils.newVBox();
+        ctBox.setSpacing(2);
+        ctBox.getChildren().addAll(new Label("Change times:"), ctRow);
+        ctBox.setVisible(nChanges > 0);
+        ctBox.setManaged(nChanges > 0);
+        box.getChildren().add(ctBox);
+
+        HBox valRow = FXUtils.newHBox();
+        valRow.setSpacing(4);
+        VBox valBox = FXUtils.newVBox();
+        valBox.setSpacing(2);
+        valBox.getChildren().addAll(new Label("Epoch values (root → present):"), valRow);
+        box.getChildren().add(valBox);
+
+        rebuildSkylineRows(sp, nChanges, ctRow, valRow, agesCb, relCb);
+
+        epochSpinner.valueProperty().addListener((obs, o, nv) -> {
+            int nc = nv - 1;
+            ensureChangeTimes(sp, nc);
+            ensureValues(sp, nv);
+            ctBox.setVisible(nc > 0);
+            ctBox.setManaged(nc > 0);
+            rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
+        });
+        agesCb.selectedProperty().addListener((obs, o, n) -> {
+            sp.timesAreAgesInput.setValue(n, sp);
+            rebuildSkylineRows(sp, epochSpinner.getValue() - 1, ctRow, valRow, agesCb, relCb);
+        });
+        relCb.selectedProperty().addListener((obs, o, n) -> {
+            sp.timesAreRelativeInput.setValue(n, sp);
+            int nc = epochSpinner.getValue() - 1;
+            ctBox.setVisible(nc > 0);
+            ctBox.setManaged(nc > 0);
+            rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
+            setTimeFieldValues(ctRow, evenlySpaced(nc, n));
+            sp.initAndValidate();
+            sync();
+        });
+        distBtn.setOnAction(e -> {
+            int nc = epochSpinner.getValue() - 1;
+            rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
+            setTimeFieldValues(ctRow, evenlySpaced(nc, relCb.isSelected()));
+            sp.initAndValidate();
+            sync();
+        });
+        return box;
+    }
+
+    private void rebuildSkylineRows(SkylineParameter sp, int nChanges,
+                                    HBox ctRow, HBox valRow, CheckBox agesCb, CheckBox relCb) {
+        ctRow.getChildren().clear();
+        valRow.getChildren().clear();
+        boolean relative = relCb.isSelected();
+        if (nChanges > 0) {
+            RealVectorParam<?> ctParam = changeTimesParam(sp);
+            double[] defaults = evenlySpaced(nChanges, relative);
+            for (int i = 0; i < nChanges; i++) {
+                double v = (ctParam != null && i < ctParam.size()) ? (double) ctParam.get(i) : defaults[i];
+                ctRow.getChildren().add(new Label(agesCb.isSelected() ? ("Age " + (i + 1) + ":") : ("t" + (i + 1) + ":")));
+                final int fi = i;
+                TextField tf = compactField(v);
+                tf.textProperty().addListener((obs, old, nw) -> {
+                    try { setChangeTime(sp, fi, Double.parseDouble(nw)); } catch (NumberFormatException ignored) {}
+                });
+                ctRow.getChildren().add(tf);
+            }
+        }
+        int nEpochs = nChanges + 1;
+        Tensor<?, Double> vParam = sp.valuesInput.get();
+        for (int i = 0; i < nEpochs; i++) {
+            double v = (vParam != null && i < vParam.size()) ? (double) vParam.get(i) : 1.0;
+            valRow.getChildren().add(new Label("E" + (i + 1) + ":"));
+            final int fi = i;
+            TextField tf = compactField(v);
+            tf.textProperty().addListener((obs, old, nw) -> {
+                try { setEpochValue(sp, fi, Double.parseDouble(nw)); } catch (NumberFormatException ignored) {}
+            });
+            valRow.getChildren().add(tf);
+        }
+    }
+
+    private static TextField compactField(double value) {
+        TextField tf = new TextField(String.valueOf(value));
+        tf.setPrefWidth(70);
+        tf.setPadding(new Insets(2));
+        return tf;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void ensureChangeTimes(SkylineParameter sp, int nChanges) {
+        if (nChanges == 0) { sp.changeTimesInput.setValue(null, sp); return; }
+        boolean relative = sp.timesAreRelativeInput.get();
+        RealVectorParam<NonNegativeReal> ct = changeTimesParam(sp);
+        if (ct == null) {
+            // The vector may have been disconnected (setValue null) but still live in pluginmap —
+            // reuse it to avoid a duplicate-ID dialog on the next addPlugin call.
+            String spId = sp.getID();
+            String ctId = spId != null ? spId + ".changeTimes" : null;
+            if (ctId != null && doc.pluginmap.get(ctId) instanceof RealVectorParam<?> v)
+                ct = (RealVectorParam<NonNegativeReal>) v;
+            else {
+                ct = new RealVectorParam<>(evenlySpaced(nChanges, relative), NonNegativeReal.INSTANCE);
+                if (ctId != null) ct.setID(ctId);
+                doc.addPlugin(ct);
+            }
+            sp.changeTimesInput.setValue(ct, sp);
+        }
+        double[] old = toDoubles(ct);
+        double[] defaults = evenlySpaced(nChanges, relative);
+        double[] upd = new double[nChanges];
+        for (int i = 0; i < nChanges; i++) upd[i] = i < old.length ? old[i] : defaults[i];
+        resetVector(ct, upd);
+    }
+
+    private static void setTimeFieldValues(HBox ctRow, double[] values) {
+        int vi = 0;
+        for (javafx.scene.Node node : ctRow.getChildren()) {
+            if (node instanceof TextField tf && vi < values.length)
+                tf.setText(String.valueOf(values[vi++]));
+        }
+    }
+
+    private static double[] evenlySpaced(int n, boolean relative) {
+        double[] v = new double[n];
+        for (int i = 0; i < n; i++) v[i] = relative ? (double)(i + 1) / (n + 1) : (double)(i + 1);
+        return v;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void ensureValues(SkylineParameter sp, int nEpochs) {
+        Tensor<?, Double> existing = sp.valuesInput.get();
+        Real dom = existing instanceof RealScalarParam<?> rsp ? rsp.domainTypeInput.get()
+                 : existing instanceof RealVectorParam<?> vp  ? vp.domainTypeInput.get()
+                 : Real.INSTANCE;
+        if (existing instanceof RealVectorParam<?> vp) {
+            double[] old = toDoubles(vp);
+            double[] upd = new double[nEpochs];
+            for (int i = 0; i < nEpochs; i++) upd[i] = i < old.length ? old[i] : (old.length > 0 ? old[old.length - 1] : 1.0);
+            resetVector(vp, upd);
+        } else {
+            double scalar = (existing != null) ? (double) existing.get(0) : 1.0;
+            double[] init = new double[nEpochs];
+            for (int i = 0; i < nEpochs; i++) init[i] = scalar;
+            String spId = sp.getID();
+            String vpId = spId != null ? spId + ".values" : null;
+            // Reuse an orphaned vector from pluginmap rather than adding a duplicate.
+            @SuppressWarnings({"unchecked","rawtypes"})
+            RealVectorParam<?> vp = (vpId != null && doc.pluginmap.get(vpId) instanceof RealVectorParam<?> v)
+                    ? v : new RealVectorParam(init, dom);
+            if (vp.getID() == null && vpId != null) vp.setID(vpId);
+            if (!doc.pluginmap.containsKey(vp.getID())) doc.addPlugin(vp);
+            sp.valuesInput.setValue(vp, sp);
+        }
+    }
+
+    private void setChangeTime(SkylineParameter sp, int idx, double val) {
+        RealVectorParam<?> ct = changeTimesParam(sp);
+        if (ct == null) return;
+        double[] vals = toDoubles(ct);
+        if (idx < vals.length) { vals[idx] = val; resetVector(ct, vals); }
+    }
+
+    private void setEpochValue(SkylineParameter sp, int idx, double val) {
+        if (!(sp.valuesInput.get() instanceof RealVectorParam<?> vp)) return;
+        double[] vals = toDoubles(vp);
+        if (idx < vals.length) { vals[idx] = val; resetVector(vp, vals); }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RealVectorParam<NonNegativeReal> changeTimesParam(SkylineParameter sp) {
+        Tensor<?, ?> t = sp.changeTimesInput.get();
+        return (t instanceof RealVectorParam<?>) ? (RealVectorParam<NonNegativeReal>) t : null;
+    }
+
+    private static double[] toDoubles(RealVectorParam<?> vp) {
+        double[] out = new double[vp.size()];
+        for (int i = 0; i < out.length; i++) out[i] = (double) vp.get(i);
+        return out;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void resetVector(RealVectorParam<?> vp, double[] vals) {
+        List<Double> list = new ArrayList<>(vals.length);
+        for (double v : vals) list.add(v);
+        ((RealVectorParam<Real>) vp).valuesInput.setValue(list, vp);
+        vp.initAndValidate();
+    }
+
+    private static String displayNameOf(String paramName) {
+        return switch (paramName) {
+            case "birthRate"           -> "Birth rate (λ)";
+            case "deathRate"           -> "Death rate (μ)";
+            case "diversificationRate" -> "Diversification rate (λ − μ)";
+            case "turnover"            -> "Turnover (μ/λ)";
+            case "reproductiveNumber"  -> "Reproductive number (λ/μ)";
+            default -> paramName;
+        };
+    }
+
+    private static double defaultValueFor(String paramName) {
+        return switch (paramName) {
+            case "birthRate"           -> 0.5;
+            case "deathRate"           -> 0.25;
+            case "diversificationRate" -> 0.1;
+            case "turnover"            -> 0.5;
+            case "reproductiveNumber"  -> 2.0;
+            default -> 1.0;
+        };
+    }
+
+    private static Real domainFor(String paramName) {
+        return switch (paramName) {
+            case "birthRate", "deathRate", "turnover", "reproductiveNumber" -> PositiveReal.INSTANCE;
+            default -> Real.INSTANCE;
+        };
+    }
+
+    // ── Calibration popup ─────────────────────────────────────────────────────────
+
     private void openPopup() {
-        popupStage = new Stage();
-        popupStage.initModality(Modality.APPLICATION_MODAL);
-        popupStage.setTitle("Edit List");
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setTitle("Manage Calibrations");
 
-        webView = new WebView();
+        VBox cardBox = FXUtils.newVBox();
+        cardBox.setSpacing(8);
+        cardBox.setPadding(new Insets(10));
+        ScrollPane scrollPane = new ScrollPane(cardBox);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background-color: #f5f5f5;");
 
-        
-        // Bridge between JavaScript and Java
-        webView.getEngine().getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
-            if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
-                JSObject window = (JSObject) webView.getEngine().executeScript("window");
-                window.setMember("javaConnector", new JavaConnector());
+        HBox topBar = new HBox(8);
+        topBar.setPadding(new Insets(8, 10, 8, 10));
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setStyle("-fx-background-color: #ececec; -fx-border-color: #d0d0d0; -fx-border-width: 0 0 1 0;");
+        Label title = new Label("Calibrations");
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+        HBox.setHgrow(title, Priority.ALWAYS);
+        Button addBtn = new Button("+ Add");
+        addBtn.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;");
+        topBar.getChildren().addAll(title, addBtn);
+
+        HBox bottomBar = new HBox(8);
+        bottomBar.setPadding(new Insets(8, 10, 8, 10));
+        bottomBar.setAlignment(Pos.CENTER_LEFT);
+        bottomBar.setStyle("-fx-background-color: #ececec; -fx-border-color: #d0d0d0; -fx-border-width: 1 0 0 0;");
+        Button importBtn = new Button("Import Newick…");
+        Button exportBtn = new Button("Export Newick…");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Button saveBtn = new Button("Save & Close");
+        saveBtn.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold;");
+        bottomBar.getChildren().addAll(importBtn, exportBtn, spacer, saveBtn);
+
+        Runnable rebuild = () -> rebuildCalibrationList(cardBox, scrollPane);
+
+        addBtn.setOnAction(e -> {
+            String color = COLORS[colorIndex % COLORS.length];
+            colorIndex++;
+            calibrationEntries.add(new CalibrationEntry("Clade_" + (calibrationEntries.size() + 1), color));
+            rebuild.run();
+        });
+        importBtn.setOnAction(e -> importNewick(rebuild));
+        exportBtn.setOnAction(e -> exportNewick());
+        saveBtn.setOnAction(e -> { saveCalibrations(); stage.close(); });
+
+        rebuild.run();
+
+        VBox root = new VBox(topBar, scrollPane, bottomBar);
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        stage.setScene(new Scene(root, 680, 600));
+        stage.showAndWait();
+    }
+
+    private void rebuildCalibrationList(VBox cardBox, ScrollPane scrollPane) {
+        double savedV = scrollPane.getVvalue();
+        cardBox.getChildren().clear();
+        for (CalibrationEntry entry : calibrationEntries)
+            cardBox.getChildren().add(buildCalibrationCard(entry, cardBox, scrollPane));
+        Platform.runLater(() -> scrollPane.setVvalue(savedV));
+    }
+
+    private VBox buildCalibrationCard(CalibrationEntry entry, VBox cardBox, ScrollPane scrollPane) {
+        VBox card = FXUtils.newVBox();
+        card.setSpacing(6);
+        card.setPadding(new Insets(10));
+        card.setStyle(
+            "-fx-background-color: white;" +
+            "-fx-border-color: " + entry.color + " #ddd #ddd #ddd;" +
+            "-fx-border-width: 3 1 1 1;" +
+            "-fx-border-radius: 4;" +
+            "-fx-background-radius: 4;"
+        );
+
+        // Header: [dot] [name field] [× delete]
+        HBox headerRow = FXUtils.newHBox();
+        headerRow.setSpacing(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        Region dot = new Region();
+        dot.setMinSize(12, 12); dot.setMaxSize(12, 12);
+        dot.setStyle("-fx-background-color: " + entry.color + "; -fx-background-radius: 6;");
+        TextField nameTf = new TextField(entry.label);
+        HBox.setHgrow(nameTf, Priority.ALWAYS);
+        nameTf.textProperty().addListener((obs, o, n) ->
+            entry.label = n.replaceAll("[^\\w]", "_").isEmpty() ? entry.label : n.replaceAll("[^\\w]", "_"));
+        Button delBtn = new Button("×");
+        delBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 2 7;");
+        delBtn.setOnAction(e -> {
+            for (CalibrationEntry other : calibrationEntries) other.directChildCals.remove(entry);
+            calibrationEntries.remove(entry);
+            rebuildCalibrationList(cardBox, scrollPane);
+        });
+        headerRow.getChildren().addAll(dot, nameTf, delBtn);
+
+        // Bounds row
+        HBox boundsRow = FXUtils.newHBox();
+        boundsRow.setSpacing(8);
+        boundsRow.setAlignment(Pos.CENTER_LEFT);
+        boundsRow.getChildren().add(new Label("Lower:"));
+        TextField lowerTf = boundsField(entry.lower);
+        lowerTf.textProperty().addListener((obs, o, n) -> {
+            try { entry.lower = n.trim().isEmpty() ? null : Double.parseDouble(n); }
+            catch (NumberFormatException ignored) {}
+        });
+        boundsRow.getChildren().add(lowerTf);
+        boundsRow.getChildren().add(new Label("Upper:"));
+        TextField upperTf = boundsField(entry.upper);
+        upperTf.textProperty().addListener((obs, o, n) -> {
+            try { entry.upper = n.trim().isEmpty() ? null : Double.parseDouble(n); }
+            catch (NumberFormatException ignored) {}
+        });
+        boundsRow.getChildren().add(upperTf);
+
+        card.getChildren().addAll(headerRow, boundsRow, new Separator());
+
+        // Taxa section
+        entry.taxaCbMap.clear();
+        Label taxaHeading = new Label("Direct taxa:");
+        taxaHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #555;");
+        VBox taxaBox = new VBox(2);
+        taxaBox.setPadding(new Insets(4, 4, 4, 8));
+        for (String taxon : taxa) {
+            boolean ownedByOther = calibrationEntries.stream()
+                .filter(e -> e != entry).anyMatch(e -> e.directTaxa.contains(taxon));
+            CheckBox cb = new CheckBox(taxon);
+            cb.setSelected(entry.directTaxa.contains(taxon));
+            cb.setDisable(ownedByOther && !entry.directTaxa.contains(taxon));
+            if (ownedByOther && !entry.directTaxa.contains(taxon))
+                cb.setTooltip(new Tooltip("Assigned to " + calibrationEntries.stream()
+                    .filter(e -> e != entry && e.directTaxa.contains(taxon))
+                    .map(e -> e.label).findFirst().orElse("?")));
+            cb.selectedProperty().addListener((obs, o, n) -> {
+                if (n) {
+                    for (CalibrationEntry other : calibrationEntries)
+                        if (other != entry) other.directTaxa.remove(taxon);
+                    entry.directTaxa.add(taxon);
+                } else {
+                    entry.directTaxa.remove(taxon);
+                }
+                updateCheckBoxStates();
+            });
+            entry.taxaCbMap.put(taxon, cb);
+            taxaBox.getChildren().add(cb);
+        }
+        ScrollPane taxaSp = new ScrollPane(taxaBox);
+        taxaSp.setFitToWidth(true);
+        taxaSp.setPrefViewportHeight(Math.min(taxa.size() * 24 + 8, 130));
+        taxaSp.setStyle("-fx-background-color: #f9f9f9; -fx-border-color: #eee;");
+        card.getChildren().addAll(taxaHeading, taxaSp);
+
+        // Child calibrations section (only when there are others)
+        entry.childCalCbMap.clear();
+        List<CalibrationEntry> others = calibrationEntries.stream().filter(e -> e != entry).toList();
+        if (!others.isEmpty()) {
+            Label calHeading = new Label("Child calibrations:");
+            calHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #555;");
+            VBox calBox = new VBox(2);
+            calBox.setPadding(new Insets(4, 4, 4, 8));
+            for (CalibrationEntry other : others) {
+                boolean ownedByOther = calibrationEntries.stream()
+                    .filter(e -> e != entry).anyMatch(e -> e.directChildCals.contains(other));
+                boolean wouldCycle = isAncestor(other, entry);
+                CheckBox cb = new CheckBox(other.label);
+                cb.setSelected(entry.directChildCals.contains(other));
+                cb.setDisable((ownedByOther || wouldCycle) && !entry.directChildCals.contains(other));
+                if (wouldCycle)
+                    cb.setTooltip(new Tooltip("Would create a cycle"));
+                else if (ownedByOther)
+                    cb.setTooltip(new Tooltip("Child of " + calibrationEntries.stream()
+                        .filter(e -> e != entry && e.directChildCals.contains(other))
+                        .map(e -> e.label).findFirst().orElse("?")));
+                cb.selectedProperty().addListener((obs, o, n) -> {
+                    if (n) {
+                        for (CalibrationEntry e : calibrationEntries)
+                            if (e != entry) e.directChildCals.remove(other);
+                        entry.directChildCals.add(other);
+                    } else {
+                        entry.directChildCals.remove(other);
+                    }
+                    updateCheckBoxStates();
+                });
+                entry.childCalCbMap.put(other, cb);
+                calBox.getChildren().add(cb);
+            }
+            card.getChildren().addAll(calHeading, calBox);
+        }
+
+        return card;
+    }
+
+    private static boolean isAncestor(CalibrationEntry potentialAncestor, CalibrationEntry ofEntry) {
+        for (CalibrationEntry child : ofEntry.directChildCals) {
+            if (child == potentialAncestor) return true;
+            if (isAncestor(potentialAncestor, child)) return true;
+        }
+        return false;
+    }
+
+    /** Updates disabled/tooltip state on all existing checkboxes without rebuilding any cards. */
+    private void updateCheckBoxStates() {
+        for (CalibrationEntry entry : calibrationEntries) {
+            for (String taxon : taxa) {
+                CheckBox cb = entry.taxaCbMap.get(taxon);
+                if (cb == null) continue;
+                boolean owned = entry.directTaxa.contains(taxon);
+                boolean ownedByOther = calibrationEntries.stream()
+                    .filter(e -> e != entry).anyMatch(e -> e.directTaxa.contains(taxon));
+                cb.setDisable(ownedByOther && !owned);
+                if (ownedByOther && !owned)
+                    cb.setTooltip(new Tooltip("Assigned to " + calibrationEntries.stream()
+                        .filter(e -> e != entry && e.directTaxa.contains(taxon))
+                        .map(e -> e.label).findFirst().orElse("?")));
+                else
+                    cb.setTooltip(null);
+            }
+            for (CalibrationEntry other : calibrationEntries) {
+                if (other == entry) continue;
+                CheckBox cb = entry.childCalCbMap.get(other);
+                if (cb == null) continue;
+                boolean owned = entry.directChildCals.contains(other);
+                boolean ownedByOther = calibrationEntries.stream()
+                    .filter(e -> e != entry).anyMatch(e -> e.directChildCals.contains(other));
+                boolean wouldCycle = isAncestor(other, entry);
+                cb.setDisable((ownedByOther || wouldCycle) && !owned);
+                if (wouldCycle) cb.setTooltip(new Tooltip("Would create a cycle"));
+                else if (ownedByOther)
+                    cb.setTooltip(new Tooltip("Child of " + calibrationEntries.stream()
+                        .filter(e -> e != entry && e.directChildCals.contains(other))
+                        .map(e -> e.label).findFirst().orElse("?")));
+                else cb.setTooltip(null);
+            }
+        }
+    }
+
+    private static TextField boundsField(Double value) {
+        TextField tf = new TextField(value == null ? "" : String.valueOf(value));
+        tf.setPrefWidth(90);
+        tf.setPromptText("optional");
+        return tf;
+    }
+
+    // ── Import / Export Newick ────────────────────────────────────────────────────
+
+    private void importNewick(Runnable rebuildFn) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Import Constraint Tree (Newick)");
+
+        TextArea ta = new TextArea();
+        ta.setPromptText("Paste Newick constraint tree here, e.g.:\n((A,B)[&name=Clade1,lower=5,upper=10],C)[&name=Root,lower=15,upper=30];");
+        ta.setWrapText(true);
+        ta.setPrefRowCount(6);
+
+        Label hint = new Label("Annotations: [&name=Label,lower=X,upper=Y]  — name and bounds are optional.");
+        hint.setStyle("-fx-font-size:11px; -fx-text-fill:#555;");
+
+        Button okBtn = new Button("Import");
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.setOnAction(e -> dialog.close());
+        okBtn.setOnAction(e -> {
+            String newick = ta.getText().trim();
+            if (newick.isEmpty()) { dialog.close(); return; }
+            try {
+                ConstraintTree ct = new ConstraintTree();
+                ct.initByName("newick", newick);
+                List<TaxonSet> allTs = ct.getTaxonSets();
+
+                Map<TaxonSet, Set<String>> allTaxaOf = new HashMap<>();
+                for (TaxonSet ts : allTs)
+                    allTaxaOf.put(ts, ts.getTaxonSet().stream().map(Taxon::getID)
+                        .collect(Collectors.toCollection(LinkedHashSet::new)));
+
+                Map<TaxonSet, double[]> boundsOf = new HashMap<>();
+                for (var ccp : ct.getCalibrationCladePriors())
+                    boundsOf.put(ccp.getTaxa(), new double[]{ccp.getLower(), ccp.getUpper()});
+
+                Map<TaxonSet, Integer> tsToIdx = new HashMap<>();
+                for (int i = 0; i < allTs.size(); i++) tsToIdx.put(allTs.get(i), i);
+
+                Map<TaxonSet, List<TaxonSet>> immChildren = new HashMap<>();
+                for (TaxonSet parent : allTs) {
+                    Set<String> pTaxa = allTaxaOf.get(parent);
+                    List<TaxonSet> children = new ArrayList<>();
+                    for (TaxonSet child : allTs) {
+                        if (child == parent) continue;
+                        Set<String> cTaxa = allTaxaOf.get(child);
+                        if (!pTaxa.containsAll(cTaxa)) continue;
+                        boolean hasIntermediate = allTs.stream()
+                            .filter(mid -> mid != parent && mid != child)
+                            .anyMatch(mid -> {
+                                Set<String> mTaxa = allTaxaOf.get(mid);
+                                return pTaxa.containsAll(mTaxa) && mTaxa.containsAll(cTaxa)
+                                    && !mTaxa.equals(cTaxa) && !mTaxa.equals(pTaxa);
+                            });
+                        if (!hasIntermediate) children.add(child);
+                    }
+                    immChildren.put(parent, children);
+                }
+
+                // Build CalibrationEntry list preserving index ordering
+                calibrationEntries.clear();
+                colorIndex = 0;
+                Map<TaxonSet, CalibrationEntry> tsToEntry = new HashMap<>();
+                for (TaxonSet ts : allTs) {
+                    String label = ts.getID() != null ? ts.getID()
+                                 : "Clade_" + (tsToIdx.get(ts) + 1);
+                    CalibrationEntry entry = new CalibrationEntry(label, COLORS[colorIndex % COLORS.length]);
+                    colorIndex++;
+                    double[] bounds = boundsOf.get(ts);
+                    if (bounds != null) {
+                        entry.lower = Double.isNaN(bounds[0]) ? null : bounds[0];
+                        entry.upper = Double.isNaN(bounds[1]) ? null : bounds[1];
+                    }
+                    Set<String> childCoveredTaxa = immChildren.get(ts).stream()
+                        .flatMap(child -> allTaxaOf.get(child).stream())
+                        .collect(Collectors.toSet());
+                    allTaxaOf.get(ts).stream()
+                        .filter(t -> !childCoveredTaxa.contains(t) && taxa.contains(t))
+                        .forEach(entry.directTaxa::add);
+                    tsToEntry.put(ts, entry);
+                    calibrationEntries.add(entry);
+                }
+                // Wire parent-child relationships
+                for (TaxonSet ts : allTs) {
+                    CalibrationEntry parent = tsToEntry.get(ts);
+                    for (TaxonSet child : immChildren.get(ts))
+                        parent.directChildCals.add(tsToEntry.get(child));
+                }
+
+                rebuildFn.run();
+                dialog.close();
+            } catch (Exception ex) {
+                hint.setText("Parse error: " + ex.getMessage());
+                hint.setStyle("-fx-font-size:11px; -fx-text-fill:#c00;");
             }
         });
-        
-        String html = generateHtmlForm();
-        webView.getEngine().loadContent(html);
-        
-        
-        if (calibrations != null) {
-        	//webView.getEngine().executeScript("updateNewick()");
-        	webView.getEngine().getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
-                 if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
-                 	webView.getEngine().executeScript("calibrations = JSON.parse('" + calibrations + "')");
-                	webView.getEngine().executeScript("taxa = JSON.parse('"+ taxa +"')");
-                	webView.getEngine().executeScript("idCounter = JSON.parse('"+ idCounter +"')");
-                	
-                	Object o =  webView.getEngine().executeScript("JSON.stringify(calibrations)");
-                	System.out.println(o);
-                	System.out.println(webView.getEngine().executeScript("JSON.stringify(taxa)"));
-                	System.out.println(webView.getEngine().executeScript("JSON.stringify(idCounter)"));
-                    // Call the function and get the return value
-                     Object result = webView.getEngine().executeScript("renderCalibrations(); updateChart(); updateNewick();");
-                     System.out.println("JavaScript function returned: " + result);
-                 }
-             });
-       }
-        
- 
-//        startPolling(webView);
 
-        VBox vbox = FXUtils.newVBox();
-        vbox.getChildren().add(webView);
-        Button saveButton = new Button("Save");
-        saveButton.setOnAction(e->getNewick());
-        vbox.getChildren().add(saveButton);
-        Scene popupScene = new Scene(vbox, 1024, 768);
-        popupStage.setScene(popupScene);
-        popupStage.showAndWait();
+        HBox btnRow = new HBox(8, okBtn, cancelBtn);
+        btnRow.setPadding(new Insets(6, 0, 0, 0));
+        VBox content = new VBox(8, ta, hint, btnRow);
+        content.setPadding(new Insets(12));
+        dialog.setScene(new Scene(content, 560, 220));
+        dialog.showAndWait();
     }
 
-	private String generateHtmlForm() {
-        StringBuilder htmlBuilder = new StringBuilder();
-        for (String item : taxa) {
-            htmlBuilder.append(String.format(
-                "\"%s\",", item
-            ));
-        }
-        htmlBuilder.deleteCharAt(htmlBuilder.length()-1);
-        String html = this.html;
-        html = html.replaceFirst("let taxa = ", "let taxa = [" +htmlBuilder.toString() + "]");
-        html = html.replaceFirst("</textarea>", "(" + htmlBuilder.toString().replaceAll("\\\"","")+ ")</textarea>");
-        
-        int i = html.indexOf("<SCRIPTS>");
-        html = html.substring(0, i-1) +
-        		"<script>" + chart + "</script>\n"
-				+ "<script>" + d3 + "</script>\n"
-				+ html.substring(i + 9); 
-
-        return html;
-
-//        StringBuilder htmlBuilder = new StringBuilder();
-//        htmlBuilder.append("<html><body><h2>Edit List</h2><form id='myForm'>");
-//        for (String item : items) {
-//            htmlBuilder.append(String.format(
-//                "<input type='text' name='item' value='%s' size='20'><br>", item
-//            ));
-//        }
-//        htmlBuilder.append(
-//            "<button type='button' onclick='submitForm()'>Save Changes</button>" +
-//            "<script>" +
-//            "function submitForm() {" +
-//            "    var inputs = document.getElementsByName('item');" +
-//            "    var result = [];" +
-//            "    for (var i = 0; i < inputs.length; i++) {" +
-//            "        result.push(inputs[i].value);" +
-//            "    }" +
-//            "    javaConnector.receiveList(JSON.stringify(result));" +
-//            "    window.close();" +
-//            "}" +
-//            "</script>" +
-//            "</form></body></html>"
-//        );
-//        return htmlBuilder.toString();
+    private void exportNewick() {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Export Constraint Tree (Newick)");
+        TextArea ta = new TextArea(buildNewick());
+        ta.setWrapText(true);
+        ta.setPrefRowCount(6);
+        ta.setEditable(false);
+        Button closeBtn = new Button("Close");
+        closeBtn.setOnAction(e -> dialog.close());
+        VBox content = new VBox(8, ta, new HBox(closeBtn));
+        content.setPadding(new Insets(12));
+        dialog.setScene(new Scene(content, 560, 200));
+        dialog.showAndWait();
     }
 
-    
-    final String html = "<!DOCTYPE html>\n"
-    		+ "<html lang=\"en\">\n"
-    		+ "<head>\n"
-    		+ "    <meta charset=\"UTF-8\">\n"
-    		+ "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-    		+ "    <title>Calibration Lab</title>\n"
-    		+ "<SCRIPTS>"
-//    		+ "    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>\n"
-//    		+ "    <script src=\"https://d3js.org/d3.v7.min.js\"></script>\n"
-    		+ "    <style>\n"
-    		+ "        :root { --bg: #f8f9fa; --card: #ffffff; --primary: #2c3e50; --accent: #27ae60; --border: #dee2e6; --blue: #3498db; }\n"
-    		+ "        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; color: var(--primary); font-size: 13px; }\n"
-    		+ "        .app-layout { display: grid; grid-template-columns: 1fr 360px; height: 100vh; width: 100vw; overflow: hidden; }\n"
-    		+ "        .col { display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--card); height: 100vh; }\n"
-    		+ "        .col-header { padding: 12px 15px; border-bottom: 1px solid var(--border); background: #fff; flex-shrink: 0; }\n"
-    		+ "        .scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; background: #fdfdfd; scrollbar-width: thin; scrollbar-color: #ccc transparent; }\n"
-    		+ "        .scroll-area::-webkit-scrollbar { width: 8px; }\n"
-    		+ "        .scroll-area::-webkit-scrollbar-thumb { background-color: #cbd5e0; border-radius: 10px; border: 2px solid #fdfdfd; }\n"
-    		+ "        \n"
-    		+ "        /* Taxa Controls */\n"
-    		+ "        .taxa-item { display: flex; gap: 5px; margin-bottom: 8px; }\n"
-    		+ "        .taxa-input { flex-grow: 1; padding: 4px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }\n"
-    		+ "        .taxa-actions { padding: 12px; border-top: 1px solid #eee; display: flex; flex-direction: column; gap: 8px; }\n"
-    		+ "\n"
-    		+ "        /* Calibration Cards */\n"
-    		+ "        .dist-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 15px; border-top: 5px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }\n"
-    		+ "        .card-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }\n"
-    		+ "        .taxa-select-box { margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 4px; border: 1px solid #eee; max-height: 180px; overflow-y: auto; }\n"
-    		+ "        .selection-header { font-size: 10px; font-weight: bold; color: #444; margin: 8px 0 4px 0; border-bottom: 1px solid #ddd; padding-bottom: 2px; text-transform: uppercase; }\n"
-    		+ "        .item-checkbox { display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; cursor: pointer; padding: 2px; border-radius: 3px; }\n"
-    		+ "        .item-checkbox:hover { background: #eceff1; }\n"
-    		+ "        .item-checkbox.disabled { color: #bbb; font-style: italic; cursor: not-allowed; opacity: 0.7; }\n"
-    		+ "        .assigned-tag { color: #e74c3c; font-size: 9px; margin-left: auto; font-weight: bold; }\n"
-    		+ "        \n"
-    		+ "        #chart-container { height: 250px; margin-bottom: 15px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #eee; flex-shrink: 0; }\n"
-    		+ "        #tree-container { flex-grow: 1; background: #fff; position: relative; }\n"
-    		+ "        \n"
-    		+ "        .btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; font-size: 11px; transition: 0.2s; text-align: center; }\n"
-    		+ "        .btn-add { background: var(--accent); color: white; }\n"
-    		+ "        .btn-fasta { background: var(--blue); color: white; }\n"
-    		+ "        .btn-rm { background: #ff7675; color: white; padding: 2px 6px; border-radius: 3px; }\n"
-    		+ "        \n"
-    		+ "        h3 { margin: 0; font-size: 14px; text-transform: uppercase; color: #555; }\n"
-    		+ "        label { font-size: 10px; font-weight: bold; color: #999; text-transform: uppercase; display: block; margin-bottom: 2px; }\n"
-    		+ "        input[type=\"number\"], select { width: 100%; padding: 4px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; }\n"
-    		+ "        .label-edit { border: none; border-bottom: 1px solid #eee; font-weight: bold; font-size: 13px; width: 80%; outline: none; }\n"
-    		+ "    </style>\n"
-    		+ "</head>\n"
-    		+ "<body>\n"
-    		+ "\n"
-    		+ "<div class=\"app-layout\">\n"
-    		+ "    <!-- LEFT: Taxa Manager -->\n"
-    		+ "    <!--\n"
-    		+ "    <div class=\"col\">\n"
-    		+ "        <div class=\"col-header\"><h3>Taxa</h3></div>\n"
-    		+ "        <div class=\"scroll-area\" id=\"taxaContainer\"></div>\n"
-    		+ "        <div class=\"taxa-actions\">\n"
-    		+ "            <button class=\"btn btn-add\" onclick=\"addTaxon()\">+ New Taxon</button>\n"
-    		+ "            <button class=\"btn btn-fasta\" onclick=\"document.getElementById('fastaInput').click()\">📂 Load FASTA</button>\n"
-    		+ "            <input type=\"file\" id=\"fastaInput\" style=\"display:none\" accept=\".fasta,.fa,.fas,.txt\" onchange=\"handleFasta(this)\">\n"
-    		+ "        </div>\n"
-    		+ "    </div>\n"
-    		+ "    -->\n"
-    		+ "\n"
-    		+ "    <!-- MIDDLE: Calibrations -->\n"
-    		+ "    <div class=\"col\">\n"
-    		+ "        <div class=\"col-header\" style=\"display:flex; justify-content:space-between; align-items:center;\">\n"
-    		+ "            <h3>Calibrations</h3>\n"
-    		+ "            <button class=\"btn btn-add\" style=\"width:auto;\" onclick=\"addCalibration()\">+ Add Calibration</button>\n"
-    		+ "        </div>\n"
-    		+ "        <div id=\"chart-container\"><canvas id=\"mainChart\"></canvas></div>\n"
-    		+ "        <div class=\"scroll-area\" id=\"middleScrollArea\">\n"
-    		+ "            <div id=\"calibrationContainer\"></div>\n"
-    		+ "        </div>\n"
-    		+ "    </div>\n"
-    		+ "\n"
-    		+ "    <!-- RIGHT: Tree -->\n"
-    		+ "    <div class=\"col\" style=\"border-right:none;\">\n"
-    		+ "        <div class=\"col-header\"><h3>Phylogeny</h3></div>\n"
-    		+ "        <div class=\"scroll-area\" style=\"padding:0; display:flex; flex-direction:column;\">\n"
-    		+ "            <div style=\"padding:15px; border-bottom: 1px solid #eee;\">\n"
-    		+ "                <label>Newick String</label>\n"
-    		+ "                <textarea id=\"newickInput\" style=\"width:100%; height:40px; font-family:monospace; font-size:10px; padding:5px;\" readonly></textarea>\n"
-    		+ "            </div>\n"
-    		+ "            <div id=\"tree-container\"></div>\n"
-    		+ "        </div>\n"
-    		+ "    </div>\n"
-    		+ "</div>\n"
-    		+ "\n"
-    		+ "<script>\n"
-    		+ "    /** --- STATE --- **/\n"
-    		+ "    let taxa = ;\n"
-    		+ "    let calibrations = [];\n"
-    		+ "    let idCounter = 0;\n"
-    		+ "    let mainChart;\n"
-    		+ "    const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6'];\n"
-    		+ "\n"
-    		+ "    /** --- MATH ENGINE --- **/\n"
-    		+ "    const DistMath = {\n"
-    		+ "        gamma(z) {\n"
-    		+ "            const p = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313, -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];\n"
-    		+ "            if (z < 0.5) return Math.PI / (Math.sin(Math.PI * z) * this.gamma(1 - z));\n"
-    		+ "            z -= 1; let x = p[0]; for (let i = 1; i < 9; i++) x += p[i] / (z + i);\n"
-    		+ "            let t = z + 7.5; return Math.sqrt(2 * Math.PI) * Math.pow(t, (z + 0.5)) * Math.exp(-t) * x;\n"
-    		+ "        },\n"
-    		+ "        beta(a, b) { return (this.gamma(a) * this.gamma(b)) / this.gamma(a + b); }\n"
-    		+ "    };\n"
-    		+ "\n"
-    		+ "    const Configs = {\n"
-    		+ "        bounded: { name: \"Bounded\", fields: [{id:'lower', label:'Lower', val:1.0}, {id:'upper', label:'upper', val:2.0}], pdf: (x, p) => x <= p.lower || x >= p.upper ? 0 : 1/(p.upper-p.lower), range: (p) => [p.lower, p.upper] },\n"
-//    		+ "        lognormal: { name: \"Log-Normal\", fields: [{id:'m', label:'Log μ', val:1.0}, {id:'s', label:'Log σ', val:0.15}], pdf: (x, p) => x <= 0 ? 0 : (1/(x*p.s*Math.sqrt(2*Math.PI))) * Math.exp(-Math.pow(Math.log(x)-p.m,2)/(2*p.s*p.s)), range: (p) => [0, Math.exp(p.m + 3.5*p.s)] },\n"
-//    		+ "        normal: { name: \"Normal\", fields: [{id:'m', label:'Mean', val:0}, {id:'s', label:'Sigma', val:1}], pdf: (x, p) => (1/(p.s*Math.sqrt(2*Math.PI))) * Math.exp(-Math.pow(x-p.m,2)/(2*p.s*p.s)), range: (p) => [p.m - 4*p.s, p.m + 4*p.s] },\n"
-//    		+ "        gamma: { name: \"Gamma\", fields: [{id:'k', label:'Shape', val:2}, {id:'t', label:'Scale', val:2}], pdf: (x, p) => x <= 0 ? 0 : (1/(Math.pow(p.t, p.k)*DistMath.gamma(p.k)))*Math.pow(x, p.k-1)*Math.exp(-x/p.t), range: (p) => [0, (p.k*p.t)+(6*Math.sqrt(p.k)*p.t)] },\n"
-//    		+ "        exponential: { name: \"Exp\", fields: [{id:'l', label:'Lambda', val:1}], pdf: (x, p) => x < 0 ? 0 : p.l * Math.exp(-p.l * x), range: (p) => [0, 5/p.l] },\n"
-//    		+ "        beta: { name: \"Beta\", fields: [{id:'a', label:'Alpha', val:2}, {id:'b', label:'Beta', val:5}], pdf: (x, p) => (x<0 || x>1) ? 0 : (Math.pow(Math.max(1e-9, Math.min(1-1e-9, x)), p.a-1)*Math.pow(Math.max(1e-9, Math.min(1-1e-9, 1-x)), p.b-1))/DistMath.beta(p.a, p.b), range: (p) => [0, 1] },\n"
-//    		+ "        cauchy: { name: \"Cauchy\", fields: [{id:'x0', label:'Loc', val:0}, {id:'g', label:'Scale', val:1}], pdf: (x, p) => (1/(Math.PI*p.g))*(1/(1+Math.pow((x-p.x0)/p.g, 2))), range: (p) => [p.x0-10*p.g, p.x0+10*p.g] },\n"
-//   		+ "        laplace: { name: \"Laplace\", fields: [{id:'m', label:'Loc', val:0}, {id:'b', label:'Scale', val:1}], pdf: (x, p) => (1/(2*p.b))*Math.exp(-Math.abs(x-p.m) / p.b), range: (p) => [p.m-8*p.b, p.m+8*p.b] }\n"
-    		+ "    };\n"
-    		+ "\n"
-    		+ "    /** --- FASTA IMPORT --- **/\n"
-    		+ "    function handleFasta(input) {\n"
-    		+ "        const file = input.files[0];\n"
-    		+ "        if (!file) return;\n"
-    		+ "\n"
-    		+ "        const reader = new FileReader();\n"
-    		+ "        reader.onload = function(e) {\n"
-    		+ "            const text = e.target.result;\n"
-    		+ "            const lines = text.split(/\\r?\\n/);\n"
-    		+ "            const foundTaxa = [];\n"
-    		+ "\n"
-    		+ "            lines.forEach(line => {\n"
-    		+ "                if (line.startsWith('>')) {\n"
-    		+ "                    // Extract ID after '>' and before the first space\n"
-    		+ "                    let name = line.substring(1).trim().split(/\\s+/)[0];\n"
-    		+ "                    // Replace special chars for Newick safety\n"
-    		+ "                    name = name.replace(/[^a-zA-Z0-9_]/g, '_');\n"
-    		+ "                    if (name && !foundTaxa.includes(name)) {\n"
-    		+ "                        foundTaxa.push(name);\n"
-    		+ "                    }\n"
-    		+ "                }\n"
-    		+ "            });\n"
-    		+ "\n"
-    		+ "            if (foundTaxa.length > 0) {\n"
-    		+ "                if (confirm(`Replace current taxa with ${foundTaxa.length} taxa found in FASTA?`)) {\n"
-    		+ "                    taxa = foundTaxa;\n"
-    		+ "                    // Reset calibrations assigned taxa because the names changed\n"
-    		+ "                    calibrations.forEach(c => c.childrenTaxa = []);\n"
-    		+ "                    renderTaxa();\n"
-    		+ "                    renderCalibrations();\n"
-    		+ "                    updateNewick();\n"
-    		+ "                }\n"
-    		+ "            } else {\n"
-    		+ "                alert(\"No valid FASTA headers (starting with '>') were found.\");\n"
-    		+ "            }\n"
-    		+ "            input.value = ''; // Reset input\n"
-    		+ "        };\n"
-    		+ "        reader.readAsText(file);\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    /** --- TAXA MANAGEMENT --- **/\n"
-    		+ "    function addTaxon() { taxa.push(`Taxon_${taxa.length+1}`); renderTaxa(); renderCalibrations(); updateNewick(); }\n"
-    		+ "    function removeTaxon(i) {\n"
-    		+ "        const n = taxa[i]; taxa.splice(i, 1);\n"
-    		+ "        calibrations.forEach(c => c.childrenTaxa = c.childrenTaxa.filter(t => t !== n));\n"
-    		+ "        renderTaxa(); renderCalibrations(); updateNewick();\n"
-    		+ "    }\n"
-    		+ "    function updateTaxonName(i, name) {\n"
-    		+ "        const old = taxa[i], n = name.replace(/\\s+/g, '_'); taxa[i] = n;\n"
-    		+ "        calibrations.forEach(c => { const idx = c.childrenTaxa.indexOf(old); if(idx > -1) c.childrenTaxa[idx] = n; });\n"
-    		+ "        renderCalibrations(); updateNewick();\n"
-    		+ "    }\n"
-    		+ "    function renderTaxa() {\n"
-    		+ "        document.getElementById('taxaContainer').innerHTML = taxa.map((t, i) => `<div class=\"taxa-item\"><input type=\"text\" class=\"taxa-input\" value=\"${t}\" oninput=\"updateTaxonName(${i}, this.value)\"><button class=\"btn btn-rm\" onclick=\"removeTaxon(${i})\">✕</button></div>`).join('');\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    /** --- CALIBRATIONS --- **/\n"
-    		+ "    function addCalibration() {\n"
-    		+ "        const id = idCounter++;\n"
-    		+ "        const type = 'bounded';\n"
-    		+ "        const params = {}; Configs[type].fields.forEach(f => params[f.id] = f.val);\n"
-    		+ "        calibrations.push({ id, type, label: `Calibration_${id+1}`, color: colors[id % colors.length], childrenTaxa: [], childrenCals: [], params });\n"
-    		+ "        renderCalibrations(); updateChart(); updateNewick();\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    function isAncestor(childId, potentialParentId) {\n"
-    		+ "        const child = calibrations.find(c => c.id === childId);\n"
-    		+ "        if (!child) return false;\n"
-    		+ "        if (child.childrenCals.includes(potentialParentId)) return true;\n"
-    		+ "        return child.childrenCals.some(cid => isAncestor(cid, potentialParentId));\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    function updateDistType(id, newType) {\n"
-    		+ "        const cal = calibrations.find(c => c.id === id);\n"
-    		+ "        cal.type = newType;\n"
-    		+ "        cal.params = {}; Configs[newType].fields.forEach(f => cal.params[f.id] = f.val);\n"
-    		+ "        renderCalibrations(); updateChart();\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    function toggleExclusive(calId, type, item) {\n"
-    		+ "        const currentCal = calibrations.find(c => c.id === calId);\n"
-    		+ "        const listName = type === 'taxa' ? 'childrenTaxa' : 'childrenCals';\n"
-    		+ "        const isSelected = currentCal[listName].includes(item);\n"
-    		+ "        if (!isSelected) {\n"
-    		+ "            calibrations.forEach(c => c[listName] = c[listName].filter(x => x !== item));\n"
-    		+ "            currentCal[listName].push(item);\n"
-    		+ "        } else { currentCal[listName] = currentCal[listName].filter(x => x !== item); }\n"
-    		+ "        renderCalibrations(); updateChart(); updateNewick();\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    function renderCalibrations() {\n"
-    		+ "        const middlePane = document.getElementById('middleScrollArea');\n"
-    		+ "        const mainScrollPos = middlePane ? middlePane.scrollTop : 0;\n"
-    		+ "        const internalScrolls = {};\n"
-    		+ "        document.querySelectorAll('.dist-card').forEach(card => {\n"
-    		+ "            const calId = card.getAttribute('data-id');\n"
-    		+ "            const box = card.querySelector('.taxa-select-box');\n"
-    		+ "            if (box) internalScrolls[calId] = box.scrollTop;\n"
-    		+ "        });\n"
-    		+ "\n"
-    		+ "        document.getElementById('calibrationContainer').innerHTML = calibrations.map(c => {\n"
-    		+ "            const conf = Configs[c.type];\n"
-    		+ "            return `\n"
-    		+ "            <div class=\"dist-card\" data-id=\"${c.id}\" style=\"border-top-color: ${c.color}\">\n"
-    		+ "                <div style=\"display:flex; justify-content:space-between; align-items:center;\">\n"
-    		+ "                    <input type=\"text\" class=\"label-edit\" value=\"${c.label}\" oninput=\"calibrations.find(x=>x.id==${c.id}).label=this.value.replace(/\\\\s/g,'_'); updateChart(); updateNewick()\">\n"
-    		+ "                    <button class=\"btn btn-rm\" onclick=\"calibrations=calibrations.filter(x=>x.id!=${c.id}); renderCalibrations(); updateChart(); updateNewick()\">✕</button>\n"
-    		+ "                </div>\n"
-    		+ "                <div style=\"margin-top:8px;\">\n"
-    		+ "                    <label>Distribution Type</label>\n"
-    		+ "                    <select onchange=\"updateDistType(${c.id}, this.value)\">\n"
-    		+ "                        ${Object.keys(Configs).map(k => `<option value=\"${k}\" ${c.type === k ? 'selected' : ''}>${Configs[k].name}</option>`).join('')}\n"
-    		+ "                    </select>\n"
-    		+ "                </div>\n"
-    		+ "                <div class=\"card-row\">\n"
-    		+ "                    ${conf.fields.map(f => `<div><label>${f.label}</label><input type=\"number\" step=\"0.1\" value=\"${c.params[f.id]}\" oninput=\"calibrations.find(x=>x.id==${c.id}).params.${f.id}=parseFloat(this.value); updateChart()\"></div>`).join('')}\n"
-    		+ "                </div>\n"
-    		+ "                <div class=\"taxa-select-box\">\n"
-    		+ "                    <div class=\"selection-header\">Child Taxa</div>\n"
-    		+ "                    ${taxa.map(t => {\n"
-    		+ "                        const owner = calibrations.find(o => o.id !== c.id && o.childrenTaxa.includes(t));\n"
-    		+ "                        return `<label class=\"item-checkbox ${owner ? 'disabled' : ''}\"><input type=\"checkbox\" ${c.childrenTaxa.includes(t)?'checked':''} onchange=\"toggleExclusive(${c.id}, 'taxa', '${t}')\">${t} ${owner ? `<span class=\"assigned-tag\">${owner.label}</span>`:''}</label>`;\n"
-    		+ "                    }).join('')}\n"
-    		+ "                    <div class=\"selection-header\">Child Calibrations</div>\n"
-    		+ "                    ${calibrations.filter(o => o.id !== c.id).map(o => {\n"
-    		+ "                        const owner = calibrations.find(p => p.id !== c.id && p.childrenCals.includes(o.id));\n"
-    		+ "                        const circular = isAncestor(o.id, c.id);\n"
-    		+ "                        const disabled = (owner || circular) && !c.childrenCals.includes(o.id);\n"
-    		+ "                        return `<label class=\"item-checkbox ${disabled ? 'disabled' : ''}\"><input type=\"checkbox\" ${c.childrenCals.includes(o.id)?'checked':''} ${disabled?'disabled':''} onchange=\"toggleExclusive(${c.id}, 'cals', ${o.id})\">${o.label} ${owner?`<span class=\"assigned-tag\">${owner.label}</span>`:''} ${circular?`<span class=\"assigned-tag\">LOOP</span>`:''}</label>`;\n"
-    		+ "                    }).join('')}\n"
-    		+ "                </div>\n"
-    		+ "            </div>`;\n"
-    		+ "        }).join('');\n"
-    		+ "\n"
-    		+ "        if (middlePane) middlePane.scrollTop = mainScrollPos;\n"
-    		+ "        document.querySelectorAll('.dist-card').forEach(card => {\n"
-    		+ "            const calId = card.getAttribute('data-id');\n"
-    		+ "            const box = card.querySelector('.taxa-select-box');\n"
-    		+ "            if (box && internalScrolls[calId] !== undefined) box.scrollTop = internalScrolls[calId];\n"
-    		+ "        });\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    /** --- VISUALIZATION --- **/\n"
-    		+ "    function updateChart() {\n"
-    		+ "        const datasets = calibrations.map(c => {\n"
-    		+ "            const conf = Configs[c.type];\n"
-    		+ "            const [min, max] = conf.range(c.params); const data = [];\n"
-    		+ "            for(let i=0; i<=100; i++) { const x = min + (i * (max-min)/100); data.push({x, y: conf.pdf(x, c.params)}); }\n"
-    		+ "            return { label: c.label, data, borderColor: c.color, backgroundColor: c.color+'22', fill: true, pointRadius: 0, tension: 0.3, showLine: true };\n"
-    		+ "        });\n"
-    		+ "        if (!mainChart) mainChart = new Chart(document.getElementById('mainChart'), { type: 'scatter', data: { datasets }, options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: {type:'linear', title:{display:true, text:'Time'}}, y: {beginAtZero:true} } } });\n"
-    		+ "        else { mainChart.data.datasets = datasets; mainChart.update(); }\n"
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    function updateNewick() {\n"
-    		+ "        const hasParent = new Set();\n"
-    		+ "        calibrations.forEach(c => { c.childrenTaxa.forEach(t => hasParent.add(t)); c.childrenCals.forEach(cid => hasParent.add(`CAL_${cid}`)); });\n"
-    		+ "        const build = (cal) => {\n"
-    		+ "            const els = [...cal.childrenTaxa, ...cal.childrenCals.map(id => {const ch = calibrations.find(x=>x.id===id); return ch ? build(ch) : '';})].filter(x => x!=='');\n"
-    		+ "            return els.length ? `(${els.join(',')})${cal.label}` : cal.label;\n"
-    		+ "        };\n"
-    		+ "        const roots = [...calibrations.filter(c => !hasParent.has(`CAL_${c.id}`)).map(c => build(c)), ...taxa.filter(t => !hasParent.has(t))];\n"
-    		+ "        const nwk = roots.length > 1 ? `(${roots.join(',')})Root;` : (roots[0] ? roots[0] + ';' : '');\n"
-    		+ "        document.getElementById('newickInput').value = nwk;\n"
-      		+ "        drawTree(nwk);\n"
-//          + "    var result = [];" 
-//          + "        result.push(10);" 
-//          + "        result.push(12);" 
-//          + "    javaConnector.receiveList(JSON.stringify(result));"
-    		+ "        javaConnector.receiveList();" 	
-    		+ "    }\n"
-    		+ "\n"
-    		+ "    function drawTree(newick) {\n"
-    		+ "        const container = document.getElementById('tree-container'); container.innerHTML = '';\n"
-    		+ "        if(!newick) return;\n"
-    		+ "        try {\n"
-    		+ "            const parse = (s) => {\n"
-    		+ "                var e = [], r = {}, parts = s.split(/\\s*(;|\\(|\\)|,|:)\\s*/);\n"
-    		+ "                for (var t = 0; t < parts.length; t++) {\n"
-    		+ "                    var n = parts[t];\n"
-    		+ "                    if (n === \"(\") { var c = {}; r.children = [c]; e.push(r); r = c; }\n"
-    		+ "                    else if (n === \",\") { var c = {}; e[e.length-1].children.push(c); r = c; }\n"
-    		+ "                    else if (n === \")\") { r = e.pop(); }\n"
-    		+ "                    else if (n !== \":\" && n !== \";\" && parts[t-1] !== \":\") { r.name = n; }\n"
-    		+ "                } return r;\n"
-    		+ "            };\n"
-    		+ "            const data = parse(newick);\n"
-    		+ "            const width = container.clientWidth, height = container.clientHeight;\n"
-    		+ "            const svg = d3.select(\"#tree-container\").append(\"svg\").attr(\"width\", width).attr(\"height\", height).append(\"g\").attr(\"transform\", \"translate(40,40)\");\n"
-    		+ "            const root = d3.hierarchy(data); d3.cluster().size([height - 80, width - 150])(root);\n"
-    		+ "            svg.selectAll(\"path\").data(root.links()).enter().append(\"path\").attr(\"fill\", \"none\").attr(\"stroke\", \"#ddd\").attr(\"stroke-width\", 2).attr(\"d\", d3.linkHorizontal().x(d => d.y).y(d => d.x));\n"
-    		+ "            const nodes = svg.selectAll(\"g\").data(root.descendants()).enter().append(\"g\").attr(\"transform\", d => `translate(${d.y},${d.x})`);\n"
-    		+ "            nodes.append(\"circle\").attr(\"r\", 5).attr(\"fill\", d => d.children ? \"#eee\" : \"#fff\").attr(\"stroke\", \"steelblue\").attr(\"stroke-width\", 2);\n"
-    		+ "            nodes.append(\"text\").attr(\"dy\", \"0.31em\").attr(\"x\", d => d.children ? -12 : 12).style(\"text-anchor\", d => d.children ? \"end\" : \"start\").text(d => d.data.name || \"\").style(\"font-weight\", d => d.children ? \"bold\" : \"normal\");\n"
-    		+ "        } catch(e) {}\n"
-    		+ "    }\n"
-    		+ "    \n"
-    		+ "    renderTaxa(); addCalibration();\n"
-    		+ "</script>\n"
-//    		+ "<script type='text/javascript' src='https://web.archive.org/web/20130320104451/https://getfirebug.com/releases/lite/1.2/firebug-lite-compressed.js'></script>\n"
-    		+ "</body>\n"
-    		+ "</html>";
-    
-    private Object getNewick() {
-		Object o = webView.getEngine().executeScript("document.getElementById('newickInput').value");
-		System.out.println(o);
-		calibrations = webView.getEngine().executeScript("JSON.stringify(calibrations)");
-		// String taxa = (String) webView.getEngine().executeScript("JSON.stringify(taxa)");
-		idCounter = webView.getEngine().executeScript("JSON.stringify(idCounter)");
-		System.out.println(calibrations);
-		return o;
-	}
+    private String buildNewick() {
+        Set<CalibrationEntry> assignedAsChild = calibrationEntries.stream()
+            .flatMap(e -> e.directChildCals.stream()).collect(Collectors.toSet());
+        Set<String> ownedTaxa = calibrationEntries.stream()
+            .flatMap(e -> e.directTaxa.stream()).collect(Collectors.toSet());
 
-    // Inner class to handle JavaScript callbacks
-    public class JavaConnector {
-        public void receiveList() {
-			Object o = webView.getEngine().executeScript("document.getElementById('newickInput').value");
-			System.out.println(o);
+        List<String> parts = new ArrayList<>();
+        for (CalibrationEntry e : calibrationEntries)
+            if (!assignedAsChild.contains(e)) parts.add(buildNewickNode(e));
+        for (String t : taxa)
+            if (!ownedTaxa.contains(t)) parts.add(t);
+
+        if (parts.isEmpty()) return "";
+        if (parts.size() == 1) return parts.get(0) + ";";
+        return "(" + String.join(",", parts) + ")[&virtualRoot=true];";
+    }
+
+    private String buildNewickNode(CalibrationEntry e) {
+        List<String> kids = new ArrayList<>(e.directTaxa);
+        for (CalibrationEntry child : e.directChildCals) kids.add(buildNewickNode(child));
+        String ann = "[&name=" + e.label
+            + (e.lower != null && e.upper != null ? ",lower=" + e.lower + ",upper=" + e.upper : "")
+            + "]";
+        if (kids.isEmpty()) return e.label;
+        return "(" + String.join(",", kids) + ")" + ann;
+    }
+
+    // ── Save calibrations to model ────────────────────────────────────────────────
+
+    private void saveCalibrations() {
+        CalibratedBirthDeathSkylineModel cpp = (CalibratedBirthDeathSkylineModel) m_beastObject;
+        String partition = partitionOf(cpp);
+
+        cpp.calibrationsInput.get().clear();
+
+        List<String> staleKeys = doc.pluginmap.keySet().stream()
+            .filter(k -> (k.startsWith("CalibrationCladePrior.") || k.startsWith("TaxonSet."))
+                      && k.endsWith("." + partition))
+            .toList();
+        staleKeys.forEach(doc.pluginmap::remove);
+
+        for (CalibrationEntry entry : calibrationEntries) {
+            List<String> allLeaves = allLeafTaxa(entry);
+            if (allLeaves.isEmpty()) continue;
+
+            List<Taxon> taxonList = new ArrayList<>();
+            for (String t : allLeaves) {
+                Taxon tx = new Taxon(t); tx.setID(t); taxonList.add(tx);
+            }
+            TaxonSet ts = new TaxonSet();
+            ts.initByName("taxon", taxonList);
+            ts.setID("TaxonSet." + entry.label + "." + partition);
+            doc.addPlugin(ts);
+            cpp.calibrationsInput.get().add(ts);
+
+            if (entry.lower != null && entry.upper != null) {
+                CalibrationCladePrior ccp = new CalibrationCladePrior();
+                ccp.initByName("taxa", ts,
+                    "lowerAge", new RealScalarParam<>(entry.lower, NonNegativeReal.INSTANCE),
+                    "upperAge", new RealScalarParam<>(entry.upper, NonNegativeReal.INSTANCE));
+                ccp.setID("CalibrationCladePrior." + entry.label + "." + partition);
+                doc.addPlugin(ccp);
+            }
         }
+        sync();
+    }
+
+    private List<String> allLeafTaxa(CalibrationEntry e) {
+        List<String> out = new ArrayList<>(e.directTaxa);
+        for (CalibrationEntry child : e.directChildCals) {
+            for (String t : allLeafTaxa(child))
+                if (!out.contains(t)) out.add(t);
+        }
+        return out;
     }
 }
-

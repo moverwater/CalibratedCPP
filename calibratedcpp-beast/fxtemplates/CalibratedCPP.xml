@@ -1,13 +1,13 @@
 <beast version='2.0'
-       namespace='beastfx.app.beauti:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.branchratemodel:beast.base.evolution.speciation:beast.base.evolution.tree.coalescent:beast.base.util:beast.base.math:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.evolution:beast.base.inference.distribution'>
+       namespace='beastfx.app.beauti:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.branchratemodel:beast.base.evolution.speciation:beast.base.evolution.tree.coalescent:beast.base.util:beast.base.math:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.evolution:beast.base.inference.distribution:beast.base.spec.inference.distribution:beast.base.spec.inference.parameter:beast.base.spec.inference.operator:beast.base.spec.domain:calibratedcpp:calibration:calibrationprior'>
 
-
-
-       
-    <!-- tree priors -->
     <mergewith point='treePriorTemplates'>
-        <!-- Yule -->
-        <subtemplate id='YuleModel' class='beast.base.evolution.speciation.YuleModel' mainid='CalibratedCPP.t:$(n)' hmc='
+
+        <subtemplate id='CalibratedBirthDeathSkyline'
+                     class='calibratedcpp.CalibratedBirthDeathSkylineModel'
+                     mainid='CalibratedCPP.t:$(n)'
+                     suppressInputs='calibratedcpp.CalibratedBirthDeathSkylineModel.calibrations,calibratedcpp.CalibratedBirthDeathSkylineModel.constraintTree,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.constraintTree'
+                     hmc='
 CalibratedCPPOperator/index/=Operators/BactrianNodeOperator/,
 CalibratedCPPSubtreeSlide/index/=Operators/SubtreeSlide/,
 CalibratedCPPNarrow/index/=Operators/Exchange/,
@@ -19,23 +19,121 @@ CalibratedCPPBICEPSTreeFlex/index/=Operators/TreeStretcher/,
 CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
 '>
             <![CDATA[
-            <distribution spec="calibrationprior.CalibrationPrior" id="CalibratedCPP.t:$(n)" tree="@Tree.t:$(n)">
+            <!-- Skyline rate parameters (single epoch defaults) -->
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="diversificationRate.t:$(n)" domain="Real" value="0.1"/>
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="turnover.t:$(n)" domain="PositiveReal" value="0.5"/>
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="samplingProportion.t:$(n)" domain="Real" value="0.01"/>
+
+            <!-- CPP tree prior (SkylineParameters have IDs so the editor can reuse/look them up) -->
+            <distribution spec="calibratedcpp.CalibratedBirthDeathSkylineModel" id="CalibratedCPP.t:$(n)">
+                <tree idref="Tree.t:$(n)"/>
+                <diversificationRate spec="calibratedcpp.SkylineParameter" id="diversificationRateSP.t:$(n)"
+                                     values="@diversificationRate.t:$(n)"/>
+                <turnover spec="calibratedcpp.SkylineParameter" id="turnoverSP.t:$(n)"
+                          values="@turnover.t:$(n)"/>
+                <rho idref="samplingProportion.t:$(n)"/>
             </distribution>
 
-]]>
-			<plate fragment="TreeOperators" var="m" range="CalibratedCPP"/>
+            <!-- CalibrationPrior: clades are populated by the BEAUti editor popup -->
+            <distribution spec="calibrationprior.CalibrationPrior" id="CalibrationPrior.t:$(n)">
+                <tree idref="Tree.t:$(n)"/>
+            </distribution>
 
+            <!-- Default priors on skyline parameters -->
+            <distribution spec="beast.base.spec.inference.distribution.LogNormal"
+                          id="diversificationRate.prior.t:$(n)"
+                          param="@diversificationRate.t:$(n)">
+                <M spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="0.05"/>
+                <S spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+            </distribution>
+            <distribution spec="beast.base.spec.inference.distribution.LogNormal"
+                          id="turnover.prior.t:$(n)"
+                          param="@turnover.t:$(n)">
+                <M spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="0.0"/>
+                <S spec="beast.base.spec.inference.parameter.RealScalarParam" domain="Real" value="1.0"/>
+            </distribution>
+            <distribution spec="beast.base.spec.inference.distribution.Uniform"
+                          id="samplingProportion.prior.t:$(n)"
+                          param="@samplingProportion.t:$(n)"
+                          lower="0.0" upper="1.0"/>
+
+            <!-- Operators -->
+            <operator spec="beast.base.spec.inference.operator.ScaleOperator"
+                      id="diversificationRateScaler.t:$(n)"
+                      parameter="@diversificationRate.t:$(n)" weight="1.0" upper="10.0"/>
+            <operator spec="beast.base.spec.inference.operator.ScaleOperator"
+                      id="turnoverScaler.t:$(n)"
+                      parameter="@turnover.t:$(n)" weight="1.0" upper="10.0"/>
+            <operator spec="beast.base.spec.inference.operator.ScaleOperator"
+                      id="samplingProportionScaler.t:$(n)"
+                      parameter="@samplingProportion.t:$(n)" weight="0.5" upper="1.0"/>
+]]>
+            <plate fragment="TreeOperators" var="m" range="CalibratedBirthDeathSkyline"/>
+
+            <!-- Tree prior distributions connected to posterior -->
             <connect srcID='CalibratedCPP.t:$(n)' targetID='prior' inputName='distribution'
-                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>CalibratedCPP
-                speciation prior on tree t:$(n)
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
+                Calibrated CPP birth-death skyline prior on tree t:$(n)
+            </connect>
+            <connect srcID='CalibrationPrior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
+                CalibrationPrior on clade ages for tree t:$(n)
             </connect>
 
+            <!-- Skyline parameter priors connected to posterior -->
+            <connect srcID='diversificationRate.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
+            <connect srcID='turnover.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+            <connect srcID='samplingProportion.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
+
+            <!-- State nodes for default pair (diversificationRate + turnover) -->
+            <connect srcID='diversificationRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
+            <connect srcID='turnover.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+            <connect srcID='samplingProportion.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
+
+            <!-- State nodes for alternative rate parameters (created on demand by editor) -->
+            <connect srcID='birthRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and birthRate.t:$(n)/estimate=true'/>
+            <connect srcID='deathRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and deathRate.t:$(n)/estimate=true'/>
+            <connect srcID='reproductiveNumber.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and reproductiveNumber.t:$(n)/estimate=true'/>
+
+            <!-- Operators connected to MCMC -->
+            <connect srcID='diversificationRateScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
+            <connect srcID='turnoverScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+            <connect srcID='samplingProportionScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
+
+            <!-- Logging -->
             <connect srcID='CalibratedCPP.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+            <connect srcID='CalibrationPrior.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+            <connect srcID='diversificationRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
+            <connect srcID='turnover.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+            <connect srcID='samplingProportion.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
+            <connect srcID='birthRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and birthRate.t:$(n)/estimate=true'/>
+            <connect srcID='deathRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and deathRate.t:$(n)/estimate=true'/>
+            <connect srcID='reproductiveNumber.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and reproductiveNumber.t:$(n)/estimate=true'/>
 
         </subtemplate>
 
     </mergewith>
 </beast>
-
-

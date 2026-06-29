@@ -11,28 +11,28 @@ import calibrationprior.CalibrationCladePrior;
 import java.util.*;
 
 /**
- * A node in a calibration forest
+ * A node in a calibration forest.
  *
  * @author Marcus Overwater
  */
 
 @Description("A calibration node is a node in a calibration forest.")
 public class CalibrationNode extends BEASTObject {
-    public CalibrationClade calibration;
     public TaxonSet taxa;
+
+    /** Non-null when this node was created from a {@link CalibrationCladePrior}. */
+    public CalibrationCladePrior prior;
 
     public CalibrationNode parent;
     public List<CalibrationNode> children = new ArrayList<>();
 
     public boolean isRoot;        // true if start of independent subtree
 
-    // Cached leaf map: taxon name -> node number (not Node objects, which get swapped during MCMC store/restore)
-    // Leaf node numbers are stable since nodes are stored in parallel arrays.
+    // Cached leaf map: taxon name -> node number (stable since nodes are stored in parallel arrays)
     private static final WeakHashMap<TreeInterface, Map<String, Integer>> leafMapCache = new WeakHashMap<>();
 
-    public CalibrationNode(CalibrationClade calibration) {
-        this.calibration = calibration;
-        this.taxa = calibration.getTaxa();
+    public CalibrationNode(TaxonSet taxa) {
+        this.taxa = taxa;
     }
 
     public static CalibrationNode getByTaxa(List<CalibrationNode> nodes, TaxonSet taxa) {
@@ -47,15 +47,11 @@ public class CalibrationNode extends BEASTObject {
         return null;
     }
 
-    public CalibrationClade getCalibrationClade() {
-        return calibration;
-    }
-
     public CalibrationCladePrior getCalibrationCladePrior() {
-        if (!(calibration instanceof CalibrationCladePrior)) {
-            throw new IllegalStateException("Calibration node does not hold a CalibrationCladePrior");
+        if (prior == null) {
+            throw new IllegalStateException("CalibrationNode does not hold a CalibrationCladePrior");
         }
-        return (CalibrationCladePrior) calibration;
+        return prior;
     }
 
     // --- Utility ---
@@ -105,12 +101,9 @@ public class CalibrationNode extends BEASTObject {
 
     @Override
     public String toString() {
-        String id = taxa != null ? taxa.getID() : "noID";
-        return String.format("CalibrationNode[%s]", id);
+        return String.format("CalibrationNode[%s]", taxa != null ? taxa.getID() : "noID");
     }
 
     @Override
-    public void initAndValidate() {
-
-    }
+    public void initAndValidate() {}
 }

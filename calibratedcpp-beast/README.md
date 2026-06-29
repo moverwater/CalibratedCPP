@@ -11,7 +11,7 @@ Both `CalibratedBirthDeathModel` and `CalibratedBirthDeathSkylineModel` extend `
 - `origin`: A `RealParameter` for the start time of the process. This is optional.
 - `conditionOnRoot`: A `Boolean` which is true the process is conditioned on the root height. Either `origin` must be provided or `conditionOnRoot` should be set to true.
 - `tree`: A phylogenetic tree.
-- `calibrations`: A list of `CalibrationClade` objects which consists of a `TaxonSet` on which we want to condition being monophyletic and the TMRCA of the clade. Note: providing the all the taxa in the tree as a `calibration` is equivalent to setting `conditionOnRoot=true`.
+- `calibrations`: A list of `TaxonSet` objects which we want to condition being monophyletic and the TMRCA of the clade. Note: providing the all the taxa in the tree as a `TaxonSet` is equivalent to setting `conditionOnRoot=true`.
 - `conditionOnCalibrations`: A `Boolean` which is `true` if we want to condition on the `calibrations` provided and `false` otherwise. Default is `true`.
 
 ## `CalibratedBirthDeathModel`

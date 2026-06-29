@@ -10,7 +10,6 @@ import beast.base.inference.distribution.Uniform;
 import beast.base.inference.parameter.RealParameter;
 import beast.base.spec.domain.Real;
 import beast.base.spec.inference.parameter.RealScalarParam;
-import calibration.CalibrationClade;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
@@ -37,7 +36,7 @@ public class LikelihoodBenchmark {
     CalibratedBirthDeathModel cpp;
     beast.base.evolution.speciation.CalibratedBirthDeathModel heled_and_drummond;
     Tree tree;
-    List<CalibrationClade> calibrationsClades;
+    List<TaxonSet> calibrationsClades;
     List<CalibrationPoint> calibrationPoints;
 
     // This runs once before the benchmarks start
@@ -77,9 +76,7 @@ public class LikelihoodBenchmark {
 
             taxonSet.initByName("taxon", taxonList);
 
-            CalibrationClade calibrationClade = new CalibrationClade();
-            calibrationClade.initByName("taxa", taxonSet);
-            calibrationsClades.add(calibrationClade);
+            calibrationsClades.add(taxonSet);
 
             CalibrationPoint calibrationPoint = new CalibrationPoint();
             calibrationPoint.initByName("taxonset", taxonSet, "distr", ageDist);

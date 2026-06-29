@@ -37,6 +37,11 @@
 
     <fileSets>
         <fileSet>
+            <directory>${project.basedir}/fxtemplates</directory>
+            <outputDirectory>/fxtemplates</outputDirectory>
+            <includes><include>*.xml</include></includes>
+        </fileSet>
+        <fileSet>
             <directory>${project.basedir}/examples</directory>
             <outputDirectory>/examples</outputDirectory>
         </fileSet>

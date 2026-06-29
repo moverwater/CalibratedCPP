@@ -4,12 +4,13 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
+import calibrationprior.CalibrationCladePrior;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * A forest of CalibrationNodes
+ * A forest of CalibrationNodes built from a list of TaxonSets.
  *
  * @author Marcus Overwater
  */
@@ -20,12 +21,36 @@ public class CalibrationForest extends BEASTObject {
     private final List<CalibrationNode> allNodes = new ArrayList<>();
     private final List<CalibrationNode> roots = new ArrayList<>();
 
-    // --- Constructor ---
-    public CalibrationForest(List<? extends CalibrationClade> clades) {
-        for (CalibrationClade clade : clades) {
-            allNodes.add(new CalibrationNode(clade));
+    /**
+     * Builds a forest from a flat list of taxon sets. Nodes carry no calibration prior.
+     */
+    public CalibrationForest(List<TaxonSet> taxonSets) {
+        for (TaxonSet ts : taxonSets) {
+            allNodes.add(new CalibrationNode(ts));
         }
         buildInclusionForest();
+    }
+
+    /**
+     * Builds a forest from a list of {@link CalibrationCladePrior} objects, wiring each
+     * node's {@code prior} field so that {@link CalibrationNode#getCalibrationCladePrior()}
+     * is available throughout.
+     */
+    public static CalibrationForest fromPriors(List<CalibrationCladePrior> priors) {
+        List<TaxonSet> taxonSets = priors.stream()
+                .map(CalibrationCladePrior::getTaxa)
+                .collect(Collectors.toList());
+        CalibrationForest forest = new CalibrationForest(taxonSets);
+        // Wire prior references by matching taxon sets
+        for (CalibrationNode node : forest.allNodes) {
+            for (CalibrationCladePrior prior : priors) {
+                if (taxonSetsEqual(node.taxa, prior.getTaxa())) {
+                    node.prior = prior;
+                    break;
+                }
+            }
+        }
+        return forest;
     }
 
     // --- Core forest structure builder ---
@@ -35,10 +60,7 @@ public class CalibrationForest extends BEASTObject {
         // Precompute taxa sets
         Map<CalibrationNode, Set<String>> nodeTaxaMap = new HashMap<>();
         for (CalibrationNode node : allNodes) {
-            Set<String> taxaIds = node.taxa.getTaxonSet().stream()
-                    .map(Taxon::getID)
-                    .collect(Collectors.toSet());
-            nodeTaxaMap.put(node, taxaIds);
+            nodeTaxaMap.put(node, taxaIds(node.taxa));
         }
 
         // --- Validate nesting/disjointness ---
@@ -54,7 +76,6 @@ public class CalibrationForest extends BEASTObject {
                 boolean bContainsA = bTaxa.containsAll(aTaxa);
                 boolean disjoint = Collections.disjoint(aTaxa, bTaxa);
 
-                // identical taxon sets not allowed
                 if (aTaxa.equals(bTaxa)) {
                     throw new IllegalArgumentException("Duplicate calibration clade: " + a.taxa.getID());
                 }
@@ -77,7 +98,6 @@ public class CalibrationForest extends BEASTObject {
 
                 Set<String> candidateTaxa = nodeTaxaMap.get(candidate);
                 if (candidateTaxa.containsAll(childTaxa)) {
-                    // most specific superset (smallest one)
                     if (bestParent == null ||
                             (nodeTaxaMap.get(bestParent).containsAll(candidateTaxa)
                                     && !nodeTaxaMap.get(candidate).equals(childTaxa))) {
@@ -86,7 +106,6 @@ public class CalibrationForest extends BEASTObject {
                 }
             }
 
-            // Prevent self or circular assignment
             if (bestParent == child) {
                 throw new IllegalStateException("Self-parent detected for " + child);
             }
@@ -101,13 +120,12 @@ public class CalibrationForest extends BEASTObject {
             }
         }
 
-        // Final sanity check: detect cycles
+        // Detect cycles
         for (CalibrationNode node : allNodes) {
             checkForCycle(node, new HashSet<>());
         }
     }
 
-    // Helper to detect cycles
     private void checkForCycle(CalibrationNode node, Set<CalibrationNode> visited) {
         if (node == null) return;
         if (!visited.add(node)) {
@@ -120,16 +138,11 @@ public class CalibrationForest extends BEASTObject {
 
     // --- Lookup methods ---
     public CalibrationNode getCalibrationNodeFromTaxonSet(TaxonSet taxonSet) {
+        Set<String> targetIds = taxaIds(taxonSet);
         for (CalibrationNode node : allNodes) {
-            Set<String> nodeIds = node.taxa.getTaxonSet().stream().map(Taxon::getID).collect(Collectors.toSet());
-            Set<String> targetIds = taxonSet.getTaxonSet().stream().map(Taxon::getID).collect(Collectors.toSet());
-            if (nodeIds.equals(targetIds)) return node;
+            if (taxaIds(node.taxa).equals(targetIds)) return node;
         }
         return null;
-    }
-
-    public CalibrationNode getCalibrationNodeFromCalibrationClade(CalibrationClade calibrationClade) {
-        return getCalibrationNodeFromTaxonSet(calibrationClade.getTaxa());
     }
 
     // --- Accessors ---
@@ -144,5 +157,14 @@ public class CalibrationForest extends BEASTObject {
     @Override
     public void initAndValidate() {
         buildInclusionForest();
+    }
+
+    // --- Helpers ---
+    private static Set<String> taxaIds(TaxonSet ts) {
+        return ts.getTaxonSet().stream().map(Taxon::getID).collect(Collectors.toSet());
+    }
+
+    private static boolean taxonSetsEqual(TaxonSet a, TaxonSet b) {
+        return taxaIds(a).equals(taxaIds(b));
     }
 }

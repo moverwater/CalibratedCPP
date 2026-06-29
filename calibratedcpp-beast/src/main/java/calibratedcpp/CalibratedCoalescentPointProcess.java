@@ -7,9 +7,10 @@ import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.type.RealScalar;
-import calibration.CalibrationClade;
+import beast.base.evolution.alignment.TaxonSet;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
+import calibration.ConstraintTree;
 
 import java.util.*;
 import java.util.function.IntUnaryOperator;
@@ -28,14 +29,19 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
     public Input<Boolean> conditionOnRootInput =
             new Input<>("conditionOnRoot", "Whether the model is conditioned on the root age (default: false)", false);
 
-    public Input<List<CalibrationClade>> calibrationsInput =
-            new Input<>("calibrations", "Clade calibrations", new ArrayList<>());
+    public Input<List<TaxonSet>> calibrationsInput =
+            new Input<>("calibrations", "Taxon sets whose MRCAs the model is conditioned on.", new ArrayList<>());
+
+    public Input<ConstraintTree> constraintTreeInput =
+            new Input<>("constraintTree", "Calibrations specified as a constraint tree in annotated "
+                    + "Newick format. Alternative to listing taxon sets individually; "
+                    + "exactly one of 'calibrations' or 'constraintTree' should be provided.");
 
     public Input<Boolean> conditionOnCalibrationsInput =
             new Input<>("conditionOnCalibrations", "Boolean if the likelihood is conditioned on the clade calibrations (Default: true). " +
                     "For large trees with many calibrations it is recommended to set this to false and use the exchange operator.", true);
 
-    protected List<CalibrationClade> calibrations;
+    protected List<TaxonSet> calibrations;
     protected CalibrationForest calibrationForest;
     protected List<CalibrationNode> calibrationNodes;
     protected boolean conditionOnCalibrations;
@@ -53,15 +59,24 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
 
         tree = treeInput.get();
         calibrations = new ArrayList<>(calibrationsInput.get());
+
+        ConstraintTree constraintTree = constraintTreeInput.get();
+        if (constraintTree != null) {
+            if (!calibrations.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Provide calibrations via 'calibrations' or 'constraintTree', not both.");
+            }
+            calibrations.addAll(constraintTree.getTaxonSets());
+        }
         conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
         int nTaxa = tree.getLeafNodeCount();
 
         conditionOnRoot = conditionOnRootInput.get();
 
-        for (CalibrationClade clade: calibrations) {
-            if (clade.getTaxa().getTaxonCount() == nTaxa) {
+        for (TaxonSet ts : calibrations) {
+            if (ts.getTaxonCount() == nTaxa) {
                 conditionOnRoot = true;
-                calibrations.remove(clade);
+                calibrations.remove(ts);
                 break;
             }
         }
@@ -242,11 +257,6 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
                 collectLeafTaxa(mrca, leafIDs);
                 if (!leafIDs.equals(c.taxa.getTaxaNames())) {
                     return Double.NEGATIVE_INFINITY; // clade is not monophyletic!
-                }
-                if (c.getCalibrationClade().providedAge) {
-                    if (Math.abs(mrca.getHeight() - c.getCalibrationClade().getAge().get()) > 1e-4) {
-                        return Double.NEGATIVE_INFINITY; // tmrca of clade is not the calibration age!
-                    }
                 }
             }
             double marginalDensityOfCalibrations = calculateMarginalLogDensityOfCalibrations(tree, calibrationForest);

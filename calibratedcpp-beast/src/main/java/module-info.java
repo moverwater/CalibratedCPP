@@ -16,8 +16,13 @@ open module calibratedcpp.beast {
     exports calibrationprior;
     exports calibratedcpp.beauti;
 
-    // CalibratedCoalescentPointProcess (abstract), CalibrationNode/Forest (no default ctor),
-    // and CalibratedCPPInputEditor (not a BEASTInterface subtype) are registered via version.xml only.
+    provides beastfx.app.inputeditor.InputEditor with
+        calibratedcpp.beauti.CalibratedCPPInputEditor,
+        calibratedcpp.beauti.CalibrationPriorInputEditor,
+        calibratedcpp.beauti.SkylineParameterInputEditor;
+
+    // CalibratedCoalescentPointProcess (abstract) and CalibrationNode/Forest (no default ctor)
+    // are registered via version.xml only.
     provides beast.base.core.BEASTInterface with
         calibratedcpp.CalibratedBirthDeathModel,
         calibratedcpp.CalibratedBirthDeathSkylineModel,
@@ -25,5 +30,5 @@ open module calibratedcpp.beast {
         calibratedcpp.SkylineParameter,
         calibrationprior.CalibrationPrior,
         calibrationprior.CalibrationCladePrior,
-        calibration.CalibrationClade;
+        calibration.ConstraintTree;
 }

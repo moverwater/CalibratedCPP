@@ -6,7 +6,6 @@ import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeParser;
 import beast.base.spec.domain.Real;
 import beast.base.spec.inference.parameter.RealScalarParam;
-import calibration.CalibrationClade;
 
 import java.io.*;
 import java.nio.file.*;
@@ -270,31 +269,23 @@ public class SimpleConstraintBenchmark {
             taxonMap.put(taxonName, taxon);
         }
 
-        // Create CalibrationClades
-        List<CalibrationClade> calibrationClades = new ArrayList<>();
+        // Create TaxonSets for each calibration
+        List<TaxonSet> calibrationClades = new ArrayList<>();
         for (ParsedCalibration cal : parsed.calibrations) {
             if (cal.taxa.isEmpty()) continue;
 
             List<Taxon> taxonList = new ArrayList<>();
             for (String name : cal.taxa) {
                 Taxon t = taxonMap.get(name);
-                if (t != null) {
-                    taxonList.add(t);
-                }
+                if (t != null) taxonList.add(t);
             }
 
             if (taxonList.isEmpty()) continue;
 
             TaxonSet taxonSet = new TaxonSet();
             taxonSet.initByName("taxon", taxonList);
-
-            CalibrationClade clade = new CalibrationClade();
-            clade.setID(cal.name != null ? cal.name : "clade_" + calibrationClades.size());
-            clade.initByName("taxa", taxonSet);
-            calibrationClades.add(clade);
-
-            // Debug: print calibration info
-            // System.err.println("  Calibration: " + clade.getID() + " with " + taxonList.size() + " taxa");
+            taxonSet.setID(cal.name != null ? cal.name : "clade_" + calibrationClades.size());
+            calibrationClades.add(taxonSet);
         }
 
         if (calibrationClades.isEmpty()) {

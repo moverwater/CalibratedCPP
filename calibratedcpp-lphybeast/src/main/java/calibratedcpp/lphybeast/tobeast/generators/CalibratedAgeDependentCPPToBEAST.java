@@ -18,7 +18,6 @@ import calibratedcpp.CalibratedAgeDependentBirthDeathModel;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.tree.CalibratedAgeDependentCPPTree;
-import calibration.CalibrationClade;
 import calibrationprior.CalibrationCladePrior;
 import calibrationprior.CalibrationPrior;
 import lphy.core.model.Generator;
@@ -77,17 +76,11 @@ public class CalibratedAgeDependentCPPToBEAST
         }
 
         // calibration clades
-        List<CalibrationClade> calibrations = new ArrayList<>();
         Calibration[] calibrationsFromGenerator = generator.getCalibrations().value().getCalibrationArray();
         for (Calibration calibration : calibrationsFromGenerator) {
-            CalibrationClade calibrationClade = new CalibrationClade();
-            TaxonSet taxonSet = getTaxonSet((TreeInterface) value, calibration.getTaxa());
-            taxonSets.add(taxonSet);
-            calibrationClade.setInputValue("taxa", taxonSet);
-            calibrationClade.initAndValidate();
-            calibrations.add(calibrationClade);
+            taxonSets.add(getTaxonSet((TreeInterface) value, calibration.getTaxa()));
         }
-        model.setInputValue("calibrations", calibrations);
+        model.setInputValue("calibrations", taxonSets);
         model.initAndValidate();
 
         // CalibrationPrior — same pattern as CalibratedCPPToBEAST

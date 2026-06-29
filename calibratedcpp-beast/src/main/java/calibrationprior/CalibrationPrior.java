@@ -9,12 +9,14 @@ import beast.base.inference.Distribution;
 import beast.base.inference.State;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
+import calibration.ConstraintTree;
 import org.hipparchus.linear.*;
 import org.hipparchus.special.Erf;
 import org.hipparchus.special.Gamma;
 
 import java.io.PrintStream;
 import java.util.*;
+import java.util.Collections;
 
 /**
  * @author Marcus Overwater
@@ -27,7 +29,12 @@ public class CalibrationPrior extends Distribution {
             new Input<>("tree", "Tree to calibrate", Input.Validate.REQUIRED);
 
     public Input<List<CalibrationCladePrior>> cladesInput =
-            new Input<>("calibration", "List of calibration clades", new ArrayList<>());
+            new Input<>("calibration", "List of calibration clades (alternative to constraintTree).", new ArrayList<>());
+
+    public Input<ConstraintTree> constraintTreeInput =
+            new Input<>("constraintTree",
+                    "Constraint tree with [&lower=X,upper=Y] annotations. "
+                    + "Alternative to providing an explicit list of calibration clades.");
 
     private List<CalibrationNode> calibrationNodes = new ArrayList<>();
     private Map<CalibrationNode, Double> cladeLogP = new LinkedHashMap<>();
@@ -35,14 +42,23 @@ public class CalibrationPrior extends Distribution {
     @Override
     public void initAndValidate() {
         TreeInterface tree = treeInput.get();
-        List<CalibrationCladePrior> cladePriors = cladesInput.get();
         if (tree == null) throw new IllegalArgumentException("Tree is null");
+
+        List<CalibrationCladePrior> cladePriors = cladesInput.get();
+
+        // Accept clades from a ConstraintTree when no explicit list is given
+        if (cladePriors.isEmpty() && constraintTreeInput.get() != null) {
+            cladePriors = constraintTreeInput.get().getCalibrationCladePriors();
+        }
+
         if (cladePriors.isEmpty()) {
-            throw new IllegalArgumentException("No clades provided");
+            // No calibrations — nothing to fit; calculateLogP() will return 0
+            calibrationNodes = Collections.emptyList();
+            return;
         }
 
         // === Step 2: build inclusion hierarchy ===
-        CalibrationForest calibrationForest = new CalibrationForest(cladePriors);
+        CalibrationForest calibrationForest = CalibrationForest.fromPriors(cladePriors);
         calibrationNodes = calibrationForest.getAllNodes();
 
         for (CalibrationNode node : calibrationNodes) {
@@ -71,9 +87,9 @@ public class CalibrationPrior extends Distribution {
                     "For overlapping calibrations the child's calibration interval should span " +
                     "at least as wide a range on the log scale as the parent's. " +
                     "The Beta prior edge variance will be clamped to a small positive value.",
-                    node.getCalibrationClade().getID(),
+                    node.prior.getID(),
                     child.getLower(), child.getUpper(), childLogWidth,
-                    node.parent.getCalibrationClade().getID(),
+                    node.parent.prior.getID(),
                     parent.getLower(), parent.getUpper(), parentLogWidth));
             }
         }
@@ -416,7 +432,7 @@ public class CalibrationPrior extends Distribution {
     @Override
     public void init(final PrintStream out) {
         for (CalibrationNode n : calibrationNodes) {
-            String id = n.getCalibrationClade().getTaxa().getID();
+            String id = n.taxa.getID();
             out.print("logP(mrca(" + id + "))\t");
             out.print("mrca.age(" + id + ")\t");
         }
