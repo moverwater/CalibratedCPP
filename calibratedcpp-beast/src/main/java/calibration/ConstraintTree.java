@@ -151,7 +151,17 @@ public class ConstraintTree extends BEASTObject {
             node.children.add(child);
             node.taxa.addAll(child.taxa);
         }
-        skipLabel(s, pos);
+        // Capture the standard Newick internal-node label (if any) before the annotation block.
+        // applyAnnotation may override this with [&name=X] if present.
+        skipWS(s, pos);
+        StringBuilder labelSb = new StringBuilder();
+        while (pos[0] < s.length()) {
+            char c = s.charAt(pos[0]);
+            if (c == ':' || c == '[' || c == ',' || c == ')' || c == ';') break;
+            labelSb.append(c); pos[0]++;
+        }
+        String capturedLabel = labelSb.toString().trim();
+        if (!capturedLabel.isEmpty()) node.name = capturedLabel;
         skipBranchLength(s, pos);
         applyAnnotation(node, readAnnotation(s, pos));
         return node;
@@ -171,15 +181,6 @@ public class ConstraintTree extends BEASTObject {
         applyAnnotation(node, readAnnotation(s, pos));
         skipBranchLength(s, pos);
         return node;
-    }
-
-    private static void skipLabel(String s, int[] pos) {
-        skipWS(s, pos);
-        while (pos[0] < s.length()) {
-            char c = s.charAt(pos[0]);
-            if (c == ':' || c == '[' || c == ',' || c == ')' || c == ';') break;
-            pos[0]++;
-        }
     }
 
     private static void skipBranchLength(String s, int[] pos) {

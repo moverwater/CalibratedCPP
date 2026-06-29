@@ -93,14 +93,6 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         String partition = partitionOf(cp);
         CalibratedBirthDeathSkylineModel cpp = getCPP(partition);
 
-        // Refresh button always visible so user can update after adding calibrations in the popup
-        Button refreshBtn = new Button("↻ Refresh");
-        refreshBtn.setStyle("-fx-font-size:11px;");
-        refreshBtn.setOnAction(e -> rebuild(cp, mainBox));
-        HBox refreshRow = new HBox(refreshBtn);
-        refreshRow.setPadding(new Insets(0, 0, 6, 0));
-        mainBox.getChildren().add(refreshRow);
-
         if (cpp == null || cpp.calibrationsInput.get().isEmpty()) {
             mainBox.getChildren().add(new Label("No calibration clades defined. Use 'Manage calibrations' to add them, then click Refresh."));
             return;
@@ -165,7 +157,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             row.setAlignment(Pos.CENTER_LEFT);
             row.getChildren().add(fixedLabel(labelOf(ts), 160, false));
             if (calMode) buildCalRow(row, cp, ts, partition);
-            else         buildMRCARow(row, ts, partition);
+            else         buildMRCARow(row, cp, ts, partition);
             box.getChildren().add(row);
         }
     }
@@ -182,7 +174,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         row.getChildren().addAll(loTf, hiTf);
     }
 
-    private void buildMRCARow(HBox row, TaxonSet ts, String partition) {
+    private void buildMRCARow(HBox row, CalibrationPrior cp, TaxonSet ts, String partition) {
         MRCAPrior mrca = findMRCAPrior(ts, partition);
         DistDef curDef = findDef(detectDistName(mrca));
 
@@ -198,7 +190,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         CheckBox monoCb = new CheckBox();
         monoCb.setSelected(mrca == null || Boolean.TRUE.equals(mrca.getInputValue("monophyletic")));
 
-        Runnable apply = () -> applyMRCAPrior(ts, partition, findDef(distCb.getValue()),
+        Runnable apply = () -> applyMRCAPrior(cp, ts, partition, findDef(distCb.getValue()),
                                                readParams(paramsBox), monoCb.isSelected());
         attachParamListeners(paramsBox, apply);
         monoCb.setOnAction(e -> apply.run());
@@ -207,7 +199,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             DistDef nd = findDef(distCb.getValue());
             renderParamFields(paramsBox, nd, null);
             attachParamListeners(paramsBox, apply);
-            applyMRCAPrior(ts, partition, nd, defaultParams(nd), monoCb.isSelected());
+            applyMRCAPrior(cp, ts, partition, nd, defaultParams(nd), monoCb.isSelected());
         });
 
         row.getChildren().addAll(distCb, paramsBox, monoCb);
@@ -253,7 +245,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
     // ── Mode switching ────────────────────────────────────────────────────────────
 
     private void switchToCalibrationPrior(CalibrationPrior cp, List<TaxonSet> clades, String partition) {
-        removeMRCAPriors(partition);
+        removeMRCAPriors(cp, partition);
         syncCalibrationPriorClades(cp, clades, partition);
     }
 
@@ -270,9 +262,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
 
     private void switchToMRCAPriors(CalibrationPrior cp, List<TaxonSet> clades, String partition) {
         cp.cladesInput.get().clear();
-        // Remove CalibrationPrior from prior so it doesn't appear as an empty element in the XML
-        if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd)
-            cd.pDistributions.get().remove(cp);
+        cp.mrcaPriorsInput.get().clear();
         DistDef uniform = findDef("Uniform");
         for (TaxonSet ts : clades) {
             Map<String, Double> params = defaultParams(uniform);
@@ -281,20 +271,17 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
                 params.put("lower", ccp.getLower());
                 params.put("upper", ccp.getUpper());
             }
-            applyMRCAPrior(ts, partition, uniform, params, true);
+            applyMRCAPrior(cp, ts, partition, uniform, params, true);
         }
     }
 
-    private void removeMRCAPriors(String partition) {
+    private void removeMRCAPriors(CalibrationPrior cp, String partition) {
+        cp.mrcaPriorsInput.get().clear();
         String pfx = "MRCAPrior.", sfx = "." + partition;
         List<String> ids = doc.pluginmap.keySet().stream()
             .filter(id -> id.startsWith(pfx) && id.endsWith(sfx))
             .toList();
-        for (String id : ids) {
-            BEASTInterface obj = doc.pluginmap.remove(id);
-            if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd)
-                cd.pDistributions.get().remove(obj);
-        }
+        ids.forEach(doc.pluginmap::remove);
         List<String> distIds = doc.pluginmap.keySet().stream()
             .filter(id -> id.startsWith("MRCAPriorDist.") && id.endsWith(sfx))
             .toList();
@@ -336,7 +323,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         } catch (Exception ignored) {}
     }
 
-    private void applyMRCAPrior(TaxonSet ts, String partition, DistDef def,
+    private void applyMRCAPrior(CalibrationPrior cp, TaxonSet ts, String partition, DistDef def,
                                   Map<String, Double> params, boolean monophyletic) {
         CalibratedBirthDeathSkylineModel cpp = getCPP(partition);
         if (cpp == null) return;
@@ -344,15 +331,12 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         String mrcaId = "MRCAPrior." + labelOf(ts) + "." + partition;
         String distId = "MRCAPriorDist." + labelOf(ts) + "." + partition;
 
-        // Remove old
-        if (doc.pluginmap.get(mrcaId) instanceof MRCAPrior old) {
-            doc.pluginmap.remove(mrcaId);
-            if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd)
-                cd.pDistributions.get().remove(old);
-        }
+        // Remove old objects from pluginmap first so addPlugin won't see a conflict
+        if (doc.pluginmap.get(mrcaId) instanceof MRCAPrior old)
+            cp.mrcaPriorsInput.get().remove(old);
+        doc.pluginmap.remove(mrcaId);
         doc.pluginmap.remove(distId);
 
-        // Build and register new
         ScalarDistribution dist = buildDistribution(def, params);
         if (dist != null) { dist.setID(distId); doc.addPlugin(dist); }
 
@@ -361,11 +345,13 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         mrca.setInputValue("taxonset",    ts);
         mrca.setInputValue("monophyletic", monophyletic);
         if (dist != null) mrca.setInputValue("distr", dist);
-        mrca.setID(mrcaId);
         try { mrca.initAndValidate(); } catch (Exception e) { e.printStackTrace(); }
+        mrca.setID(mrcaId);
         doc.addPlugin(mrca);
-        if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd)
-            cd.pDistributions.get().add(mrca);
+        // Add to CalibrationPrior's internal list, NOT to the top-level prior compound,
+        // so MRCA priors don't appear as separate rows in BEAUti's Priors panel.
+        if (!cp.mrcaPriorsInput.get().contains(mrca))
+            cp.mrcaPriorsInput.get().add(mrca);
     }
 
     // ── Distribution builder ──────────────────────────────────────────────────────
