@@ -19,7 +19,22 @@ BURNIN    = 0.10
 ALPHA     = 0.05
 OUT_PDF   = "mcmc_vs_lphy_comparison.pdf"
 
-CLADES = [f"mrca.clade{i}" for i in range(1, 11)]
+CLADES       = [f"mrca.clade{i}" for i in range(1, 11)]
+# TaxonSets in XML are ordered by the LPhy calibration list [c1,c2,c6,c8,c9,c10,c7,c5,c3,c4],
+# so clade3→TaxonSet9, clade4→TaxonSet10, clade5→TaxonSet8, clade6→TaxonSet3,
+# clade7→TaxonSet7, clade8→TaxonSet4, clade9→TaxonSet5, clade10→TaxonSet6
+BEAST_CLADES = [
+    "mrca.age(TaxonSet1)",   # clade1
+    "mrca.age(TaxonSet2)",   # clade2
+    "mrca.age(TaxonSet9)",   # clade3
+    "mrca.age(TaxonSet10)",  # clade4
+    "mrca.age(TaxonSet8)",   # clade5
+    "mrca.age(TaxonSet3)",   # clade6
+    "mrca.age(TaxonSet7)",   # clade7
+    "mrca.age(TaxonSet4)",   # clade8
+    "mrca.age(TaxonSet5)",   # clade9
+    "mrca.age(TaxonSet6)",   # clade10
+]
 
 # Bounds in clade1…clade10 order (clade1 = root, matching calibrationprior_simulation.r)
 LOWER = [10.0, 9.4, 4.8, 4.0, 8.0, 6.8, 1.8, 2.0, 1.7, 1.6]
@@ -34,8 +49,8 @@ lphy = pd.read_csv(LPHY_TSV, sep="\t")
 
 # ── Coverage + t-tests ───────────────────────────────────────────────────────
 print(f"\n{'Clade':<16} {'BEAST-cov':>9} {'LPhy-cov':>9} {'t p-val':>9} {'t':>5}")
-for col, lo, hi in zip(CLADES, LOWER, UPPER):
-    b = beast[col].values
+for col, bcol, lo, hi in zip(CLADES, BEAST_CLADES, LOWER, UPPER):
+    b = beast[bcol].values
     l = lphy[col].values
     b_cov = np.mean((b >= lo) & (b <= hi))
     l_cov = np.mean((l >= lo) & (l <= hi))
@@ -47,9 +62,9 @@ for col, lo, hi in zip(CLADES, LOWER, UPPER):
 fig, axes = plt.subplots(5, 2, figsize=(6.5, 9))
 axes = axes.flatten()
 
-for k, (col, lo, hi) in enumerate(zip(CLADES, LOWER, UPPER)):
+for k, (col, bcol, lo, hi) in enumerate(zip(CLADES, BEAST_CLADES, LOWER, UPPER)):
     ax  = axes[k]
-    b   = beast[col].values
+    b   = beast[bcol].values
     l   = lphy[col].values
     b_cov = np.mean((b >= lo) & (b <= hi))
     l_cov = np.mean((l >= lo) & (l <= hi))

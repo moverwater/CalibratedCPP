@@ -95,15 +95,11 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         CalibrationPrior calibrationPrior = new CalibrationPrior();
         calibrationPrior.setInputValue("tree", value);
         ConditionedMRCAPrior conditionedMRCAPrior = (ConditionedMRCAPrior) generator.getCalibrations().getInputs().get(0);
-        Value<Double[]> upperBoundsInput = (Value<Double[]>) conditionedMRCAPrior.getParams().get("upperBounds");
-        Value<Double[]> lowerBoundsInput = (Value<Double[]>) conditionedMRCAPrior.getParams().get("lowerBounds");
-        Value<Double> covInput;
-        if (conditionedMRCAPrior.getParams().get("p") != null) {
-            covInput = (Value<Double>) conditionedMRCAPrior.getParams().get("p");
-        } else {
-            covInput = new Value<>("", 0.9);
-        }
-        List<CalibrationCladePrior> cladeInput = getCalibrationCladePriors(covInput, calibrationsFromGenerator, upperBoundsInput, lowerBoundsInput, taxonSets);
+        Value<Calibration[]> calibrationSpecsInput = conditionedMRCAPrior.getCalibrations();
+        Value<Double> covInput = conditionedMRCAPrior.getCoverage() != null
+                ? new Value<>("", conditionedMRCAPrior.getCoverage().value().doubleValue())
+                : new Value<>("", 0.9);
+        List<CalibrationCladePrior> cladeInput = getCalibrationCladePriors(covInput, calibrationsFromGenerator, calibrationSpecsInput.value(), taxonSets);
         calibrationPrior.setInputValue("calibration", cladeInput);
         calibrationPrior.initAndValidate();
 
@@ -113,16 +109,13 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         return model;
     }
 
-    private List<CalibrationCladePrior> getCalibrationCladePriors(Value<Double> covInput, Calibration[] calibrationsFromGenerator, Value<Double[]> upperBoundsInput, Value<Double[]> lowerBoundsInput, List<TaxonSet> taxonSets) {
+    private List<CalibrationCladePrior> getCalibrationCladePriors(Value<Double> covInput, Calibration[] calibrationsFromGenerator, Calibration[] calibrationSpecs, List<TaxonSet> taxonSets) {
         RealScalar<UnitInterval> confidenceLevel = new RealScalarParam<>(covInput.value(), UnitInterval.INSTANCE);
 
         List<CalibrationCladePrior> cladeInput = new ArrayList<>();
         for (int i = 0; i < calibrationsFromGenerator.length; i++) {
-            Double upper = upperBoundsInput.value()[i];
-            Double lower = lowerBoundsInput.value()[i];
-
-            RealScalar<NonNegativeReal> upperAge = new RealScalarParam<>(upper, NonNegativeReal.INSTANCE);
-            RealScalar<NonNegativeReal> lowerAge = new RealScalarParam<>(lower, NonNegativeReal.INSTANCE);
+            RealScalar<NonNegativeReal> upperAge = new RealScalarParam<>(calibrationSpecs[i].getUpper(), NonNegativeReal.INSTANCE);
+            RealScalar<NonNegativeReal> lowerAge = new RealScalarParam<>(calibrationSpecs[i].getLower(), NonNegativeReal.INSTANCE);
 
             CalibrationCladePrior calibrationCladePrior = new CalibrationCladePrior();
             calibrationCladePrior.setInputValue("upperAge", upperAge);

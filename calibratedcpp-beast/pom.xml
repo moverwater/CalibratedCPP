@@ -81,6 +81,18 @@
       </repository>
     </repositories>
     <build>
+        <resources>
+            <!-- Standard source resources -->
+            <resource>
+                <directory>${project.basedir}/src/main/resources</directory>
+            </resource>
+            <!-- BEAUti template — declared here so IntelliJ picks it up automatically -->
+            <resource>
+                <directory>${project.basedir}/fxtemplates</directory>
+                <targetPath>fxtemplates</targetPath>
+                <includes><include>*.xml</include></includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -150,6 +162,20 @@
                                 <resource>
                                     <directory>${project.basedir}</directory>
                                     <includes><include>version.xml</include></includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>embed-fxtemplates-in-jar</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>copy-resources</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/fxtemplates</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/fxtemplates</directory>
+                                    <includes><include>*.xml</include></includes>
                                 </resource>
                             </resources>
                         </configuration>

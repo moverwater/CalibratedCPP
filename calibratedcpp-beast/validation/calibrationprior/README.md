@@ -34,7 +34,15 @@ The validation uses 10 calibrated clades on 11 taxa.  Clade numbering matches
 
 ## Usage
 
-### 1 — Run BEAST MCMC
+### 1 - Generate BEAST XML with LPhyBeast
+
+```bash
+mvn -pl calibratedcpp-lphybeast exec:exec \
+  -Dlphybeast.args="convert -o test_calibration_prior.xml \
+    ../calibratedcpp-beast/validation/calibrationprior/test_calibration_prior.lphy"
+```
+
+### 2 — Run BEAST MCMC
 
 From the project root:
 
@@ -45,7 +53,7 @@ mvn -pl calibratedcpp-beast exec:exec \
 
 This produces `test_calibration_prior.log` with columns `mrca.clade1` … `mrca.clade10`.
 
-### 2 — Generate LPhy simulated samples
+### 3 — Generate LPhy simulated samples
 
 From the `calibratedcpp-lphy` module directory:
 
@@ -60,7 +68,7 @@ This runs `ConditionedMRCAPrior.sample()` 50 000 times and writes
 `../calibratedcpp-beast/validation/calibrationprior/lphy_wsim.tsv`.
 Per-clade coverage is printed to stdout.
 
-### 3 — Plot comparison
+### 4 — Plot comparison
 
 ```bash
 cd calibratedcpp-beast/validation/calibrationprior

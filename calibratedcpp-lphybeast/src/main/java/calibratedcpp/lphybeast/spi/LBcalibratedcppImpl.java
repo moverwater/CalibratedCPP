@@ -3,6 +3,7 @@ package calibratedcpp.lphybeast.spi;
 import beast.base.evolution.datatype.DataType;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.CalibrationArray;
+import calibratedcpp.lphy.prior.CalibrationFunction;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.util.TruncatedLogNormal;
 import calibratedcpp.lphybeast.tobeast.generators.CPPToBEAST;
@@ -33,7 +34,7 @@ public class LBcalibratedcppImpl implements LPhyBEASTMapping {
     @Override
     public List<Class<? extends Generator>> getExcludedGenerator() {
         return List.of(
-                TruncatedLogNormal.class, ConditionedMRCAPrior.class
+                TruncatedLogNormal.class, ConditionedMRCAPrior.class, CalibrationFunction.class
         );
     }
 
@@ -45,7 +46,7 @@ public class LBcalibratedcppImpl implements LPhyBEASTMapping {
     @Override
     public List<Class> getExcludedValueType() {
         return List.of(
-                CalibrationArray.class
+                Calibration.class, CalibrationArray.class
         );
     }
 }

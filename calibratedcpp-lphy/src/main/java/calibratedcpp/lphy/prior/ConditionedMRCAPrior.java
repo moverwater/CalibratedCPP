@@ -15,199 +15,126 @@ import static calibratedcpp.lphy.prior.ConditionedPriorUtils.*;
 import static calibratedcpp.lphy.tree.CPPUtils.*;
 
 public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationArray> {
-    Value<String[][]> calibrationTaxa;
-    Value<Double[]> upperBounds;
-    Value<Double[]> lowerBounds;
-    Value<Number> coverage;
-    Value<Boolean> rootFlag;
 
-    public final String calibrationTaxaName = "calibrationTaxa";
-    public final String rootFlagName = "rootFlag";
-    public final String upperBoundName = "upperBounds";
-    public final String lowerBoundName = "lowerBounds";
-    public final String coverageName = "p";
+    public static final String calibrationsParamName = "calibrations";
+    public static final String coverageName = "p";
+
+    Value<?> calibrationsInput;
+    Value<Number> coverage;
 
     public ConditionedMRCAPrior(
-            @ParameterInfo(name = calibrationTaxaName, description = "the array of calibration names, the upper and lower bounds should in this order, root calibration should be put at the first") Value<String[][]> calibrationTaxa,
-            @ParameterInfo(name = rootFlagName, description = "if root is also calibrated, default no", optional = true) Value<Boolean> rootFlag,
-            @ParameterInfo(name = upperBoundName, description = "the double array of the upper bounds of the corresponding calibration, if root is calibrated then put it at the first value") Value<Double[]> upperBounds,
-            @ParameterInfo(name = lowerBoundName, description = "the double array of the lower bounds of the corresponding calibration, if root is calibrated then put it at the first value") Value<Double[]> lowerBounds,
-            @ParameterInfo(name = coverageName, description = "the confidential level that the amount of probability mass expected to be retained after truncation, default 0.9", optional = true) Value<Number> coverage
-    ) {
-        // check illegal arguments
-        if (calibrationTaxa == null || calibrationTaxa.value() == null || calibrationTaxa.value().length < 1)
-            throw new IllegalArgumentException("The calibrations must be equal or more than one");
-        if (upperBounds == null || upperBounds.value() == null || upperBounds.value().length < 1)
-            throw new IllegalArgumentException("The upper bounds must be equal or more than one");
-        if (lowerBounds == null || lowerBounds.value() == null || lowerBounds.value().length < 1)
-            throw new IllegalArgumentException("The lower bounds must be equal or more than one");
-
-        if (calibrationTaxa.value().length != upperBounds.value().length || upperBounds.value().length != lowerBounds.value().length) {
-           throw new IllegalArgumentException("The calibrations, upper bounds, and lower bounds must have the same length");
+            @ParameterInfo(name = calibrationsParamName, description = "array of calibration constraints, each created with calibration(taxa, upper, lower, root?)") Value<?> calibrationsInput,
+            @ParameterInfo(name = coverageName, description = "confidence level for probability mass after truncation, default 0.9", optional = true) Value<Number> coverage) {
+        if (calibrationsInput == null)
+            throw new IllegalArgumentException("calibrations must be provided");
+        Calibration[] specs = toCalibrationArray(calibrationsInput);
+        if (specs.length < 1)
+            throw new IllegalArgumentException("At least one calibration must be provided");
+        for (Calibration c : specs) {
+            if (c.getUpper() == null || c.getLower() == null)
+                throw new IllegalArgumentException("Each calibration must have upper and lower bounds — use calibration(taxa=..., upper=..., lower=...)");
         }
-
-        this.calibrationTaxa = calibrationTaxa;
-        this.upperBounds = upperBounds;
-        this.lowerBounds = lowerBounds;
+        this.calibrationsInput = calibrationsInput;
         this.coverage = coverage;
-        this.rootFlag = rootFlag;
+    }
+
+    /** Converts the stored Value (Object[] or Calibration[]) to a Calibration[]. */
+    private static Calibration[] toCalibrationArray(Value<?> v) {
+        Object raw = v.value();
+        if (raw instanceof Calibration[] arr) return arr;
+        Object[] objs = (Object[]) raw;
+        Calibration[] result = new Calibration[objs.length];
+        for (int i = 0; i < objs.length; i++) result[i] = (Calibration) objs[i];
+        return result;
     }
 
     @GeneratorInfo(name = "ConditionedMRCAPrior", examples = {"conditionedMRCAPrior.lphy"},
-        description = "generate an array of calibrations with optimised parameters for the distributions on the MRCA node.")
+            description = "Generates an array of calibrated node ages with optimised distribution parameters for the MRCA nodes.")
     @Override
     public RandomVariable<CalibrationArray> sample() {
-        // get the parameters
-        String[][] calibrationTaxa = getCalibrationTaxa().value();
-        Double[] upperBounds = getUpperBounds().value();
-        Double[] lowerBounds = getLowerBounds().value();
-        double coverage = 0.9;
-        if (getCoverage() != null) {
-            coverage = getCoverage().value().doubleValue();
-        }
-        boolean rootFlag = false;
-        if (getRootFlag() != null) {
-            rootFlag = getRootFlag().value();
-        }
-        int n = calibrationTaxa.length;
+        Calibration[] calibrationSpecs = toCalibrationArray(calibrationsInput);
+        int n = calibrationSpecs.length;
 
-        /*
-            step 1: get maximal clade calibrations, figure out who's whose parent
-         */
-        // build clade calibrations first
-        List<Calibration> calibrationsIn = new ArrayList<>();
+        Double[] upperBounds = new Double[n];
+        Double[] lowerBounds = new Double[n];
         for (int i = 0; i < n; i++) {
-            Calibration cali = new Calibration(calibrationTaxa[i]);
-            calibrationsIn.add(cali);
+            upperBounds[i] = calibrationSpecs[i].getUpper();
+            lowerBounds[i] = calibrationSpecs[i].getLower();
         }
 
-        // convert a simple array that telling calibrations relationship
-        int[] parent = computeParents(rootFlag, calibrationsIn);
+        double p = 0.9;
+        if (coverage != null) p = coverage.value().doubleValue();
 
-        /*
-            step 2 : classify nodes, see if it is beta nodes
-            beta node is nested within a larger clade along the main branch
-            they're using beta*lognormal
-            if there is overlapping of bound between the child calibration and the parent then set true
-            otherwise it's still not beta node
-         */
-        boolean[] is_beta_node = mapBetaNodes(n, rootFlag, parent, upperBounds, lowerBounds);
+        List<Calibration> calibrationList = new ArrayList<>(Arrays.asList(calibrationSpecs));
+        int[] parent = computeParents(calibrationList);
+        boolean[] is_beta_node = mapBetaNodes(calibrationSpecs, parent);
 
-        /*
-            step 3: compute the log-targets
-            use the methods from CalibrationPrior beast class
-         */
         double[] mu = new double[n];
         double[] sigma2 = new double[n];
         for (int i = 0; i < n; i++) {
-            double lo = lowerBounds[i];
-            double hi = upperBounds[i];
-            mu[i]     = computeLogTargetsMu(lo, hi, coverage);
-            sigma2[i] = computeLogTargetsSigma2(lo, hi, coverage);
+            mu[i]     = computeLogTargetsMu(lowerBounds[i], upperBounds[i], p);
+            sigma2[i] = computeLogTargetsSigma2(lowerBounds[i], upperBounds[i], p);
         }
 
-        /*
-            step 4: compute edges for beta nodes
-         */
-        // count edges <- is_beta_node and not root
         int nEdges = getEdgesNumber(n, is_beta_node, parent);
-
-        // allocate outputs
         int[] edges = new int[nEdges];
         String[] edgeNames = new String[nEdges];
-
-        double[][] A_mean = new double[nEdges][nEdges]; // default 0.0
+        double[][] A_mean = new double[nEdges][nEdges];
         double[] b_mean = new double[nEdges];
         double[] b_var  = new double[nEdges];
 
-        // fill
         int idx = 0;
         for (int i = 0; i < n; i++) {
             if (is_beta_node[i] && parent[i] != -1) {
                 int par_i = parent[i];
-
                 edges[idx] = i;
-                edgeNames[idx] = par_i + "_" + i;   // parent_child
-
-                double m_edge = mu[i] - mu[par_i];
-                double v_edge = sigma2[i] - sigma2[par_i];
-
-                b_mean[idx] = m_edge;
-                b_var[idx]  = v_edge;
+                edgeNames[idx] = par_i + "_" + i;
+                b_mean[idx] = mu[i] - mu[par_i];
+                b_var[idx]  = sigma2[i] - sigma2[par_i];
                 A_mean[idx][idx] = 1.0;
-
                 idx++;
             }
         }
-
-        /*
-            step 5: solve for beta parameters
-         */
 
         Map<String, Double> edgeAlpha = new HashMap<>();
         Map<String, Double> edgeBeta  = new HashMap<>();
         extractBetaParams(nEdges, b_mean, b_var, edgeAlpha, edgeNames, edgeBeta);
 
-        /*
-            step 6: simulation
-         */
         double[] W = new double[n];
-        calculateNodeAges(n, rootFlag, W, mu, sigma2, parent, is_beta_node, edgeAlpha, edgeBeta);
+        calculateNodeAges(n, W, mu, sigma2, parent, is_beta_node, edgeAlpha, edgeBeta);
 
-        /*
-            step 7: map output
-         */
-        Calibration[] calibrations = new Calibration[n];
-
+        Calibration[] result = new Calibration[n];
         for (int i = 0; i < n; i++) {
-            Calibration calibration = new Calibration(calibrationsIn.get(i).getTaxa(), W[i]);
-            calibrations[i] = calibration;
-
+            result[i] = new Calibration(calibrationSpecs[i].getTaxa(), W[i]);
         }
-        CalibrationArray array = new CalibrationArray(calibrations);
-
-        return new RandomVariable<>("", array, this);
+        return new RandomVariable<>("", new CalibrationArray(result), this);
     }
 
-    private static void calculateNodeAges(int n, boolean rootFlag, double[] W, double[] mu, double[] sigma2, int[] parent, boolean[] is_beta_node, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta) {
-        // mark unassigned
-        for (int i = 0; i < n; i++) {
-            W[i] = Double.NaN;
-        }
-
+    private static void calculateNodeAges(int n, double[] W, double[] mu, double[] sigma2, int[] parent,
+                                          boolean[] is_beta_node, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta) {
+        for (int i = 0; i < n; i++) W[i] = Double.NaN;
         boolean[] inStack = new boolean[n];
-
         for (int i = 0; i < n; i++) {
-            calculateByOrder(i, rootFlag, W, mu, sigma2, parent, is_beta_node, edgeAlpha, edgeBeta, inStack);
+            calculateByOrder(i, W, mu, sigma2, parent, is_beta_node, edgeAlpha, edgeBeta, inStack);
         }
     }
 
-    private static void calculateByOrder(int i, boolean rootFlag, double[] W, double[] mu, double[] sigma2, int[] parent, boolean[] isBetaNode, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta, boolean[] inStack) {
-        // already assigned
-        if (Double.isFinite(W[i])) {
-            return;
-        }
-
-        // detect cycle
-        if (inStack[i]) {
-            throw new IllegalStateException("Cycle detected at node " + i);
-        }
-
+    private static void calculateByOrder(int i, double[] W, double[] mu, double[] sigma2, int[] parent,
+                                         boolean[] isBetaNode, Map<String, Double> edgeAlpha, Map<String, Double> edgeBeta, boolean[] inStack) {
+        if (Double.isFinite(W[i])) return;
+        if (inStack[i]) throw new IllegalStateException("Cycle detected at node " + i);
         inStack[i] = true;
 
         int p = parent[i];
-
         NormalDistribution nd = new NormalDistribution(0, 1);
 
-        // root or no parent → plain lognormal
         if (p == -1) {
             W[i] = Math.exp(mu[i] + Math.sqrt(sigma2[i]) * nd.sample());
             inStack[i] = false;
             return;
         }
 
-        // ensure parent computed first
-        calculateByOrder(p, rootFlag, W, mu, sigma2, parent, isBetaNode, edgeAlpha, edgeBeta, inStack);
+        calculateByOrder(p, W, mu, sigma2, parent, isBetaNode, edgeAlpha, edgeBeta, inStack);
 
         if (!Double.isFinite(W[p]) || W[p] <= 1e-8) {
             W[i] = (0.5 + Math.random() * 0.4) * Math.max(W[p], 1e-6);
@@ -225,27 +152,16 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
             BetaDistribution bd = new BetaDistribution(a, b);
             W[i] = W[p] * bd.sample();
         }
-
         inStack[i] = false;
     }
 
-    private static void extractBetaParams(int nEdges, double[] b_mean, double[] b_var, Map<String, Double> edgeAlpha, String[] edgeNames, Map<String, Double> edgeBeta) {
-        // m_hat <- solve(A_mean, b_mean)
-        double[] m_hat = new double[nEdges];
-        for (int j = 0; j < nEdges; j++) {
-            m_hat[j] = b_mean[j];   // A_mean is identity
-        }
-
-        // v_hat <- nnls(A_mean, b_var)$x
-        double[] v_hat = new double[nEdges];
-        for (int j = 0; j < nEdges; j++) {
-            v_hat[j] = b_var[j];    // A_mean is identity
-        }
-
+    private static void extractBetaParams(int nEdges, double[] b_mean, double[] b_var,
+                                          Map<String, Double> edgeAlpha, String[] edgeNames, Map<String, Double> edgeBeta) {
+        double[] m_hat = Arrays.copyOf(b_mean, nEdges);
+        double[] v_hat = Arrays.copyOf(b_var, nEdges);
         for (int j = 0; j < nEdges; j++) {
             if (v_hat[j] <= 0) v_hat[j] = 1e-8;
         }
-
         for (int j = 0; j < nEdges; j++) {
             double[] ab = invertLogMomentsToBeta(m_hat[j], v_hat[j]);
             edgeAlpha.put(edgeNames[j], ab[0]);
@@ -254,29 +170,23 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
     }
 
     private static int getEdgesNumber(int n, boolean[] is_beta_node, int[] parent) {
-        int nEdges = 0;
+        int count = 0;
         for (int i = 0; i < n; i++) {
-            if (is_beta_node[i] && parent[i] != -1) {
-                nEdges++;
-            }
+            if (is_beta_node[i] && parent[i] != -1) count++;
         }
-        return nEdges;
+        return count;
     }
 
-    public static boolean[] mapBetaNodes(int n, boolean rootFlag, int[] parent, Double[] upperBounds, Double[] lowerBounds) {
+    // public for unit tests
+    public static boolean[] mapBetaNodes(Calibration[] calibrations, int[] parent) {
+        int n = calibrations.length;
         boolean[] is_beta_node = new boolean[n];
         Arrays.fill(is_beta_node, true);
 
         for (int i = 0; i < n; i++) {
-            if (rootFlag && i == 0) {
-                is_beta_node[i] = false; // root is always lognormal
-                continue;
-            }
-
             int par = parent[i];
             if (par != -1) {
-                // if child interval does not overlap parent, treat as new root
-                if (upperBounds[i] <= lowerBounds[par]) {
+                if (calibrations[i].getUpper() <= calibrations[par].getLower()) {
                     is_beta_node[i] = false;
                 }
             } else {
@@ -286,98 +196,60 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         return is_beta_node;
     }
 
-    // public for unit test
-    public static int[] computeParents(boolean rootFlag, List<Calibration> calibrations) {
+    // public for unit tests
+    public static int[] computeParents(List<Calibration> calibrations) {
         int n = calibrations.size();
-        // check if the first calibration is the root, otherwise no root
-        final int rootIdx = rootFlag ? 0 : -1;
 
         int[] parent = new int[n];
         Arrays.fill(parent, -1);
 
-        // get taxa names length
         int[] size = new int[n];
         for (int i = 0; i < n; i++) {
             size[i] = calibrations.get(i).getTaxa().length;
         }
 
         for (int i = 0; i < n; i++) {
-
-            // if root, then assign its parent to NA
-            if (rootFlag && i == rootIdx) {
-                parent[i] = -1;
-                continue;
-            }
-
-            int best = -1;  // best parent candidate index found so far
+            int best = -1;
             int bestSize = Integer.MAX_VALUE;
 
-            // try every calibration j as a potential parent of i.
             for (int j = 0; j < n; j++) {
-                if (j == i) continue; //skip itself
+                if (j == i) continue;
                 Calibration candidate = calibrations.get(j);
-
-                // check if there are super sets of it
                 boolean[] sup = isSuperSetOf(candidate, calibrations);
                 if (!sup[i]) continue;
-                // parent should be larger than the child clade
                 if (size[j] <= size[i]) continue;
-
-                // among all supersets, pick the one with the smallest taxa count (tightest enclosing clade).
                 if (size[j] < bestSize) {
                     best = j;
                     bestSize = size[j];
                 }
             }
 
-            if (best != -1) {
-                parent[i] = best;
-                continue;
-            }
-
-            // if no parent was found:
-            // - has root calibration: attach top-level calibrations to root
-            // - no root calibration: keep as NA
-            parent[i] = rootFlag ? rootIdx : -1;
+            parent[i] = best; // -1 if no superset found (root of its tree)
         }
-
         return parent;
     }
 
     @Override
     public Map<String, Value> getParams() {
         Map<String, Value> map = new TreeMap<>();
-        map.put(calibrationTaxaName, calibrationTaxa);
-        map.put(upperBoundName, upperBounds);
-        map.put(lowerBoundName, lowerBounds);
-        if (rootFlag != null) map.put(rootFlagName, rootFlag);
+        map.put(calibrationsParamName, calibrationsInput);
         if (coverage != null) map.put(coverageName, coverage);
         return map;
     }
 
     @Override
     public void setParam(String paramName, Value value) {
-        if (paramName.equals(calibrationTaxaName)) calibrationTaxa = value;
-        else if (paramName.equals(rootFlagName)) rootFlag = value;
-        else if (paramName.equals(upperBoundName)) upperBounds = value;
-        else if (paramName.equals(lowerBoundName)) lowerBounds = value;
+        if (paramName.equals(calibrationsParamName)) calibrationsInput = value;
         else if (paramName.equals(coverageName)) coverage = value;
         else throw new IllegalArgumentException("Unknown param: " + paramName);
     }
 
-    public Value<String[][]> getCalibrationTaxa() {
-        return calibrationTaxa;
+    /** Returns the input calibration specs (with taxa, upper, lower) as a properly-typed array. */
+    public Value<Calibration[]> getCalibrations() {
+        return new Value<>("", toCalibrationArray(calibrationsInput));
     }
-    public Value<Double[]> getUpperBounds() {
-        return upperBounds;
-    }
-    public Value<Double[]> getLowerBounds() {
-        return lowerBounds;
-    }
+
     public Value<Number> getCoverage() {
         return coverage;
-    }
-    public Value<Boolean> getRootFlag() {
-        return rootFlag;
     }
 }

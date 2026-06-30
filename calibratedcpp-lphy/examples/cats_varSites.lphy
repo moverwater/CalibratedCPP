@@ -27,11 +27,11 @@ model{
     turnover ~ Beta(alpha=1,beta=4);
     rho ~ Uniform(lower=0.0, upper=1.0);
 
-    calibrationTaxa = [taxaAll, taxa1, taxa2, taxa3];
-    upperBounds = [35.0, 10.3, 8.2, 3.7];
-    lowerBounds = [29.0, 5.3, 3.8, 1.5];
-
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa = calibrationTaxa, upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
+    cAll = calibration(taxa=taxaAll, upper=35.0, lower=29.0);
+    c1 = calibration(taxa=taxa1, upper=10.3, lower=5.3);
+    c2 = calibration(taxa=taxa2, upper=8.2, lower=3.8);
+    c3 = calibration(taxa=taxa3, upper=3.7, lower=1.5);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cAll, c1, c2, c3]);
     tree ~ CalibratedCPP(calibrations = calibrations,turnover=turnover, diversification=diversification, n=n, rho=rho);
 
     // GTR substitution model

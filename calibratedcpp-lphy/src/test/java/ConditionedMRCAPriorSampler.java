@@ -28,11 +28,9 @@ public class ConditionedMRCAPriorSampler {
     private static final String OUTPUT_CSV = "./calibratedcpp-lphy/src/test/java/javaResults.csv";
 
     public static void main(String[] args) throws IOException {
+        Calibration[] specs = buildCalibrationSpecs();
         ConditionedMRCAPrior prior = new ConditionedMRCAPrior(
-                new Value<>("", buildTaxa()),
-                new Value<>("", true),   // rootFlag
-                new Value<>("", T_HI),
-                new Value<>("", T_LO),
+                new Value<>("", specs),
                 new Value<>("", P_COV)
         );
 
@@ -88,8 +86,8 @@ public class ConditionedMRCAPriorSampler {
         }
     }
 
-    private static String[][] buildTaxa() {
-        return new String[][] {
+    private static Calibration[] buildCalibrationSpecs() {
+        String[][] taxa = {
                 {"t1","t2","t3","t4","t5","t6","t7","t8","t9","t10","t11","t12","t13","t14"},
                 {"t1","t2","t3","t4","t5","t6","t7","t8","t9","t10"},
                 {"t11","t12","t13","t14"},
@@ -101,5 +99,10 @@ public class ConditionedMRCAPriorSampler {
                 {"t5","t6","t7","t8","t9"},
                 {"t8","t9"},
         };
+        Calibration[] specs = new Calibration[N];
+        for (int i = 0; i < N; i++) {
+            specs[i] = new Calibration(taxa[i], T_HI[i], T_LO[i]);
+        }
+        return specs;
     }
 }

@@ -36,12 +36,16 @@ model{
     mu ~ LogNormal(meanlog = 0.05, sdlog = 1);
     rho ~ Uniform(lower=0.0, upper=1.0);
 
-    upperBounds = [27.6, 18.0, 14.9, 7.9, 18.0, 18.0, 14.9, 5.3] ;
-    lowerBounds = [22.64, 13.0, 9.9, 7.8, 13.0, 13.0, 9.9, 5.0];
-
     // tree prior
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[allTaxa,taxaCeraphronoidea, taxaBraconidae, taxaCynipoidea, taxaChalcidoidea, taxaChrysidoidea, taxaAmpulicidae, taxaMelittidae],
-    upperBounds=upperBounds, lowerBounds=lowerBounds, rootFlag=true);
+    cAll = calibration(taxa=allTaxa, upper=27.6, lower=22.64);
+    cCeraphronoidea = calibration(taxa=taxaCeraphronoidea, upper=18.0, lower=13.0);
+    cBraconidae = calibration(taxa=taxaBraconidae, upper=14.9, lower=9.9);
+    cCynipoidea = calibration(taxa=taxaCynipoidea, upper=7.9, lower=7.8);
+    cChalcidoidea = calibration(taxa=taxaChalcidoidea, upper=18.0, lower=13.0);
+    cChrysidoidea = calibration(taxa=taxaChrysidoidea, upper=18.0, lower=13.0);
+    cAmpulicidae = calibration(taxa=taxaAmpulicidae, upper=14.9, lower=9.9);
+    cMelittidae = calibration(taxa=taxaMelittidae, upper=5.3, lower=5.0);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cAll, cCeraphronoidea, cBraconidae, cCynipoidea, cChalcidoidea, cChrysidoidea, cAmpulicidae, cMelittidae]);
 
     tree ~ CalibratedCPP(calibrations=calibrations, lambda=lambda, mu=mu, n=n, rho=rho);
 

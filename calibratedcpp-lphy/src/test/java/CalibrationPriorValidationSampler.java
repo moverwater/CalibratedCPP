@@ -53,15 +53,16 @@ public class CalibrationPriorValidationSampler {
     private static final String OUTPUT = "../calibratedcpp-beast/validation/calibrationprior/lphy_wsim.tsv";
 
     public static void main(String[] args) throws IOException {
+        int N = TAXA.length;
+        Calibration[] specs = new Calibration[N];
+        for (int i = 0; i < N; i++) {
+            specs[i] = new Calibration(TAXA[i], UPPER[i], LOWER[i]);
+        }
         ConditionedMRCAPrior prior = new ConditionedMRCAPrior(
-                new Value<>("calibrationTaxa", TAXA),
-                new Value<>("rootFlag", true),
-                new Value<>("upperBounds", UPPER),
-                new Value<>("lowerBounds", LOWER),
+                new Value<>("calibrations", specs),
                 new Value<>("p", 0.90)
         );
 
-        int N = TAXA.length;
         double[][] wsim = new double[N_SIM][N];
 
         for (int s = 0; s < N_SIM; s++) {

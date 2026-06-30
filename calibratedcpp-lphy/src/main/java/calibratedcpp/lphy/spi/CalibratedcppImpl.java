@@ -1,7 +1,7 @@
 package calibratedcpp.lphy.spi;
 
+import calibratedcpp.lphy.prior.CalibrationFunction;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
-
 import calibratedcpp.lphy.prior.MRCAPrior;
 import calibratedcpp.lphy.prior.joinCalibrationArray;
 import calibratedcpp.lphy.prior.toCalibrationArray;
@@ -31,7 +31,7 @@ public class CalibratedcppImpl extends LPhyBaseImpl {
     @Override
     public List<Class<? extends BasicFunction>> declareFunctions() {
         return Arrays.asList(
-                toCalibrationArray.class, joinCalibrationArray.class
+                toCalibrationArray.class, joinCalibrationArray.class, CalibrationFunction.class
         );
     }
 

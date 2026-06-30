@@ -6,11 +6,14 @@ data {
 }
 model {
     turnover ~ Beta(alpha=2.0, beta=2.0);
-   rho = 1.0;
-   diversification ~ LogNormal(meanlog=-0.5, sdlog=0.5);
+    rho = 1.0;
+    diversification ~ LogNormal(meanlog=-0.5, sdlog=0.5);
 
-   calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[clade1, clade2,clade3], upperBounds=[0.34,0.88,0.35], lowerBounds=[0.32,0.86,0.33]);
-   tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho, stemAge=3.2);
+    c1 = calibration(taxa=clade1, upper=0.34, lower=0.32);
+    c2 = calibration(taxa=clade2, upper=0.88, lower=0.86);
+    c3 = calibration(taxa=clade3, upper=0.35, lower=0.33);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[c1, c2, c3]);
+    tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho, stemAge=3.2);
 
     // GTR substitution model
     π ~ Dirichlet(conc=[3.0, 3.0, 3.0, 3.0]);

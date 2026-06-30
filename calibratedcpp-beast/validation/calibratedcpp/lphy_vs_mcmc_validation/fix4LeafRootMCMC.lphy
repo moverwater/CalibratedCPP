@@ -1,12 +1,9 @@
 model {
   taxa_root   = ["leaf_1", "leaf_2", "leaf_3", "leaf_4"];
   taxa_cherry = ["leaf_1", "leaf_2"];
-  calibrations ~ ConditionedMRCAPrior(
-      calibrationTaxa = [taxa_root, taxa_cherry],
-      rootFlag        = true,
-      upperBounds     = [3.001, 1.001],
-      lowerBounds     = [3.0,   1.0]
-  );
+  cRoot   = calibration(taxa=taxa_root,   upper=3.001, lower=3.0);
+  cCherry = calibration(taxa=taxa_cherry, upper=1.001, lower=1.0);
+  calibrations ~ ConditionedMRCAPrior(calibrations=[cRoot, cCherry]);
   tree ~ CalibratedCPP(
       calibrations = calibrations,
       lambda = 2.0, mu = 1.0, rho = 0.5,

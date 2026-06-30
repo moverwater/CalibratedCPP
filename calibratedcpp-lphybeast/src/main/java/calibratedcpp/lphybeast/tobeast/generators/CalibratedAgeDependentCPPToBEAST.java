@@ -88,13 +88,12 @@ public class CalibratedAgeDependentCPPToBEAST
         calibrationPrior.setInputValue("tree", value);
         ConditionedMRCAPrior conditionedMRCAPrior =
                 (ConditionedMRCAPrior) generator.getCalibrations().getInputs().get(0);
-        Value<Double[]> upperBoundsInput = (Value<Double[]>) conditionedMRCAPrior.getParams().get("upperBounds");
-        Value<Double[]> lowerBoundsInput = (Value<Double[]>) conditionedMRCAPrior.getParams().get("lowerBounds");
-        Value<Double> covInput = conditionedMRCAPrior.getParams().get("p") != null
-                ? (Value<Double>) conditionedMRCAPrior.getParams().get("p")
+        Value<Calibration[]> calibrationSpecsInput = conditionedMRCAPrior.getCalibrations();
+        Value<Double> covInput = conditionedMRCAPrior.getCoverage() != null
+                ? new Value<>("", conditionedMRCAPrior.getCoverage().value().doubleValue())
                 : new Value<>("", 0.9);
         List<CalibrationCladePrior> cladeInput = buildCalibrationCladePriors(
-                covInput, calibrationsFromGenerator, upperBoundsInput, lowerBoundsInput, taxonSets);
+                covInput, calibrationsFromGenerator, calibrationSpecsInput.value(), taxonSets);
         calibrationPrior.setInputValue("calibration", cladeInput);
         calibrationPrior.initAndValidate();
         context.addBEASTObject(calibrationPrior, conditionedMRCAPrior);
@@ -170,17 +169,16 @@ public class CalibratedAgeDependentCPPToBEAST
 
     private List<CalibrationCladePrior> buildCalibrationCladePriors(
             Value<Double> covInput, Calibration[] calibrationsFromGenerator,
-            Value<Double[]> upperBoundsInput, Value<Double[]> lowerBoundsInput,
-            List<TaxonSet> taxonSets) {
+            Calibration[] calibrationSpecs, List<TaxonSet> taxonSets) {
 
         RealScalar<UnitInterval> confidenceLevel =
                 new RealScalarParam<>(covInput.value(), UnitInterval.INSTANCE);
         List<CalibrationCladePrior> cladeInput = new ArrayList<>();
         for (int i = 0; i < calibrationsFromGenerator.length; i++) {
             RealScalar<NonNegativeReal> upperAge =
-                    new RealScalarParam<>(upperBoundsInput.value()[i], NonNegativeReal.INSTANCE);
+                    new RealScalarParam<>(calibrationSpecs[i].getUpper(), NonNegativeReal.INSTANCE);
             RealScalar<NonNegativeReal> lowerAge =
-                    new RealScalarParam<>(lowerBoundsInput.value()[i], NonNegativeReal.INSTANCE);
+                    new RealScalarParam<>(calibrationSpecs[i].getLower(), NonNegativeReal.INSTANCE);
             CalibrationCladePrior prior = new CalibrationCladePrior();
             prior.setInputValue("upperAge",        upperAge);
             prior.setInputValue("lowerAge",        lowerAge);

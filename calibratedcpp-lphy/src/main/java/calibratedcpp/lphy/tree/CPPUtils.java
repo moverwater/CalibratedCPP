@@ -167,13 +167,15 @@ public class CPPUtils {
         // saturation time). No CDF-based inversion can return a t in [lowerTime, upperTime]
         // because every p < p_max maps to t near the saturation boundary, not the requested
         // window. Instead, sample directly from the conditional density on [lowerTime, upperTime].
-        // From CalibratedBirthDeathModel.calculateLogNodeAgeDensity for r < 0:
-        //   log f(t) ≈ const + r·t  (as exp_rt → 0)
-        // so f(t) ∝ exp(r·t) = exp(-|r|·t) — a truncated exponential with rate |r|.
+        //
+        // For r < 0: log f(t) ≈ const + r·t  (as exp_rt → 0), so f(t) ∝ exp(r·t) = exp(-|r|·t).
+        // For r > 0: in the saturation regime (large t, exp(-r·t) → 0), the density reduces to
+        //   f(t) ∝ r·exp(-r·t) / A², so f(t) ∝ exp(-r·t) with the same form.
+        // In both cases the conditional density on [lo, hi] is a truncated exponential with rate |r|.
         // Inverting its CDF: t = lowerTime - log1p(-u·scale)/|r|,
         //   scale = -expm1(-|r|·(hi-lo)) = 1 - exp(-|r|·(hi-lo)), ≈ 1 for large |r|·(hi-lo).
-        if (r < -1e-10 && Qupper - Qlower < 1e-9) {
-            double absR  = -r;
+        if (Math.abs(r) > 1e-10 && Qupper - Qlower < 1e-9) {
+            double absR  = Math.abs(r);
             double scale = -Math.expm1(-absR * (hiEff - lowerTime));
             for (int i = 0; i < nSims; i++) {
                 times[i] = lowerTime - Math.log1p(-Math.random() * scale) / absR;

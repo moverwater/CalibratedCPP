@@ -7,11 +7,11 @@ model {
                    "leaf_51", "leaf_52", "leaf_53", "leaf_54", "leaf_55"];
     taxa_clade4 = ["leaf_87", "leaf_88", "leaf_89", "leaf_90"];
 
-    calibrations ~ ConditionedMRCAPrior(
-        calibrationTaxa = [taxa_clade1, taxa_clade2, taxa_clade3, taxa_clade4],
-        upperBounds     = [1.001, 1.201, 1.501, 2.001],
-        lowerBounds     = [1.0,   1.2,   1.5,   2.0  ]
-    );
+    cClade1 = calibration(taxa=taxa_clade1, upper=1.001, lower=1.0);
+    cClade2 = calibration(taxa=taxa_clade2, upper=1.201, lower=1.2);
+    cClade3 = calibration(taxa=taxa_clade3, upper=1.501, lower=1.5);
+    cClade4 = calibration(taxa=taxa_clade4, upper=2.001, lower=2.0);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cClade1, cClade2, cClade3, cClade4]);
 
     tree ~ CalibratedCPP(
         calibrations = calibrations,

@@ -3,5 +3,6 @@ mu ~ LogNormal(meanlog=-8, sdlog=0.05);
 rho ~ LogNormal(meanlog=0.4, sdlog=0.2);
 cladeName = ["1", "2"];
 
-calibration ~ ConditionedMRCAPrior(calibrationTaxa=[cladeName], upperBounds=[0.2], lowerBounds=[0.1] );
+cal = calibration(taxa=cladeName, upper=0.2, lower=0.1);
+calibration ~ ConditionedMRCAPrior(calibrations=[cal]);
 T ~ CalibratedCPP(lambda=lambda, mu=mu, rho=rho, n=5, calibrations=calibration);

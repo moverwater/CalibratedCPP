@@ -43,13 +43,22 @@ model {
     Callitrichidae_Cebidae = ["Cebus_capucinus_imitator","Saimiri_boliviensis", "Aotus_nancymaae","Callithrix_jacchus"];
     Cebidae = ["Cebus_capucinus_imitator", "Saimiri_boliviensis"];
 
-    calibrationTaxa = [Euarchontoglires,Euarchonta,Primates,Lorisiformes,Cercopithecidae,Colobinae,Cercopithecinae,Papionini,Hominoidea,Hominidae,Homo_Pan,Callitrichidae_Cebidae, Cebidae];
-    upperBounds = [120.0, 110.0, 60.0, 40.0, 14.0, 10.0, 10.0, 8.0, 18.0, 15.0, 10.0, 20.0, 15.0];
-    lowerBounds = [119.0, 109.0, 59.0, 39.0, 13.0,  9.0,  9.0, 7.0, 17.0, 14.0,  9.0, 19.0, 14.0];
-
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa = [Euarchontoglires, Euarchonta, Primates, Lorisiformes,
-                                                                      Cercopithecidae, Colobinae, Cercopithecinae, Papionini,
-                                                                      Hominoidea, Hominidae, Homo_Pan, Callitrichidae_Cebidae, Cebidae], upperBounds=upperBounds, lowerBounds = lowerBounds, rootFlag=true);
+    cEuarchontoglires    = calibration(taxa=Euarchontoglires,    upper=120.0, lower=119.0);
+    cEuarchonta          = calibration(taxa=Euarchonta,          upper=110.0, lower=109.0);
+    cPrimates            = calibration(taxa=Primates,            upper=60.0,  lower=59.0);
+    cLorisiformes        = calibration(taxa=Lorisiformes,        upper=40.0,  lower=39.0);
+    cCercopithecidae     = calibration(taxa=Cercopithecidae,     upper=14.0,  lower=13.0);
+    cColobinae           = calibration(taxa=Colobinae,           upper=10.0,  lower=9.0);
+    cCercopithecinae     = calibration(taxa=Cercopithecinae,     upper=10.0,  lower=9.0);
+    cPapionini           = calibration(taxa=Papionini,           upper=8.0,   lower=7.0);
+    cHominoidea          = calibration(taxa=Hominoidea,          upper=18.0,  lower=17.0);
+    cHominidae           = calibration(taxa=Hominidae,           upper=15.0,  lower=14.0);
+    cHomo_Pan            = calibration(taxa=Homo_Pan,            upper=10.0,  lower=9.0);
+    cCallitrichidae_Cebidae = calibration(taxa=Callitrichidae_Cebidae, upper=20.0, lower=19.0);
+    cCebidae             = calibration(taxa=Cebidae,             upper=15.0,  lower=14.0);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cEuarchontoglires, cEuarchonta, cPrimates, cLorisiformes,
+                                                      cCercopithecidae, cColobinae, cCercopithecinae, cPapionini,
+                                                      cHominoidea, cHominidae, cHomo_Pan, cCallitrichidae_Cebidae, cCebidae]);
     diversificationRate ~ LogNormal(meanlog = 0.0, sdlog = 1.25);
 
     turnover ~ Beta(alpha = 1.0, beta = 1.0);

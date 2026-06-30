@@ -8,7 +8,9 @@ model{
     cladeTaxa = ["leaf_1", "leaf_2", "leaf_3"];
     allTaxa = ["leaf_1", "leaf_2", "leaf_3", "leaf_4", "leaf_5"];
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[allTaxa,cladeTaxa], rootFlag=true, upperBounds=[0.6,0.3], lowerBounds=[0.4,0.2]);
+    cAll = calibration(taxa=allTaxa, upper=0.6, lower=0.4);
+    cClade = calibration(taxa=cladeTaxa, upper=0.3, lower=0.2);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cAll, cClade]);
     tree ~ CalibratedCPP(lambda=lambda, mu=0, rho=1, n=n, calibrations=calibrations);
 
     // GTR

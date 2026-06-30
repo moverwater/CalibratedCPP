@@ -11,10 +11,16 @@ model{
     taxa_clade9  = ["leaf_1","leaf_2","leaf_3"];
     taxa_clade10 = ["leaf_1","leaf_2"];
 
-    calibrations ~ ConditionedMRCAPrior(
-        calibrationTaxa = [taxa_clade1, taxa_clade2, taxa_clade6, taxa_clade8, taxa_clade9, taxa_clade10, taxa_clade7, taxa_clade5, taxa_clade3, taxa_clade4],
-        rootFlag        = true,
-        upperBounds     = [10.5, 9.6, 8.0, 3.2, 2.5, 2.5, 2.5, 9.5, 5.0, 5.0],
-        lowerBounds     = [10.0, 9.4, 6.8, 2.0, 1.7, 1.6, 1.8, 8.0, 4.8, 4.0]
-    );
+    c1  = calibration(taxa=taxa_clade1,  upper=10.5, lower=10.0);
+    c2  = calibration(taxa=taxa_clade2,  upper=9.6,  lower=9.4);
+    c6  = calibration(taxa=taxa_clade6,  upper=8.0,  lower=6.8);
+    c8  = calibration(taxa=taxa_clade8,  upper=3.2,  lower=2.0);
+    c9  = calibration(taxa=taxa_clade9,  upper=2.5,  lower=1.7);
+    c10 = calibration(taxa=taxa_clade10, upper=2.5,  lower=1.6);
+    c7  = calibration(taxa=taxa_clade7,  upper=2.5,  lower=1.8);
+    c5  = calibration(taxa=taxa_clade5,  upper=9.5,  lower=8.0);
+    c3  = calibration(taxa=taxa_clade3,  upper=5.0,  lower=4.8);
+    c4  = calibration(taxa=taxa_clade4,  upper=5.0,  lower=4.0);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[c1, c2, c6, c8, c9, c10, c7, c5, c3, c4]);
+    tree ~ CalibratedCPP(calibrations = calibrations, turnover = 0.0, diversification = 1.0, rho = 0.1, n=11);
 }

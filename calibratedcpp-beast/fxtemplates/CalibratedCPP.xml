@@ -38,14 +38,13 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
             <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
                        id="originParam.t:$(n)" domain="PositiveReal" value="1.0" estimate="false"/>
 
-            <!-- CPP tree prior (default pair inline; conditionOnRoot=true by default) -->
+            <!-- CPP tree prior. SkylineParameters (diversificationRateSP, turnoverSP, etc.) are
+                 NOT declared here — they are created dynamically by CalibratedCPPInputEditor on
+                 first init() and persist in the pluginmap. Declaring them in CDATA would cause
+                 BEAUti to re-create them (resetting multi-epoch config) on every sync(). -->
             <distribution spec="calibratedcpp.CalibratedBirthDeathSkylineModel" id="CalibratedCPP.t:$(n)"
                           conditionOnRoot="true">
                 <tree idref="Tree.t:$(n)"/>
-                <diversificationRate spec="calibratedcpp.SkylineParameter" id="diversificationRateSP.t:$(n)"
-                                     values="@diversificationRate.t:$(n)"/>
-                <turnover spec="calibratedcpp.SkylineParameter" id="turnoverSP.t:$(n)"
-                          values="@turnover.t:$(n)"/>
                 <rho idref="samplingProportion.t:$(n)"/>
                 <origin idref="originParam.t:$(n)"/>
             </distribution>
@@ -55,9 +54,9 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                 <tree idref="Tree.t:$(n)"/>
             </distribution>
 
-            <!-- No priors or operators are pre-declared in CDATA.
-                 All priors and operators are created dynamically by the editor on first activation.
-                 This avoids duplicate-ID conflicts when BEAUti re-processes this CDATA on sync. -->
+            <!-- No priors, operators, or SkylineParameters are pre-declared in CDATA.
+                 All are created dynamically by the editor on first activation.
+                 This avoids BEAUti re-processing this CDATA on sync() and resetting their state. -->
 ]]>
             <plate fragment="TreeOperators" var="m" range="CalibratedBirthDeathSkyline"/>
 

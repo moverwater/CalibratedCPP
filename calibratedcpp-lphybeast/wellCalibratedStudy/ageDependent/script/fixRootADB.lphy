@@ -20,7 +20,11 @@ model {
     lifetime ~ Gamma(shape = 2, scale = 0.03);
     rho = 1.0;
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[3.01,0.34,0.88,0.35], lowerBounds=[2.99,0.32,0.86,0.33]);
+    cRoot  = calibration(taxa=taxaNames, upper=3.01, lower=2.99);
+    cClade1 = calibration(taxa=clade1, upper=0.34, lower=0.32);
+    cClade2 = calibration(taxa=clade2, upper=0.88, lower=0.86);
+    cClade3 = calibration(taxa=clade3, upper=0.35, lower=0.33);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cRoot, cClade1, cClade2, cClade3]);
     tree ~ CalibratedAgeDependentCPP(lambda=lambda, lifetime=lifetime, rho=rho, n=100, calibrations=calibrations);
 
     // GTR substitution model

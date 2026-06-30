@@ -20,7 +20,11 @@ model {
     rho = 1.0;
     diversification ~ LogNormal(meanlog=-0.5, sdlog=0.5);
 
-    calibrations ~ ConditionedMRCAPrior(calibrationTaxa=[taxaNames, clade1, clade2,clade3], rootFlag=true, upperBounds=[3.01,0.34,0.88,0.35], lowerBounds=[2.99,0.32,0.86,0.33]);
+    cRoot = calibration(taxa=taxaNames, upper=3.01, lower=2.99);
+    c1 = calibration(taxa=clade1, upper=0.34, lower=0.32);
+    c2 = calibration(taxa=clade2, upper=0.88, lower=0.86);
+    c3 = calibration(taxa=clade3, upper=0.35, lower=0.33);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cRoot, c1, c2, c3]);
     tree ~ CalibratedCPP(calibrations=calibrations, diversification=diversification, turnover=turnover, n=100, rho=rho);
 
     // GTR substitution model
