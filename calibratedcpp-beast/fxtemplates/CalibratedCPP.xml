@@ -34,7 +34,9 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
             <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
                        id="reproductiveNumber.t:$(n)" domain="PositiveReal" value="2.0" estimate="false"/>
 
-            <!-- Origin parameter (always present; ignored when conditionOnRoot=true) -->
+            <!-- Origin parameter: declared so BEAUti tracks it, but NOT connected to the model
+                 here. CalibratedCPPInputEditor connects it dynamically when the user selects
+                 "Set origin time", and disconnects it when "Condition on root" is selected. -->
             <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
                        id="originParam.t:$(n)" domain="PositiveReal" value="1.0" estimate="false"/>
 
@@ -46,7 +48,6 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                           conditionOnRoot="true">
                 <tree idref="Tree.t:$(n)"/>
                 <rho idref="samplingProportion.t:$(n)"/>
-                <origin idref="originParam.t:$(n)"/>
             </distribution>
 
             <!-- CalibrationPrior: clades and mrcaPriors populated by the BEAUti editor -->

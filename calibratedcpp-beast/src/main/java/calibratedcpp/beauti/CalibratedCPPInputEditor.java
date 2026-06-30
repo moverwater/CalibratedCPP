@@ -285,7 +285,8 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             scalar = new RealScalarParam<>(defaultValueFor(paramName), domainFor(paramName));
             pluginPut(paramId, scalar);
         }
-        setEstimated(scalar, true);
+        // Only fire the BEAST2 change event if the estimate flag actually needs to change.
+        if (!scalar.isEstimatedInput.get()) setEstimated(scalar, true);
 
         SkylineParameter sp;
         BEASTInterface existingSP = doc.pluginmap.get(spId);
@@ -297,7 +298,10 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             sp.initAndValidate();
             pluginPut(spId, sp);
         }
-        getSkylineInput(cpp, paramName).setValue(sp, cpp);
+        // Only call setValue if not already set — avoids triggering spurious
+        // initAndValidate() calls on the model during every init().
+        if (getSkylineInput(cpp, paramName).get() != sp)
+            getSkylineInput(cpp, paramName).setValue(sp, cpp);
 
         // Create prior and operator if not already present (only needed for non-default-pair params).
         if (!doc.pluginmap.containsKey(priorId)) {
@@ -452,6 +456,14 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         RealScalarParam<?> originScalar =
             (doc.pluginmap.get(originParamId) instanceof RealScalarParam<?> rsp) ? rsp : null;
 
+        // Fix up stale state: old XML may have origin connected even when conditionOnRoot=true
+        // (e.g. saved before this fix, or from the old template that always wired origin).
+        if (currentlyRoot && cpp.originInput.get() != null)
+            cpp.originInput.setValue(null, cpp);
+        // Symmetrically, if we're in origin mode but origin is not connected, connect it now.
+        if (!currentlyRoot && originScalar != null && cpp.originInput.get() == null)
+            cpp.originInput.setValue(originScalar, cpp);
+
         HBox originRow = FXUtils.newHBox();
         originRow.setSpacing(6);
         originRow.setAlignment(Pos.CENTER_LEFT);
@@ -477,17 +489,18 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             cpp.conditionOnRootInput.setValue(isRoot, cpp);
             originRow.setVisible(!isRoot);
             originRow.setManaged(!isRoot);
-            if (!isRoot) {
-                // Switching to origin mode: set change times relative and evenly distributed
+            if (isRoot) {
+                // Disconnect origin from the model so it is absent from the XML.
+                cpp.originInput.setValue(null, cpp);
+            } else {
+                // Reconnect origin and mark change times as relative.
+                RealScalarParam<?> os = (doc.pluginmap.get(originParamId) instanceof RealScalarParam<?> r) ? r : null;
+                if (os != null) cpp.originInput.setValue(os, cpp);
                 for (String name : ALL_RATE_NAMES) {
                     SkylineParameter sp = getSkylineInput(cpp, name).get();
                     if (sp == null) continue;
                     sp.timesAreRelativeInput.setValue(true, sp);
-                    int nChanges = sp.changeTimesInput.get() == null ? 0 : sp.changeTimesInput.get().size();
-                    if (nChanges > 0) ensureChangeTimes(sp, nChanges);
-                    try { sp.initAndValidate(); } catch (Exception e) { e.printStackTrace(); }
                 }
-                refreshSkylineEditors(cpp);
             }
             sync();
         });
@@ -552,12 +565,27 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         box.getChildren().add(new Label(displayNameOf(paramName)));
 
         int nChanges = sp.changeTimesInput.get() == null ? 0 : sp.changeTimesInput.get().size();
+        // Guard against corrupted state (e.g. from prior append-instead-of-replace bug).
+        if (nChanges > 99) {
+            nChanges = 0;
+            sp.changeTimesInput.setValue(null, sp);
+        }
+        // Also sanitize the values vector — if absurdly large, shrink to match nChanges+1.
+        if (sp.valuesInput.get() instanceof RealVectorParam<?> vp && vp.size() > 99
+                && vp.size() != nChanges + 1) {
+            double[] init = new double[nChanges + 1];
+            java.util.Arrays.fill(init, 1.0);
+            resetVector(vp, init);
+        }
+
+        // Mirror BDMM-Prime's ensureValuesConsistency(): proactively sync values dimension
+        // to match change times count so the model is always consistent when the panel is built.
+        ensureValues(sp, nChanges + 1);
 
         HBox epochRow = FXUtils.newHBox();
         epochRow.setSpacing(6);
         epochRow.getChildren().add(new Label("Epochs:"));
         Spinner<Integer> epochSpinner = new Spinner<>(1, 100, nChanges + 1);
-        epochSpinner.setEditable(true);
         epochSpinner.setPrefWidth(70);
         epochRow.getChildren().add(epochSpinner);
         box.getChildren().add(epochRow);
@@ -603,6 +631,7 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         agesCb.selectedProperty().addListener((obs, o, n) -> {
             sp.timesAreAgesInput.setValue(n, sp);
             rebuildSkylineRows(sp, epochSpinner.getValue() - 1, ctRow, valRow, agesCb, relCb);
+            try { sp.initAndValidate(); } catch (Exception ignored) {}
         });
         relCb.selectedProperty().addListener((obs, o, n) -> {
             sp.timesAreRelativeInput.setValue(n, sp);
@@ -611,15 +640,12 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             ctBox.setManaged(nc > 0);
             rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
             setTimeFieldValues(ctRow, evenlySpaced(nc, n));
-            sp.initAndValidate();
-            sync();
+            try { sp.initAndValidate(); } catch (Exception ignored) {}
         });
         distBtn.setOnAction(e -> {
             int nc = epochSpinner.getValue() - 1;
-            rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
             setTimeFieldValues(ctRow, evenlySpaced(nc, relCb.isSelected()));
-            sp.initAndValidate();
-            sync();
+            try { sp.initAndValidate(); } catch (Exception ignored) {}
         });
         return box;
     }
@@ -683,6 +709,7 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             sp.changeTimesInput.setValue(ct, sp);
         }
         double[] old = toDoubles(ct);
+        if (old.length == nChanges) return;  // already correct size — skip resetVector and its cascade
         double[] defaults = evenlySpaced(nChanges, relative);
         double[] upd = new double[nChanges];
         for (int i = 0; i < nChanges; i++) upd[i] = i < old.length ? old[i] : defaults[i];
@@ -711,10 +738,17 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
                  : Real.INSTANCE;
         if (existing instanceof RealVectorParam<?> vp) {
             double[] old = toDoubles(vp);
+            // Guard: skip resetVector (and its initAndValidate) when size is already correct.
+            // This prevents a rebuild cascade — resetVector fires BEAST2 change notifications
+            // that can trigger another BEAUti sync(), which re-enters buildSkylineEditor.
+            if (old.length == nEpochs) return;
             double[] upd = new double[nEpochs];
             for (int i = 0; i < nEpochs; i++) upd[i] = i < old.length ? old[i] : (old.length > 0 ? old[old.length - 1] : 1.0);
             resetVector(vp, upd);
         } else {
+            // existing is a scalar (or null); a scalar is valid for 1 epoch — don't promote,
+            // since doc.addPlugin() fires BEAUti events that can cascade into spurious syncs.
+            if (nEpochs == 1) return;
             double scalar = (existing != null) ? (double) existing.get(0) : 1.0;
             double[] init = new double[nEpochs];
             for (int i = 0; i < nEpochs; i++) init[i] = scalar;
@@ -760,9 +794,15 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static void resetVector(RealVectorParam<?> vp, double[] vals) {
-        List<Double> list = new ArrayList<>(vals.length);
-        for (double v : vals) list.add(v);
-        ((RealVectorParam<Real>) vp).valuesInput.setValue(list, vp);
+        // BEAST2's Input.setValue(List, ...) APPENDS to the existing list rather than replacing it.
+        // We must mutate the existing list in-place to avoid unbounded growth.
+        List<Double> existing = ((RealVectorParam<Real>) vp).valuesInput.get();
+        existing.clear();
+        for (double v : vals) existing.add(v);
+        // initAndValidate() computes dim = max(dimensionInput, list.size()), so if dimensionInput
+        // still holds a previously larger value, it expands the array back to that size — undoing
+        // any shrink. Reset dimensionInput first so the new size takes effect.
+        vp.dimensionInput.setValue(vals.length, vp);
         vp.initAndValidate();
     }
 

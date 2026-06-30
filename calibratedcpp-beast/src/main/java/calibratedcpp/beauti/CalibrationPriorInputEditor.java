@@ -108,7 +108,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         mrcaRb.setToggleGroup(tg);
         calRb.setSelected(!mrcaMode);
         mrcaRb.setSelected(mrcaMode);
-        HBox modeRow = new HBox(12, new Label("Prior type:"), calRb, mrcaRb);
+        HBox modeRow = new HBox(12, new Label("Calibration Prior:"), calRb, mrcaRb);
         modeRow.setPadding(new Insets(4, 0, 8, 0));
         modeRow.setAlignment(Pos.CENTER_LEFT);
         mainBox.getChildren().add(modeRow);

@@ -320,11 +320,15 @@ public class SkylineParameterInputEditor extends InputEditor.Base {
         return out;
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private static void resetVectorValues(RealVectorParam<?> vp, double[] values) {
-        List<Double> list = new ArrayList<>(values.length);
-        for (double v : values) list.add(v);
-        ((RealVectorParam<Real>) vp).valuesInput.setValue(list, vp);
+        // BEAST2's Input.setValue(List, ...) appends rather than replaces — mutate in-place.
+        List<Double> existing = ((RealVectorParam<Real>) vp).valuesInput.get();
+        existing.clear();
+        for (double v : values) existing.add(v);
+        // initAndValidate() uses max(dimensionInput, list.size()); reset dimensionInput first
+        // so a previously-larger cached size doesn't re-expand the array after a shrink.
+        vp.dimensionInput.setValue(values.length, vp);
         vp.initAndValidate();
     }
 
