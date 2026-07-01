@@ -72,6 +72,7 @@ for i in {0..99}; do
     echo "Running wellCalibratedStudy_r${i}.xml"
     mvn -pl calibratedcpp-beast exec:exec -Dbeast.args="-overwrite examples/b3test/wellCalibratedStudy_r${i}.xml"
 done
+```
 
 ## License
 
