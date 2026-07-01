@@ -72,3 +72,11 @@ for i in {0..99}; do
     echo "Running wellCalibratedStudy_r${i}.xml"
     mvn -pl calibratedcpp-beast exec:exec -Dbeast.args="-overwrite examples/b3test/wellCalibratedStudy_r${i}.xml"
 done
+
+## License
+
+CalibratedCPP is free software. It may be modified and distributed under the terms
+of the GNU General Public License version 3 or, at your option, any later
+version. A copy of this license should be found in the file COPYING located in
+the root directory of this repository. If this file is absent for some reason,
+it can also be retrieved from https://www.gnu.org/licenses.
