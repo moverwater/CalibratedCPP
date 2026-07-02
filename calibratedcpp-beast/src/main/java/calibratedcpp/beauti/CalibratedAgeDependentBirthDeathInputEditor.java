@@ -1,8 +1,8 @@
 package calibratedcpp.beauti;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -15,20 +15,23 @@ import beast.base.core.Input;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.inference.StateNode;
-import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.PositiveInt;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.Real;
-import beast.base.spec.inference.parameter.RealScalarParam;
-import beast.base.spec.inference.parameter.RealVectorParam;
+import beast.base.spec.inference.distribution.Exponential;
+import beast.base.spec.inference.distribution.Gamma;
 import beast.base.spec.inference.distribution.LogNormal;
+import beast.base.spec.inference.distribution.Normal;
 import beast.base.spec.inference.distribution.Uniform;
+import beast.base.spec.inference.operator.RealRandomWalkOperator;
 import beast.base.spec.inference.operator.ScaleOperator;
-import beast.base.spec.type.Tensor;
+import beast.base.spec.inference.parameter.IntScalarParam;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import beastfx.app.beauti.TreeDistributionInputEditor;
 import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.util.FXUtils;
-import calibratedcpp.CalibratedBirthDeathSkylineModel;
-import calibratedcpp.SkylineParameter;
+import calibratedcpp.CalibratedAgeDependentBirthDeathModel;
+import calibratedcpp.distribution.Erlang;
 import calibration.ConstraintTree;
 import calibrationprior.CalibrationCladePrior;
 import javafx.application.Platform;
@@ -48,13 +51,21 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
+/**
+ * BEAUti panel for {@link CalibratedAgeDependentBirthDeathModel}. Shares the calibration-management
+ * popup and root/origin conditioning row with {@link CalibratedCPPInputEditor} (duplicated rather
+ * than factored out, to avoid touching that editor's delicate re-entrancy handling), but replaces
+ * the skyline rate-parameterization UI with a much simpler birth rate / sampling probability /
+ * lifetime-distribution picker, since this model has no time-varying rates.
+ */
+public class CalibratedAgeDependentBirthDeathInputEditor extends TreeDistributionInputEditor {
 
     // ── Calibration state ─────────────────────────────────────────────────────────
 
@@ -64,7 +75,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         final List<String> directTaxa = new ArrayList<>();
         final List<CalibrationEntry> directChildCals = new ArrayList<>();
         Double lower, upper;
-        // checkbox references — populated when the card is built, used for in-place updates
         final Map<String, CheckBox> taxaCbMap = new HashMap<>();
         final Map<CalibrationEntry, CheckBox> childCalCbMap = new HashMap<>();
         CalibrationEntry(String label, String color) { this.label = label; this.color = color; }
@@ -75,101 +85,102 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         "#edc948","#b07aa1","#ff9da7","#9c755f","#bab0ac"
     };
 
-    private List<String> taxa = Arrays.asList("Apple", "Banana", "Cherry");
+    private List<String> taxa = List.of("Apple", "Banana", "Cherry");
     private final List<CalibrationEntry> calibrationEntries = new ArrayList<>();
     private int colorIndex = 0;
 
-    private VBox skylineEditorsBox;
-    private RadioButton rootRb;    // kept as fields so saveCalibrations can update them
+    private VBox lifetimeParamsBox;
+    private RadioButton rootRb;
     private RadioButton originRb;
 
-    // ── Parameterization tables ───────────────────────────────────────────────────
+    private enum LifetimeKind {
+        EXPONENTIAL("Exponential"), GAMMA("Gamma"), ERLANG("Erlang"), LOGNORMAL("Log-Normal");
+        final String display;
+        LifetimeKind(String display) { this.display = display; }
+    }
 
-    private static final String[][] PARAM_PAIRS = {
-        {"Diversification rate + Turnover",            "diversificationRate", "turnover"},
-        {"Birth rate + Death rate",                    "birthRate",           "deathRate"},
-        {"Birth rate + Turnover",                      "birthRate",           "turnover"},
-        {"Birth rate + Reproductive number",           "birthRate",           "reproductiveNumber"},
-        {"Diversification rate + Death rate",          "diversificationRate", "deathRate"},
-        {"Diversification rate + Reproductive number", "diversificationRate", "reproductiveNumber"},
-        {"Death rate + Turnover",                      "deathRate",           "turnover"},
-        {"Death rate + Reproductive number",           "deathRate",           "reproductiveNumber"},
-        {"Birth rate + Diversification rate",          "birthRate",           "diversificationRate"},
-    };
+    private enum ParamKind { POSITIVE, UNIT_INTERVAL, REAL }
 
-    private static final String[] ALL_RATE_NAMES =
-        {"birthRate", "deathRate", "diversificationRate", "reproductiveNumber", "turnover"};
-
-    public CalibratedCPPInputEditor(BeautiDoc doc) { super(doc); }
-    public CalibratedCPPInputEditor() { super(); }
+    public CalibratedAgeDependentBirthDeathInputEditor(BeautiDoc doc) { super(doc); }
+    public CalibratedAgeDependentBirthDeathInputEditor() { super(); }
 
     @Override
-    public Class<?> type() { return CalibratedBirthDeathSkylineModel.class; }
+    public Class<?> type() { return CalibratedAgeDependentBirthDeathModel.class; }
 
     @Override
     public void init(Input<?> input, BEASTInterface beastObject, int listItemNr,
                      ExpandOption isExpandOption, boolean addButtons) {
         super.init(input, beastObject, listItemNr, isExpandOption, addButtons);
 
-        CalibratedBirthDeathSkylineModel cpp = (CalibratedBirthDeathSkylineModel) m_beastObject;
-        try { taxa = cpp.treeInput.get().getTaxonset().asStringList(); } catch (Exception ignored) {}
+        CalibratedAgeDependentBirthDeathModel model = (CalibratedAgeDependentBirthDeathModel) m_beastObject;
+        try { taxa = model.treeInput.get().getTaxonset().asStringList(); } catch (Exception ignored) {}
 
-        if (calibrationEntries.isEmpty()) initCalibrationsFromModel(cpp);
+        if (calibrationEntries.isEmpty()) initCalibrationsFromModel(model);
 
         Button calibrationButton = new Button("Manage calibrations");
         calibrationButton.setOnAction(e -> openPopup());
         pane.getChildren().add(calibrationButton);
 
-        HBox paramRow = FXUtils.newHBox();
-        paramRow.setSpacing(8);
-        paramRow.setPadding(new Insets(8, 0, 4, 0));
-        paramRow.getChildren().add(new Label("Parameterization:"));
-        ChoiceBox<String> paramChoice = new ChoiceBox<>();
-        for (String[] pair : PARAM_PAIRS) paramChoice.getItems().add(pair[0]);
-        int currentPairIdx = detectCurrentPairIndex(cpp);
-        paramChoice.getSelectionModel().select(currentPairIdx);
-        paramRow.getChildren().add(paramChoice);
-        pane.getChildren().add(paramRow);
+        String partition = partitionOf(model);
 
-        // Ensure priors and operators exist for the currently active pair (bootstraps on first load)
-        String[] currentPair = PARAM_PAIRS[currentPairIdx];
-        String partition = partitionOf(cpp);
-        for (int i = 1; i <= 2; i++) activateSkylineParam(cpp, currentPair[i], partition);
+        // Birth rate
+        if (doc.pluginmap.get("adBirthRate." + partition) instanceof RealScalarParam<?> birthRate) {
+            bootstrapIfEstimated("adBirthRate", partition, birthRate, ParamKind.POSITIVE);
+            pane.getChildren().add(scalarRow("Birth rate (λ)", "adBirthRate", partition, birthRate, ParamKind.POSITIVE));
+        }
 
-        skylineEditorsBox = FXUtils.newVBox();
-        skylineEditorsBox.setSpacing(10);
-        pane.getChildren().add(skylineEditorsBox);
-        refreshSkylineEditors(cpp);
+        // Lifetime distribution picker
+        HBox distRow = FXUtils.newHBox();
+        distRow.setSpacing(8);
+        distRow.setPadding(new Insets(8, 0, 4, 0));
+        distRow.setAlignment(Pos.CENTER_LEFT);
+        distRow.getChildren().add(new Label("Lifetime distribution:"));
+        ChoiceBox<String> distChoice = new ChoiceBox<>();
+        for (LifetimeKind k : LifetimeKind.values()) distChoice.getItems().add(k.display);
+        LifetimeKind currentKind = detectCurrentLifetimeKind(model);
+        distChoice.getSelectionModel().select(currentKind.ordinal());
+        distRow.getChildren().add(distChoice);
+        pane.getChildren().add(distRow);
 
-        // Sampling proportion (rho) row — always shown with Estimate checkbox
-        addSamplingProportionRow(pane, cpp);
+        // Bootstrap: ensure the currently-selected distribution's params/prior/operator exist
+        // and that the model actually points at them (handles a freshly-applied template).
+        Object activeDist = activateLifetimeDistribution(currentKind, partition);
+        if (model.lifetimeDistributionInput.get() != activeDist) setLifetimeDistribution(model, activeDist);
+
+        lifetimeParamsBox = FXUtils.newVBox();
+        lifetimeParamsBox.setSpacing(10);
+        pane.getChildren().add(lifetimeParamsBox);
+        refreshLifetimeParamsBox(model);
+
+        // Extant sampling probability (rho)
+        if (doc.pluginmap.get("adRho." + partition) instanceof RealScalarParam<?> rho) {
+            bootstrapIfEstimated("adRho", partition, rho, ParamKind.UNIT_INTERVAL);
+            pane.getChildren().add(scalarRow("Extant sampling probability (ρ)", "adRho", partition, rho, ParamKind.UNIT_INTERVAL));
+        }
 
         // Condition on root vs. set origin
-        addConditionOnRootRow(pane, cpp);
+        addConditionOnRootRow(pane, model);
 
-        paramChoice.getSelectionModel().selectedIndexProperty().addListener((obs, oldIdx, newIdx) -> {
+        distChoice.getSelectionModel().selectedIndexProperty().addListener((obs, oldIdx, newIdx) -> {
             if (newIdx.intValue() < 0) return;
-            String[] pair = PARAM_PAIRS[newIdx.intValue()];
-            try { switchParameterization(cpp, pair[1], pair[2]); } catch (Exception ex) { ex.printStackTrace(); }
-            refreshSkylineEditors(cpp);
+            LifetimeKind kind = LifetimeKind.values()[newIdx.intValue()];
+            switchLifetimeDistribution(model, kind);
+            refreshLifetimeParamsBox(model);
             sync();
         });
     }
 
     // ── Model initialization ──────────────────────────────────────────────────────
 
-    private void initCalibrationsFromModel(CalibratedBirthDeathSkylineModel cpp) {
-        String partition = partitionOf(cpp);
-        // cpp.calibrationsInput is the authoritative list — it includes all TaxonSets,
-        // even entries that have no bounds (and therefore no CCP in pluginmap).
-        List<TaxonSet> allTs = cpp.calibrationsInput.get();
+    private void initCalibrationsFromModel(CalibratedAgeDependentBirthDeathModel model) {
+        String partition = partitionOf(model);
+        List<TaxonSet> allTs = model.calibrationsInput.get();
         // Switching tree-prior templates builds a fresh model whose calibrations list is empty,
         // but BEAUti's removeSubNet only disconnects connectors — the TaxonSet.*/.partition
         // plugins survive in the pluginmap. Recover and re-attach them so calibrations persist.
         if (allTs.isEmpty()) recoverCalibrationTaxonSets(partition, allTs);
         if (allTs.isEmpty()) return;
 
-        // Precompute leaf-taxa sets
         Map<TaxonSet, Set<String>> taxaOf = new LinkedHashMap<>();
         for (TaxonSet ts : allTs) {
             Set<String> tset = ts.getTaxonSet().stream().map(Taxon::getID)
@@ -177,7 +188,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             taxaOf.put(ts, tset);
         }
 
-        // Build immediate-children map (same containment logic as importNewick)
         Map<TaxonSet, List<TaxonSet>> immChildren = new LinkedHashMap<>();
         for (TaxonSet parent : allTs) {
             Set<String> pTaxa = taxaOf.get(parent);
@@ -198,14 +208,12 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             immChildren.put(parent, children);
         }
 
-        // Create CalibrationEntry objects
         Map<TaxonSet, CalibrationEntry> tsToEntry = new LinkedHashMap<>();
         for (TaxonSet ts : allTs) {
             String label = tsLabelOf(ts.getID(), partition);
             CalibrationEntry entry = new CalibrationEntry(label, COLORS[colorIndex % COLORS.length]);
             colorIndex++;
 
-            // Look up bounds from corresponding CCP (may not exist if no bounds were set)
             String ccpId = "CalibrationCladePrior." + label + "." + partition;
             BEASTInterface bi = doc.pluginmap.get(ccpId);
             if (bi instanceof CalibrationCladePrior ccp) {
@@ -213,7 +221,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
                 entry.upper = ccp.getUpper();
             }
 
-            // directTaxa = this entry's leaf taxa minus those covered by immediate children
             Set<String> childCoveredTaxa = immChildren.get(ts).stream()
                 .flatMap(child -> taxaOf.get(child).stream())
                 .collect(Collectors.toSet());
@@ -225,7 +232,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             calibrationEntries.add(entry);
         }
 
-        // Wire parent-child relationships
         for (TaxonSet ts : allTs) {
             CalibrationEntry parent = tsToEntry.get(ts);
             for (TaxonSet child : immChildren.get(ts))
@@ -233,7 +239,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         }
     }
 
-    /** Extracts the label from a TaxonSet ID of the form "TaxonSet.{label}.{partition}". */
     private static String tsLabelOf(String tsId, String partition) {
         if (tsId == null) return "unknown";
         String prefix = "TaxonSet.";
@@ -263,75 +268,72 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         }
     }
 
-    // ── Parameterization ─────────────────────────────────────────────────────────
+    // ── Scalar parameter rows (birth rate / rho / lifetime-distribution params) ────
 
-    private int detectCurrentPairIndex(CalibratedBirthDeathSkylineModel cpp) {
-        List<String> active = new ArrayList<>();
-        for (String name : ALL_RATE_NAMES)
-            if (getSkylineInput(cpp, name).get() != null) active.add(name);
-        if (active.size() == 2) {
-            for (int i = 0; i < PARAM_PAIRS.length; i++) {
-                if (PARAM_PAIRS[i][1].equals(active.get(0)) && PARAM_PAIRS[i][2].equals(active.get(1))) return i;
-                if (PARAM_PAIRS[i][1].equals(active.get(1)) && PARAM_PAIRS[i][2].equals(active.get(0))) return i;
-            }
-        }
-        return 0;
+    private VBox scalarRow(String label, String name, String partition, RealScalarParam<?> scalar, ParamKind kind) {
+        VBox box = FXUtils.newVBox();
+        box.setSpacing(4);
+        box.setPadding(new Insets(6));
+        box.setStyle("-fx-border-color: #b0b0b0; -fx-border-radius: 4;");
+
+        HBox headerRow = FXUtils.newHBox();
+        headerRow.setSpacing(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        headerRow.getChildren().add(new Label(label));
+
+        boolean estimated = scalar instanceof StateNode sn && sn.isEstimatedInput.get();
+        CheckBox estimateCb = new CheckBox("Estimate");
+        estimateCb.setSelected(estimated);
+        headerRow.getChildren().add(estimateCb);
+        box.getChildren().add(headerRow);
+
+        double initVal = scalar.valuesInput.get();
+        TextField valueTf = compactField(initVal);
+        HBox valRow = FXUtils.newHBox();
+        valRow.setSpacing(4);
+        valRow.getChildren().addAll(new Label("Value:"), valueTf);
+        box.getChildren().add(valRow);
+
+        valueTf.textProperty().addListener((obs, o, nw) -> {
+            try {
+                double v = Double.parseDouble(nw);
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                RealScalarParam rsp = (RealScalarParam) scalar;
+                rsp.valuesInput.setValue(v, rsp);
+                rsp.initAndValidate();
+            } catch (Exception ignored) {}
+        });
+
+        estimateCb.setOnAction(e -> {
+            setEstimated(scalar, estimateCb.isSelected());
+            if (estimateCb.isSelected()) ensurePriorAndOperator(kind, name, partition, scalar);
+            sync();
+        });
+
+        return box;
     }
 
-    private void switchParameterization(CalibratedBirthDeathSkylineModel cpp, String p1, String p2) {
-        String partition = partitionOf(cpp);
-        for (String name : ALL_RATE_NAMES) {
-            Input<SkylineParameter> in = getSkylineInput(cpp, name);
-            if (in.get() != null) {
-                // Always deactivate the named scalar (the connect conditions key off it),
-                // regardless of whether the SP's valuesInput has been promoted to a vector.
-                BEASTInterface scalar = doc.pluginmap.get(name + "." + partition);
-                if (scalar instanceof RealScalarParam<?> rsp) setEstimated(rsp, false);
-                in.setValue(null, cpp);
-            }
-        }
-        activateSkylineParam(cpp, p1, partition);
-        activateSkylineParam(cpp, p2, partition);
+    private void bootstrapIfEstimated(String name, String partition, RealScalarParam<?> scalar, ParamKind kind) {
+        if (scalar instanceof StateNode sn && sn.isEstimatedInput.get())
+            ensurePriorAndOperator(kind, name, partition, scalar);
     }
 
-    private void activateSkylineParam(CalibratedBirthDeathSkylineModel cpp, String paramName, String partition) {
-        String paramId  = paramName + "." + partition;
-        String spId     = paramName + "SP." + partition;
-        String priorId  = paramName + ".prior." + partition;
-        String scalerId = paramName + "Scaler." + partition;
-
-        RealScalarParam<?> scalar;
-        BEASTInterface existing = doc.pluginmap.get(paramId);
-        if (existing instanceof RealScalarParam<?> rsp) {
-            scalar = rsp;
-        } else {
-            scalar = new RealScalarParam<>(defaultValueFor(paramName), domainFor(paramName));
-            pluginPut(paramId, scalar);
+    private void ensurePriorAndOperator(ParamKind kind, String name, String partition, RealScalarParam<?> scalar) {
+        switch (kind) {
+            case POSITIVE -> ensureLogNormalPriorAndScaler(name, partition, scalar);
+            case UNIT_INTERVAL -> ensureUniformPriorAndScaler(name, partition, scalar);
+            case REAL -> ensureNormalPriorAndRW(name, partition, scalar);
         }
-        // Only fire the BEAST2 change event if the estimate flag actually needs to change.
-        if (!scalar.isEstimatedInput.get()) setEstimated(scalar, true);
+    }
 
-        SkylineParameter sp;
-        BEASTInterface existingSP = doc.pluginmap.get(spId);
-        if (existingSP instanceof SkylineParameter esp) {
-            sp = esp;
-        } else {
-            sp = new SkylineParameter();
-            sp.valuesInput.setValue(scalar, sp);
-            sp.initAndValidate();
-            pluginPut(spId, sp);
-        }
-        // Only call setValue if not already set — avoids triggering spurious
-        // initAndValidate() calls on the model during every init().
-        if (getSkylineInput(cpp, paramName).get() != sp)
-            getSkylineInput(cpp, paramName).setValue(sp, cpp);
-
-        // Create prior and operator if not already present (only needed for non-default-pair params).
+    private void ensureLogNormalPriorAndScaler(String name, String partition, RealScalarParam<?> scalar) {
+        String priorId = name + ".prior." + partition;
+        String scalerId = name + "Scaler." + partition;
         if (!doc.pluginmap.containsKey(priorId)) {
             try {
                 LogNormal prior = new LogNormal();
-                prior.setInputValue("M",     new RealScalarParam<>(0.0, Real.INSTANCE));
-                prior.setInputValue("S",     new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
+                prior.setInputValue("M", new RealScalarParam<>(0.0, Real.INSTANCE));
+                prior.setInputValue("S", new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
                 prior.setInputValue("param", scalar);
                 prior.initAndValidate();
                 pluginPut(priorId, prior);
@@ -341,95 +343,16 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             try {
                 ScaleOperator scaler = new ScaleOperator();
                 scaler.setInputValue("parameter", scalar);
-                scaler.setInputValue("weight",    1.0);
+                scaler.setInputValue("weight", 1.0);
                 scaler.initAndValidate();
                 pluginPut(scalerId, scaler);
             } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
-    /** Registers a new plugin via doc.addPlugin (only call when the ID is not yet in pluginmap). */
-    private void pluginPut(String id, BEASTInterface plugin) {
-        plugin.setID(id);
-        doc.addPlugin(plugin);
-    }
-
-    @SuppressWarnings("unchecked")
-    private Input<SkylineParameter> getSkylineInput(CalibratedBirthDeathSkylineModel cpp, String name) {
-        return (Input<SkylineParameter>) switch (name) {
-            case "birthRate"           -> cpp.birthRateInput;
-            case "deathRate"           -> cpp.deathRateInput;
-            case "diversificationRate" -> cpp.diversificationRateInput;
-            case "reproductiveNumber"  -> cpp.reproductiveNumberInput;
-            case "turnover"            -> cpp.turnoverInput;
-            default -> throw new IllegalArgumentException("Unknown rate: " + name);
-        };
-    }
-
-    private static String partitionOf(CalibratedBirthDeathSkylineModel cpp) {
-        return cpp.getID().replaceFirst("^CalibratedCPP\\.", "");
-    }
-
-    private static void setEstimated(Tensor<?, ?> tensor, boolean estimated) {
-        if (tensor instanceof StateNode sn) sn.isEstimatedInput.setValue(estimated, sn);
-    }
-
-    // ── Skyline editors ───────────────────────────────────────────────────────────
-
-    private void addSamplingProportionRow(javafx.scene.layout.Pane parent,
-                                           CalibratedBirthDeathSkylineModel cpp) {
-        String partition = partitionOf(cpp);
-        String spId = "samplingProportion." + partition;
-        if (!(doc.pluginmap.get(spId) instanceof RealScalarParam<?> scalar)) return;
-
-        VBox box = FXUtils.newVBox();
-        box.setSpacing(4);
-        box.setPadding(new Insets(6));
-        box.setStyle("-fx-border-color: #b0b0b0; -fx-border-radius: 4;");
-
-        HBox headerRow = FXUtils.newHBox();
-        headerRow.setSpacing(8);
-        headerRow.setAlignment(Pos.CENTER_LEFT);
-        headerRow.getChildren().add(new Label("Sampling proportion (ρ)"));
-
-        boolean estimated = scalar instanceof beast.base.inference.StateNode sn
-                            && sn.isEstimatedInput.get();
-        CheckBox estimateCb = new CheckBox("Estimate");
-        estimateCb.setSelected(estimated);
-        headerRow.getChildren().add(estimateCb);
-        box.getChildren().add(headerRow);
-
-        double initVal = ((RealScalarParam<?>) scalar).valuesInput.get();
-        TextField valueTf = compactField(initVal);
-        valueTf.setPrefWidth(100);
-        HBox valRow = FXUtils.newHBox();
-        valRow.setSpacing(4);
-        valRow.getChildren().addAll(new Label("Value:"), valueTf);
-        box.getChildren().add(valRow);
-
-        valueTf.textProperty().addListener((obs, o, nw) -> {
-            try {
-                double v = Double.parseDouble(nw);
-                @SuppressWarnings({"unchecked","rawtypes"})
-                RealScalarParam rsp = (RealScalarParam) scalar;
-                rsp.valuesInput.setValue(v, rsp);
-                rsp.initAndValidate();
-            } catch (Exception ignored) {}
-        });
-
-        estimateCb.setOnAction(e -> {
-            setEstimated(scalar, estimateCb.isSelected());
-            if (estimateCb.isSelected()) ensureSamplingProportionPriorAndOperator(partition, scalar);
-            sync();
-        });
-
-        parent.getChildren().add(box);
-    }
-
-    private void ensureSamplingProportionPriorAndOperator(String partition,
-                                                           RealScalarParam<?> scalar) {
-        String priorId  = "samplingProportion.prior." + partition;
-        String scalerId = "samplingProportionScaler." + partition;
+    private void ensureUniformPriorAndScaler(String name, String partition, RealScalarParam<?> scalar) {
+        String priorId = name + ".prior." + partition;
+        String scalerId = name + "Scaler." + partition;
         if (!doc.pluginmap.containsKey(priorId)) {
             try {
                 Uniform prior = new Uniform();
@@ -444,16 +367,229 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             try {
                 ScaleOperator scaler = new ScaleOperator();
                 scaler.setInputValue("parameter", scalar);
-                scaler.setInputValue("weight",    0.5);
+                scaler.setInputValue("weight", 0.5);
                 scaler.initAndValidate();
                 pluginPut(scalerId, scaler);
             } catch (Exception e) { e.printStackTrace(); }
         }
     }
 
-    private void addConditionOnRootRow(javafx.scene.layout.Pane parent,
-                                        CalibratedBirthDeathSkylineModel cpp) {
-        String partition = partitionOf(cpp);
+    private void ensureNormalPriorAndRW(String name, String partition, RealScalarParam<?> scalar) {
+        String priorId = name + ".prior." + partition;
+        String rwId = name + "RW." + partition;
+        if (!doc.pluginmap.containsKey(priorId)) {
+            try {
+                Normal prior = new Normal();
+                prior.setInputValue("mean", new RealScalarParam<>(0.0, Real.INSTANCE));
+                prior.setInputValue("sigma", new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
+                prior.setInputValue("param", scalar);
+                prior.initAndValidate();
+                pluginPut(priorId, prior);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+        if (!doc.pluginmap.containsKey(rwId)) {
+            try {
+                RealRandomWalkOperator rw = new RealRandomWalkOperator();
+                rw.setInputValue("scalar", scalar);
+                rw.setInputValue("windowSize", 1.0);
+                rw.setInputValue("weight", 1.0);
+                rw.initAndValidate();
+                pluginPut(rwId, rw);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
+    }
+
+    // ── Lifetime distribution ────────────────────────────────────────────────────
+
+    private LifetimeKind detectCurrentLifetimeKind(CalibratedAgeDependentBirthDeathModel model) {
+        Object d = model.lifetimeDistributionInput.get();
+        if (d instanceof Erlang) return LifetimeKind.ERLANG;
+        if (d instanceof Gamma) return LifetimeKind.GAMMA;
+        if (d instanceof LogNormal) return LifetimeKind.LOGNORMAL;
+        return LifetimeKind.EXPONENTIAL;
+    }
+
+    private Object activateLifetimeDistribution(LifetimeKind kind, String partition) {
+        return switch (kind) {
+            case EXPONENTIAL -> activateExponential(partition);
+            case GAMMA -> activateGamma(partition);
+            case ERLANG -> activateErlang(partition);
+            case LOGNORMAL -> activateLogNormal(partition);
+        };
+    }
+
+    private void switchLifetimeDistribution(CalibratedAgeDependentBirthDeathModel model, LifetimeKind kind) {
+        String partition = partitionOf(model);
+        deactivateCurrentLifetimeParams(model.lifetimeDistributionInput.get());
+        setLifetimeDistribution(model, activateLifetimeDistribution(kind, partition));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void setLifetimeDistribution(CalibratedAgeDependentBirthDeathModel model, Object dist) {
+        ((Input) model.lifetimeDistributionInput).setValue(dist, model);
+    }
+
+    private void deactivateCurrentLifetimeParams(Object dist) {
+        if (dist instanceof Exponential e) {
+            setEstimated(scalarOf(e.meanInput), false);
+        } else if (dist instanceof Gamma g) {
+            setEstimated(scalarOf(g.alphaInput), false);
+            setEstimated(scalarOf(g.thetaInput), false);
+        } else if (dist instanceof Erlang e) {
+            setEstimated(scalarOf(e.scaleInput), false);
+        } else if (dist instanceof LogNormal ln) {
+            setEstimated(scalarOf(ln.MParameterInput), false);
+            setEstimated(scalarOf(ln.SParameterInput), false);
+        }
+    }
+
+    private Exponential activateExponential(String partition) {
+        RealScalarParam<?> mean = ensureScalar("lifetimeMean", partition, 1.0, PositiveReal.INSTANCE, ParamKind.POSITIVE);
+        String distId = "lifetimeDistribution.exponential." + partition;
+        if (doc.pluginmap.get(distId) instanceof Exponential existing) return existing;
+        Exponential dist = new Exponential();
+        dist.setInputValue("mean", mean);
+        dist.initAndValidate();
+        pluginPut(distId, dist);
+        return dist;
+    }
+
+    private Gamma activateGamma(String partition) {
+        RealScalarParam<?> shape = ensureScalar("lifetimeGammaShape", partition, 2.0, PositiveReal.INSTANCE, ParamKind.POSITIVE);
+        RealScalarParam<?> scale = ensureScalar("lifetimeGammaScale", partition, 1.0, PositiveReal.INSTANCE, ParamKind.POSITIVE);
+        String distId = "lifetimeDistribution.gamma." + partition;
+        if (doc.pluginmap.get(distId) instanceof Gamma existing) return existing;
+        Gamma dist = new Gamma();
+        dist.setInputValue("alpha", shape);
+        dist.setInputValue("theta", scale);
+        dist.initAndValidate();
+        pluginPut(distId, dist);
+        return dist;
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Erlang activateErlang(String partition) {
+        String shapeId = "lifetimeErlangShape." + partition;
+        IntScalarParam shape;
+        if (doc.pluginmap.get(shapeId) instanceof IntScalarParam existing) {
+            shape = existing;
+        } else {
+            shape = new IntScalarParam(2, PositiveInt.INSTANCE);
+            pluginPut(shapeId, shape);
+        }
+        RealScalarParam<?> scale = ensureScalar("lifetimeErlangScale", partition, 1.0, PositiveReal.INSTANCE, ParamKind.POSITIVE);
+        String distId = "lifetimeDistribution.erlang." + partition;
+        if (doc.pluginmap.get(distId) instanceof Erlang existing) return existing;
+        Erlang dist = new Erlang();
+        dist.setInputValue("shape", shape);
+        dist.setInputValue("scale", scale);
+        dist.initAndValidate();
+        pluginPut(distId, dist);
+        return dist;
+    }
+
+    private LogNormal activateLogNormal(String partition) {
+        RealScalarParam<?> m = ensureScalar("lifetimeLogNormalM", partition, 0.0, Real.INSTANCE, ParamKind.REAL);
+        RealScalarParam<?> s = ensureScalar("lifetimeLogNormalS", partition, 1.0, PositiveReal.INSTANCE, ParamKind.POSITIVE);
+        String distId = "lifetimeDistribution.lognormal." + partition;
+        if (doc.pluginmap.get(distId) instanceof LogNormal existing) return existing;
+        LogNormal dist = new LogNormal();
+        dist.setInputValue("M", m);
+        dist.setInputValue("S", s);
+        dist.initAndValidate();
+        pluginPut(distId, dist);
+        return dist;
+    }
+
+    /** Creates (or reuses) a scalar param, marking it estimated and ensuring its prior/operator exist. */
+    private RealScalarParam<?> ensureScalar(String name, String partition, double defaultVal, Real domain, ParamKind kind) {
+        String id = name + "." + partition;
+        RealScalarParam<?> scalar;
+        if (doc.pluginmap.get(id) instanceof RealScalarParam<?> existing) {
+            scalar = existing;
+        } else {
+            RealScalarParam<Real> created = new RealScalarParam<>(defaultVal, domain);
+            pluginPut(id, created);
+            setEstimated(created, true);
+            scalar = created;
+        }
+        if (scalar instanceof StateNode sn && sn.isEstimatedInput.get())
+            ensurePriorAndOperator(kind, name, partition, scalar);
+        return scalar;
+    }
+
+    private void refreshLifetimeParamsBox(CalibratedAgeDependentBirthDeathModel model) {
+        lifetimeParamsBox.getChildren().clear();
+        String partition = partitionOf(model);
+        Object d = model.lifetimeDistributionInput.get();
+        if (d instanceof Exponential e) {
+            lifetimeParamsBox.getChildren().add(
+                scalarRow("Mean lifetime", "lifetimeMean", partition, scalarOf(e.meanInput), ParamKind.POSITIVE));
+        } else if (d instanceof Gamma g) {
+            lifetimeParamsBox.getChildren().add(
+                scalarRow("Shape (α)", "lifetimeGammaShape", partition, scalarOf(g.alphaInput), ParamKind.POSITIVE));
+            lifetimeParamsBox.getChildren().add(
+                scalarRow("Scale (θ)", "lifetimeGammaScale", partition, scalarOf(g.thetaInput), ParamKind.POSITIVE));
+        } else if (d instanceof Erlang e) {
+            lifetimeParamsBox.getChildren().add(erlangShapeRow(e));
+            lifetimeParamsBox.getChildren().add(
+                scalarRow("Scale (θ)", "lifetimeErlangScale", partition, scalarOf(e.scaleInput), ParamKind.POSITIVE));
+        } else if (d instanceof LogNormal ln) {
+            lifetimeParamsBox.getChildren().add(
+                scalarRow("M (log mean)", "lifetimeLogNormalM", partition, scalarOf(ln.MParameterInput), ParamKind.REAL));
+            lifetimeParamsBox.getChildren().add(
+                scalarRow("S (log sd)", "lifetimeLogNormalS", partition, scalarOf(ln.SParameterInput), ParamKind.POSITIVE));
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private HBox erlangShapeRow(Erlang e) {
+        HBox row = FXUtils.newHBox();
+        row.setSpacing(6);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getChildren().add(new Label("Shape (k, positive integer):"));
+        IntScalarParam shape = (IntScalarParam) e.shapeInput.get();
+        Spinner<Integer> spinner = new Spinner<>(1, 1000, (Integer) shape.valuesInput.get());
+        spinner.setEditable(true);
+        spinner.setPrefWidth(80);
+        spinner.valueProperty().addListener((obs, o, n) -> {
+            shape.valuesInput.setValue(n, shape);
+            try { shape.initAndValidate(); } catch (Exception ignored) {}
+        });
+        row.getChildren().add(spinner);
+        return row;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static RealScalarParam<?> scalarOf(Input<?> input) {
+        return (input.get() instanceof RealScalarParam<?> r) ? r : null;
+    }
+
+    /** Registers a new plugin via doc.addPlugin (only call when the ID is not yet in pluginmap). */
+    private void pluginPut(String id, BEASTInterface plugin) {
+        plugin.setID(id);
+        doc.addPlugin(plugin);
+    }
+
+    private static void setEstimated(RealScalarParam<?> scalar, boolean estimated) {
+        if (scalar instanceof StateNode sn) sn.isEstimatedInput.setValue(estimated, sn);
+    }
+
+    private static String partitionOf(CalibratedAgeDependentBirthDeathModel model) {
+        return model.getID().replaceFirst("^CalibratedAgeDependentBirthDeath\\.", "");
+    }
+
+    private static TextField compactField(double value) {
+        TextField tf = new TextField(String.valueOf(value));
+        tf.setPrefWidth(70);
+        tf.setPadding(new Insets(2));
+        return tf;
+    }
+
+    // ── Conditioning (root vs. origin) ──────────────────────────────────────────
+
+    private void addConditionOnRootRow(Pane parent, CalibratedAgeDependentBirthDeathModel model) {
+        String partition = partitionOf(model);
 
         VBox box = FXUtils.newVBox();
         box.setSpacing(6);
@@ -470,22 +606,19 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         rootRb.setToggleGroup(group);
         originRb.setToggleGroup(group);
 
-        boolean currentlyRoot = cpp.conditionOnRootInput.get();
+        boolean currentlyRoot = model.conditionOnRootInput.get();
         originRb.setDisable(hasFullTreeCalibration());
         rootRb.setSelected(currentlyRoot);
         originRb.setSelected(!currentlyRoot);
 
-        String originParamId = "originParam." + partition;
+        String originParamId = "adOriginParam." + partition;
         RealScalarParam<?> originScalar =
             (doc.pluginmap.get(originParamId) instanceof RealScalarParam<?> rsp) ? rsp : null;
 
-        // Fix up stale state: old XML may have origin connected even when conditionOnRoot=true
-        // (e.g. saved before this fix, or from the old template that always wired origin).
-        if (currentlyRoot && cpp.originInput.get() != null)
-            cpp.originInput.setValue(null, cpp);
-        // Symmetrically, if we're in origin mode but origin is not connected, connect it now.
-        if (!currentlyRoot && originScalar != null && cpp.originInput.get() == null)
-            cpp.originInput.setValue(originScalar, cpp);
+        if (currentlyRoot && model.originInput.get() != null)
+            model.originInput.setValue(null, model);
+        if (!currentlyRoot && originScalar != null && model.originInput.get() == null)
+            model.originInput.setValue(originScalar, model);
 
         HBox originRow = FXUtils.newHBox();
         originRow.setSpacing(6);
@@ -495,8 +628,7 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         TextField originTf = compactField(initOriginVal);
         originTf.setPrefWidth(90);
 
-        boolean originEstimated = originScalar instanceof beast.base.inference.StateNode sn
-                                  && sn.isEstimatedInput.get();
+        boolean originEstimated = originScalar instanceof StateNode sn && sn.isEstimatedInput.get();
         CheckBox originEstimateCb = new CheckBox("Estimate");
         originEstimateCb.setSelected(originEstimated);
 
@@ -509,21 +641,14 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         group.selectedToggleProperty().addListener((obs, oldTg, newTg) -> {
             if (newTg == null) return;
             boolean isRoot = (newTg == rootRb);
-            cpp.conditionOnRootInput.setValue(isRoot, cpp);
+            model.conditionOnRootInput.setValue(isRoot, model);
             originRow.setVisible(!isRoot);
             originRow.setManaged(!isRoot);
             if (isRoot) {
-                // Disconnect origin from the model so it is absent from the XML.
-                cpp.originInput.setValue(null, cpp);
+                model.originInput.setValue(null, model);
             } else {
-                // Reconnect origin and mark change times as relative.
                 RealScalarParam<?> os = (doc.pluginmap.get(originParamId) instanceof RealScalarParam<?> r) ? r : null;
-                if (os != null) cpp.originInput.setValue(os, cpp);
-                for (String name : ALL_RATE_NAMES) {
-                    SkylineParameter sp = getSkylineInput(cpp, name).get();
-                    if (sp == null) continue;
-                    sp.timesAreRelativeInput.setValue(true, sp);
-                }
+                if (os != null) model.originInput.setValue(os, model);
             }
             sync();
         });
@@ -532,7 +657,7 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             originTf.textProperty().addListener((obs, o, nw) -> {
                 try {
                     double v = Double.parseDouble(nw);
-                    @SuppressWarnings({"unchecked","rawtypes"})
+                    @SuppressWarnings({"unchecked", "rawtypes"})
                     RealScalarParam rsp = (RealScalarParam) originScalar;
                     rsp.valuesInput.setValue(v, rsp);
                     rsp.initAndValidate();
@@ -540,322 +665,13 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             });
             originEstimateCb.setOnAction(e -> {
                 setEstimated(originScalar, originEstimateCb.isSelected());
-                if (originEstimateCb.isSelected()) ensureOriginPriorAndOperator(partition, originScalar);
+                if (originEstimateCb.isSelected())
+                    ensurePriorAndOperator(ParamKind.POSITIVE, "adOriginParam", partition, originScalar);
                 sync();
             });
         }
 
         parent.getChildren().add(box);
-    }
-
-    private void ensureOriginPriorAndOperator(String partition, RealScalarParam<?> scalar) {
-        String priorId  = "originParam.prior." + partition;
-        String scalerId = "originParamScaler." + partition;
-        if (!doc.pluginmap.containsKey(priorId)) {
-            try {
-                LogNormal prior = new LogNormal();
-                prior.setInputValue("M", new RealScalarParam<>(1.0, Real.INSTANCE));
-                prior.setInputValue("S", new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
-                prior.setInputValue("param", scalar);
-                prior.initAndValidate();
-                pluginPut(priorId, prior);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-        if (!doc.pluginmap.containsKey(scalerId)) {
-            try {
-                ScaleOperator scaler = new ScaleOperator();
-                scaler.setInputValue("parameter", scalar);
-                scaler.setInputValue("weight",    1.0);
-                scaler.initAndValidate();
-                pluginPut(scalerId, scaler);
-            } catch (Exception e) { e.printStackTrace(); }
-        }
-    }
-
-    private void refreshSkylineEditors(CalibratedBirthDeathSkylineModel cpp) {
-        skylineEditorsBox.getChildren().clear();
-        for (String name : ALL_RATE_NAMES) {
-            SkylineParameter sp = getSkylineInput(cpp, name).get();
-            if (sp != null) skylineEditorsBox.getChildren().add(buildSkylineEditor(sp, name));
-        }
-    }
-
-    private VBox buildSkylineEditor(SkylineParameter sp, String paramName) {
-        VBox box = FXUtils.newVBox();
-        box.setSpacing(4);
-        box.setPadding(new Insets(6));
-        box.setStyle("-fx-border-color: #b0b0b0; -fx-border-radius: 4;");
-        box.getChildren().add(new Label(displayNameOf(paramName)));
-
-        int nChanges = sp.changeTimesInput.get() == null ? 0 : sp.changeTimesInput.get().size();
-        // Guard against corrupted state (e.g. from prior append-instead-of-replace bug).
-        if (nChanges > 99) {
-            nChanges = 0;
-            sp.changeTimesInput.setValue(null, sp);
-        }
-        // Also sanitize the values vector — if absurdly large, shrink to match nChanges+1.
-        if (sp.valuesInput.get() instanceof RealVectorParam<?> vp && vp.size() > 99
-                && vp.size() != nChanges + 1) {
-            double[] init = new double[nChanges + 1];
-            java.util.Arrays.fill(init, 1.0);
-            resetVector(vp, init);
-        }
-
-        // Mirror BDMM-Prime's ensureValuesConsistency(): proactively sync values dimension
-        // to match change times count so the model is always consistent when the panel is built.
-        ensureValues(sp, nChanges + 1);
-
-        HBox epochRow = FXUtils.newHBox();
-        epochRow.setSpacing(6);
-        epochRow.getChildren().add(new Label("Epochs:"));
-        Spinner<Integer> epochSpinner = new Spinner<>(1, 100, nChanges + 1);
-        epochSpinner.setPrefWidth(70);
-        epochRow.getChildren().add(epochSpinner);
-        box.getChildren().add(epochRow);
-
-        HBox flagsRow = FXUtils.newHBox();
-        flagsRow.setSpacing(12);
-        CheckBox agesCb = new CheckBox("Times are ages");
-        agesCb.setSelected(sp.timesAreAgesInput.get());
-        CheckBox relCb = new CheckBox("Relative to process length (0–1)");
-        relCb.setSelected(sp.timesAreRelativeInput.get());
-        relCb.setTooltip(new Tooltip("Change times as fractions of process length — must be between 0 and 1."));
-        Button distBtn = new Button("Distribute evenly");
-        distBtn.setTooltip(new Tooltip("Space change times evenly (fractions if relative, else 1, 2, ...)."));
-        flagsRow.getChildren().addAll(agesCb, relCb, distBtn);
-        box.getChildren().add(flagsRow);
-
-        HBox ctRow = FXUtils.newHBox();
-        ctRow.setSpacing(4);
-        VBox ctBox = FXUtils.newVBox();
-        ctBox.setSpacing(2);
-        ctBox.getChildren().addAll(new Label("Change times:"), ctRow);
-        ctBox.setVisible(nChanges > 0);
-        ctBox.setManaged(nChanges > 0);
-        box.getChildren().add(ctBox);
-
-        HBox valRow = FXUtils.newHBox();
-        valRow.setSpacing(4);
-        VBox valBox = FXUtils.newVBox();
-        valBox.setSpacing(2);
-        valBox.getChildren().addAll(new Label("Epoch values (root → present):"), valRow);
-        box.getChildren().add(valBox);
-
-        rebuildSkylineRows(sp, nChanges, ctRow, valRow, agesCb, relCb);
-
-        epochSpinner.valueProperty().addListener((obs, o, nv) -> {
-            int nc = nv - 1;
-            ensureChangeTimes(sp, nc);
-            ensureValues(sp, nv);
-            ctBox.setVisible(nc > 0);
-            ctBox.setManaged(nc > 0);
-            rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
-        });
-        agesCb.selectedProperty().addListener((obs, o, n) -> {
-            sp.timesAreAgesInput.setValue(n, sp);
-            rebuildSkylineRows(sp, epochSpinner.getValue() - 1, ctRow, valRow, agesCb, relCb);
-            try { sp.initAndValidate(); } catch (Exception ignored) {}
-        });
-        relCb.selectedProperty().addListener((obs, o, n) -> {
-            sp.timesAreRelativeInput.setValue(n, sp);
-            int nc = epochSpinner.getValue() - 1;
-            ctBox.setVisible(nc > 0);
-            ctBox.setManaged(nc > 0);
-            rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
-            setTimeFieldValues(ctRow, evenlySpaced(nc, n));
-            try { sp.initAndValidate(); } catch (Exception ignored) {}
-        });
-        distBtn.setOnAction(e -> {
-            int nc = epochSpinner.getValue() - 1;
-            setTimeFieldValues(ctRow, evenlySpaced(nc, relCb.isSelected()));
-            try { sp.initAndValidate(); } catch (Exception ignored) {}
-        });
-        return box;
-    }
-
-    private void rebuildSkylineRows(SkylineParameter sp, int nChanges,
-                                    HBox ctRow, HBox valRow, CheckBox agesCb, CheckBox relCb) {
-        ctRow.getChildren().clear();
-        valRow.getChildren().clear();
-        boolean relative = relCb.isSelected();
-        if (nChanges > 0) {
-            RealVectorParam<?> ctParam = changeTimesParam(sp);
-            double[] defaults = evenlySpaced(nChanges, relative);
-            for (int i = 0; i < nChanges; i++) {
-                double v = (ctParam != null && i < ctParam.size()) ? (double) ctParam.get(i) : defaults[i];
-                ctRow.getChildren().add(new Label(agesCb.isSelected() ? ("Age " + (i + 1) + ":") : ("t" + (i + 1) + ":")));
-                final int fi = i;
-                TextField tf = compactField(v);
-                tf.textProperty().addListener((obs, old, nw) -> {
-                    try { setChangeTime(sp, fi, Double.parseDouble(nw)); } catch (NumberFormatException ignored) {}
-                });
-                ctRow.getChildren().add(tf);
-            }
-        }
-        int nEpochs = nChanges + 1;
-        Tensor<?, Double> vParam = sp.valuesInput.get();
-        for (int i = 0; i < nEpochs; i++) {
-            double v = (vParam != null && i < vParam.size()) ? (double) vParam.get(i) : 1.0;
-            valRow.getChildren().add(new Label("E" + (i + 1) + ":"));
-            final int fi = i;
-            TextField tf = compactField(v);
-            tf.textProperty().addListener((obs, old, nw) -> {
-                try { setEpochValue(sp, fi, Double.parseDouble(nw)); } catch (NumberFormatException ignored) {}
-            });
-            valRow.getChildren().add(tf);
-        }
-    }
-
-    private static TextField compactField(double value) {
-        TextField tf = new TextField(String.valueOf(value));
-        tf.setPrefWidth(70);
-        tf.setPadding(new Insets(2));
-        return tf;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void ensureChangeTimes(SkylineParameter sp, int nChanges) {
-        if (nChanges == 0) { sp.changeTimesInput.setValue(null, sp); return; }
-        boolean relative = sp.timesAreRelativeInput.get();
-        RealVectorParam<NonNegativeReal> ct = changeTimesParam(sp);
-        if (ct == null) {
-            // The vector may have been disconnected (setValue null) but still live in pluginmap —
-            // reuse it to avoid a duplicate-ID dialog on the next addPlugin call.
-            String spId = sp.getID();
-            String ctId = spId != null ? spId + ".changeTimes" : null;
-            if (ctId != null && doc.pluginmap.get(ctId) instanceof RealVectorParam<?> v)
-                ct = (RealVectorParam<NonNegativeReal>) v;
-            else {
-                ct = new RealVectorParam<>(evenlySpaced(nChanges, relative), NonNegativeReal.INSTANCE);
-                if (ctId != null) { ct.setID(ctId); doc.addPlugin(ct); }
-            }
-            sp.changeTimesInput.setValue(ct, sp);
-        }
-        double[] old = toDoubles(ct);
-        if (old.length == nChanges) return;  // already correct size — skip resetVector and its cascade
-        double[] defaults = evenlySpaced(nChanges, relative);
-        double[] upd = new double[nChanges];
-        for (int i = 0; i < nChanges; i++) upd[i] = i < old.length ? old[i] : defaults[i];
-        resetVector(ct, upd);
-    }
-
-    private static void setTimeFieldValues(HBox ctRow, double[] values) {
-        int vi = 0;
-        for (javafx.scene.Node node : ctRow.getChildren()) {
-            if (node instanceof TextField tf && vi < values.length)
-                tf.setText(String.valueOf(values[vi++]));
-        }
-    }
-
-    private static double[] evenlySpaced(int n, boolean relative) {
-        double[] v = new double[n];
-        for (int i = 0; i < n; i++) v[i] = relative ? (double)(i + 1) / (n + 1) : (double)(i + 1);
-        return v;
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private void ensureValues(SkylineParameter sp, int nEpochs) {
-        Tensor<?, Double> existing = sp.valuesInput.get();
-        Real dom = existing instanceof RealScalarParam<?> rsp ? rsp.domainTypeInput.get()
-                 : existing instanceof RealVectorParam<?> vp  ? vp.domainTypeInput.get()
-                 : Real.INSTANCE;
-        if (existing instanceof RealVectorParam<?> vp) {
-            double[] old = toDoubles(vp);
-            // Guard: skip resetVector (and its initAndValidate) when size is already correct.
-            // This prevents a rebuild cascade — resetVector fires BEAST2 change notifications
-            // that can trigger another BEAUti sync(), which re-enters buildSkylineEditor.
-            if (old.length == nEpochs) return;
-            double[] upd = new double[nEpochs];
-            for (int i = 0; i < nEpochs; i++) upd[i] = i < old.length ? old[i] : (old.length > 0 ? old[old.length - 1] : 1.0);
-            resetVector(vp, upd);
-        } else {
-            // existing is a scalar (or null); a scalar is valid for 1 epoch — don't promote,
-            // since doc.addPlugin() fires BEAUti events that can cascade into spurious syncs.
-            if (nEpochs == 1) return;
-            double scalar = (existing != null) ? (double) existing.get(0) : 1.0;
-            double[] init = new double[nEpochs];
-            for (int i = 0; i < nEpochs; i++) init[i] = scalar;
-            String spId = sp.getID();
-            String vpId = spId != null ? spId + ".values" : null;
-            // Reuse an orphaned vector from pluginmap rather than adding a duplicate.
-            @SuppressWarnings({"unchecked","rawtypes"})
-            RealVectorParam<?> vp;
-            if (vpId != null && doc.pluginmap.get(vpId) instanceof RealVectorParam<?> v) {
-                vp = v;
-            } else {
-                vp = new RealVectorParam(init, dom);
-                if (vpId != null) { vp.setID(vpId); doc.addPlugin(vp); }
-            }
-            sp.valuesInput.setValue(vp, sp);
-        }
-    }
-
-    private void setChangeTime(SkylineParameter sp, int idx, double val) {
-        RealVectorParam<?> ct = changeTimesParam(sp);
-        if (ct == null) return;
-        double[] vals = toDoubles(ct);
-        if (idx < vals.length) { vals[idx] = val; resetVector(ct, vals); }
-    }
-
-    private void setEpochValue(SkylineParameter sp, int idx, double val) {
-        if (!(sp.valuesInput.get() instanceof RealVectorParam<?> vp)) return;
-        double[] vals = toDoubles(vp);
-        if (idx < vals.length) { vals[idx] = val; resetVector(vp, vals); }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static RealVectorParam<NonNegativeReal> changeTimesParam(SkylineParameter sp) {
-        Tensor<?, ?> t = sp.changeTimesInput.get();
-        return (t instanceof RealVectorParam<?>) ? (RealVectorParam<NonNegativeReal>) t : null;
-    }
-
-    private static double[] toDoubles(RealVectorParam<?> vp) {
-        double[] out = new double[vp.size()];
-        for (int i = 0; i < out.length; i++) out[i] = (double) vp.get(i);
-        return out;
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void resetVector(RealVectorParam<?> vp, double[] vals) {
-        // BEAST2's Input.setValue(List, ...) APPENDS to the existing list rather than replacing it.
-        // We must mutate the existing list in-place to avoid unbounded growth.
-        List<Double> existing = ((RealVectorParam<Real>) vp).valuesInput.get();
-        existing.clear();
-        for (double v : vals) existing.add(v);
-        // initAndValidate() computes dim = max(dimensionInput, list.size()), so if dimensionInput
-        // still holds a previously larger value, it expands the array back to that size — undoing
-        // any shrink. Reset dimensionInput first so the new size takes effect.
-        vp.dimensionInput.setValue(vals.length, vp);
-        vp.initAndValidate();
-    }
-
-    private static String displayNameOf(String paramName) {
-        return switch (paramName) {
-            case "birthRate"           -> "Birth rate (λ)";
-            case "deathRate"           -> "Death rate (μ)";
-            case "diversificationRate" -> "Diversification rate (λ − μ)";
-            case "turnover"            -> "Turnover (μ/λ)";
-            case "reproductiveNumber"  -> "Reproductive number (λ/μ)";
-            default -> paramName;
-        };
-    }
-
-    private static double defaultValueFor(String paramName) {
-        return switch (paramName) {
-            case "birthRate"           -> 0.5;
-            case "deathRate"           -> 0.25;
-            case "diversificationRate" -> 0.1;
-            case "turnover"            -> 0.5;
-            case "reproductiveNumber"  -> 2.0;
-            default -> 1.0;
-        };
-    }
-
-    private static Real domainFor(String paramName) {
-        return switch (paramName) {
-            case "birthRate", "deathRate", "turnover", "reproductiveNumber" -> PositiveReal.INSTANCE;
-            default -> Real.INSTANCE;
-        };
     }
 
     // ── Calibration popup ─────────────────────────────────────────────────────────
@@ -935,7 +751,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             "-fx-background-radius: 4;"
         );
 
-        // Header: [dot] [name field] [× delete]
         HBox headerRow = FXUtils.newHBox();
         headerRow.setSpacing(8);
         headerRow.setAlignment(Pos.CENTER_LEFT);
@@ -955,7 +770,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         });
         headerRow.getChildren().addAll(dot, nameTf, delBtn);
 
-        // Bounds row
         HBox boundsRow = FXUtils.newHBox();
         boundsRow.setSpacing(8);
         boundsRow.setAlignment(Pos.CENTER_LEFT);
@@ -976,7 +790,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
 
         card.getChildren().addAll(headerRow, boundsRow, new Separator());
 
-        // Taxa section
         entry.taxaCbMap.clear();
         Label taxaHeading = new Label("Direct taxa:");
         taxaHeading.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #555;");
@@ -1011,7 +824,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         taxaSp.setStyle("-fx-background-color: #f9f9f9; -fx-border-color: #eee;");
         card.getChildren().addAll(taxaHeading, taxaSp);
 
-        // Child calibrations section (only when there are others)
         entry.childCalCbMap.clear();
         List<CalibrationEntry> others = calibrationEntries.stream().filter(e -> e != entry).toList();
         if (!others.isEmpty()) {
@@ -1059,7 +871,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
         return false;
     }
 
-    /** Updates disabled/tooltip state on all existing checkboxes without rebuilding any cards. */
     private void updateCheckBoxStates() {
         for (CalibrationEntry entry : calibrationEntries) {
             for (String taxon : taxa) {
@@ -1160,7 +971,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
                     immChildren.put(parent, children);
                 }
 
-                // Build CalibrationEntry list preserving index ordering
                 calibrationEntries.clear();
                 colorIndex = 0;
                 Map<TaxonSet, CalibrationEntry> tsToEntry = new HashMap<>();
@@ -1183,7 +993,6 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
                     tsToEntry.put(ts, entry);
                     calibrationEntries.add(entry);
                 }
-                // Wire parent-child relationships
                 for (TaxonSet ts : allTs) {
                     CalibrationEntry parent = tsToEntry.get(ts);
                     for (TaxonSet child : immChildren.get(ts))
@@ -1252,10 +1061,10 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
     // ── Save calibrations to model ────────────────────────────────────────────────
 
     private void saveCalibrations() {
-        CalibratedBirthDeathSkylineModel cpp = (CalibratedBirthDeathSkylineModel) m_beastObject;
-        String partition = partitionOf(cpp);
+        CalibratedAgeDependentBirthDeathModel model = (CalibratedAgeDependentBirthDeathModel) m_beastObject;
+        String partition = partitionOf(model);
 
-        cpp.calibrationsInput.get().clear();
+        model.calibrationsInput.get().clear();
 
         List<String> staleKeys = doc.pluginmap.keySet().stream()
             .filter(k -> (k.startsWith("CalibrationCladePrior.") || k.startsWith("TaxonSet."))
@@ -1275,13 +1084,13 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
             ts.initByName("taxon", taxonList);
             ts.setID("TaxonSet." + entry.label + "." + partition);
             doc.addPlugin(ts);
-            cpp.calibrationsInput.get().add(ts);
+            model.calibrationsInput.get().add(ts);
 
             if (entry.lower != null && entry.upper != null) {
                 CalibrationCladePrior ccp = new CalibrationCladePrior();
                 ccp.initByName("taxa", ts,
-                    "lowerAge", new RealScalarParam<>(entry.lower, NonNegativeReal.INSTANCE),
-                    "upperAge", new RealScalarParam<>(entry.upper, NonNegativeReal.INSTANCE));
+                    "lowerAge", new RealScalarParam<>(entry.lower, beast.base.spec.domain.NonNegativeReal.INSTANCE),
+                    "upperAge", new RealScalarParam<>(entry.upper, beast.base.spec.domain.NonNegativeReal.INSTANCE));
                 ccp.setID("CalibrationCladePrior." + entry.label + "." + partition);
                 doc.addPlugin(ccp);
             }
@@ -1292,7 +1101,7 @@ public class CalibratedCPPInputEditor extends TreeDistributionInputEditor {
 
     private boolean hasFullTreeCalibration() {
         return calibrationEntries.stream()
-            .anyMatch(e -> new java.util.HashSet<>(allLeafTaxa(e)).containsAll(taxa));
+            .anyMatch(e -> new HashSet<>(allLeafTaxa(e)).containsAll(taxa));
     }
 
     private List<String> allLeafTaxa(CalibrationEntry e) {

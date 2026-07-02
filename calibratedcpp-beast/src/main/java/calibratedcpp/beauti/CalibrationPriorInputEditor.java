@@ -23,7 +23,7 @@ import beast.base.spec.inference.parameter.RealScalarParam;
 import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.inputeditor.InputEditor;
 import beastfx.app.util.FXUtils;
-import calibratedcpp.CalibratedBirthDeathSkylineModel;
+import calibratedcpp.CalibratedCoalescentPointProcess;
 import calibrationprior.CalibrationCladePrior;
 import calibrationprior.CalibrationPrior;
 import javafx.geometry.Insets;
@@ -91,7 +91,14 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
     private void rebuild(CalibrationPrior cp, VBox mainBox) {
         mainBox.getChildren().clear();
         String partition = partitionOf(cp);
-        CalibratedBirthDeathSkylineModel cpp = getCPP(partition);
+        CalibratedCoalescentPointProcess cpp = getCPP(partition);
+
+        // After a tree-prior template switch the active model is freshly built with an empty
+        // calibrations list, but the TaxonSet.*/.partition plugins survive in the pluginmap.
+        // Recover them here so this panel doesn't depend on the tree-prior editor's init having
+        // already run (render order between the two panels is not guaranteed).
+        if (cpp != null && cpp.calibrationsInput.get().isEmpty())
+            recoverCalibrationTaxonSets(partition, cpp.calibrationsInput.get());
 
         if (cpp == null || cpp.calibrationsInput.get().isEmpty()) {
             mainBox.getChildren().add(new Label("No calibration clades defined. Use 'Manage calibrations' to add them, then click Refresh."));
@@ -325,7 +332,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
 
     private void applyMRCAPrior(CalibrationPrior cp, TaxonSet ts, String partition, DistDef def,
                                   Map<String, Double> params, boolean monophyletic) {
-        CalibratedBirthDeathSkylineModel cpp = getCPP(partition);
+        CalibratedCoalescentPointProcess cpp = getCPP(partition);
         if (cpp == null) return;
 
         String mrcaId = "MRCAPrior." + labelOf(ts) + "." + partition;
@@ -483,11 +490,50 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
     }
 
     private static String partitionOf(CalibrationPrior cp) {
-        return cp.getID().replaceFirst("^CalibrationPrior\\.", "");
+        // The skyline template names its object CalibrationPrior.{partition}; the age-dependent
+        // template uses CalibrationPriorADB.{partition} (a distinct ID avoids a shared-target
+        // connector fight). Strip either prefix to recover the partition.
+        return cp.getID().replaceFirst("^CalibrationPrior(ADB)?\\.", "");
     }
 
-    private CalibratedBirthDeathSkylineModel getCPP(String partition) {
-        return (doc.pluginmap.get("CalibratedCPP." + partition) instanceof CalibratedBirthDeathSkylineModel m) ? m : null;
+    /** Finds the active calibrated tree-prior instance (of any concrete type) for this partition. */
+    private CalibratedCoalescentPointProcess getCPP(String partition) {
+        String suffix = "." + partition;
+        // Prefer the model connected in the posterior's prior compound (the active one). A
+        // tree-prior template switch only disconnects the old model — the other concrete type may
+        // still linger in the pluginmap, so a bare pluginmap scan could return the stale one.
+        if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd) {
+            for (var d : cd.pDistributions.get()) {
+                if (d instanceof CalibratedCoalescentPointProcess m
+                        && m.getID() != null && m.getID().endsWith(suffix))
+                    return m;
+            }
+        }
+        for (BEASTInterface bi : doc.pluginmap.values()) {
+            if (bi instanceof CalibratedCoalescentPointProcess m && m.getID() != null && m.getID().endsWith(suffix))
+                return m;
+        }
+        return null;
+    }
+
+    /**
+     * Re-attaches calibration TaxonSets that survive in the pluginmap (e.g. after a tree-prior
+     * template switch) to the model's calibrations list. Only IDs of the form
+     * {@code TaxonSet.{label}.{partition}} with a non-empty label are recovered, so the alignment's
+     * own {@code TaxonSet.{partition}} and unrelated taxon sets are skipped.
+     */
+    private void recoverCalibrationTaxonSets(String partition, List<TaxonSet> target) {
+        String prefix = "TaxonSet.";
+        String suffix = "." + partition;
+        int minLen = prefix.length() + suffix.length() + 1; // +1 ensures a non-empty label between
+        for (BEASTInterface bi : doc.pluginmap.values()) {
+            if (bi instanceof TaxonSet ts && ts.getID() != null
+                    && ts.getID().startsWith(prefix) && ts.getID().endsWith(suffix)
+                    && ts.getID().length() >= minLen
+                    && !target.contains(ts)) {
+                target.add(ts);
+            }
+        }
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ open module calibratedcpp.beast {
 
     provides beastfx.app.inputeditor.InputEditor with
         calibratedcpp.beauti.CalibratedCPPInputEditor,
+        calibratedcpp.beauti.CalibratedAgeDependentBirthDeathInputEditor,
         calibratedcpp.beauti.CalibrationPriorInputEditor,
         calibratedcpp.beauti.SkylineParameterInputEditor;
 

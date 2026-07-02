@@ -143,5 +143,173 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
 
         </subtemplate>
 
+        <subtemplate id='CalibratedAgeDependentBirthDeath'
+                     class='calibratedcpp.CalibratedAgeDependentBirthDeathModel'
+                     mainid='CalibratedAgeDependentBirthDeath.t:$(n)'
+                     suppressInputs='calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.constraintTree,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnCalibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnRoot,calibratedcpp.CalibratedAgeDependentBirthDeathModel.origin,calibratedcpp.CalibratedAgeDependentBirthDeathModel.lifetimeDistribution,calibratedcpp.CalibratedAgeDependentBirthDeathModel.rho,calibratedcpp.CalibratedAgeDependentBirthDeathModel.birthRate,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.constraintTree,calibrationprior.CalibrationPrior.mrcaPrior'
+                     hmc='
+CalibratedAgeDependentBirthDeathOperator/index/=Operators/BactrianNodeOperator/,
+CalibratedAgeDependentBirthDeathSubtreeSlide/index/=Operators/SubtreeSlide/,
+CalibratedAgeDependentBirthDeathNarrow/index/=Operators/Exchange/,
+CalibratedAgeDependentBirthDeathWide/index/=Operators/Exchange/,
+CalibratedAgeDependentBirthDeathWilsonBalding/index/=Operators/WilsonBalding/,
+CalibratedAgeDependentBirthDeathBICEPSEpochTop/index/=Operators/EpochFlexer/,
+CalibratedAgeDependentBirthDeathBICEPSEpochAll/index/=Operators/EpochFlexer/,
+CalibratedAgeDependentBirthDeathBICEPSTreeFlex/index/=Operators/TreeStretcher/,
+CalibratedAgeDependentBirthDeathTreeRootScaler/index/=Operators/BactrianTreeScaler/
+'>
+            <![CDATA[
+            <!-- Primary birth rate. Estimated by default. -->
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="adBirthRate.t:$(n)" domain="PositiveReal" value="1.0"/>
+
+            <!-- Extant sampling probability. Fixed at complete sampling (1.0) by default. -->
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="adRho.t:$(n)" domain="UnitInterval" value="1.0" estimate="false"/>
+
+            <!-- Origin parameter: declared so BEAUti tracks it, but NOT connected to the model
+                 here. CalibratedAgeDependentBirthDeathInputEditor connects it dynamically when the
+                 user selects "Set origin time", and disconnects it when "Condition on root" is
+                 selected. -->
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="adOriginParam.t:$(n)" domain="PositiveReal" value="1.0" estimate="false"/>
+
+            <!-- Default lifetime distribution: Exponential(mean). The editor's ChoiceBox creates
+                 and reuses Gamma/Erlang/Log-Normal counterparts lazily when the user switches
+                 distribution family; their state/prior/operator are NOT pre-declared here. -->
+            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
+                       id="lifetimeMean.t:$(n)" domain="PositiveReal" value="1.0"/>
+            <distribution spec="beast.base.spec.inference.distribution.Exponential"
+                          id="lifetimeDistribution.exponential.t:$(n)">
+                <mean idref="lifetimeMean.t:$(n)"/>
+            </distribution>
+
+            <!-- CPP tree prior -->
+            <distribution spec="calibratedcpp.CalibratedAgeDependentBirthDeathModel"
+                          id="CalibratedAgeDependentBirthDeath.t:$(n)" conditionOnRoot="true">
+                <tree idref="Tree.t:$(n)"/>
+                <birthRate idref="adBirthRate.t:$(n)"/>
+                <rho idref="adRho.t:$(n)"/>
+                <lifetimeDistribution idref="lifetimeDistribution.exponential.t:$(n)"/>
+            </distribution>
+
+            <!-- CalibrationPrior: clades and mrcaPriors populated by the BEAUti editor.
+                 Uses a distinct ID from the skyline template's CalibrationPrior so the two
+                 templates' prior/tracelog connectors don't fight over a shared target (BEAUti
+                 evaluates connectors in template order and the last one wins, which would
+                 disconnect a shared CalibrationPrior whenever this model is not the active one). -->
+            <distribution spec="calibrationprior.CalibrationPrior" id="CalibrationPriorADB.t:$(n)">
+                <tree idref="Tree.t:$(n)"/>
+            </distribution>
+
+            <!-- No priors or operators are pre-declared for adBirthRate/lifetimeMean here.
+                 They are created dynamically by the editor on first activation, mirroring
+                 CalibratedCPPInputEditor's handling of the skyline rate parameters. -->
+]]>
+            <plate fragment="TreeOperators" var="m" range="CalibratedAgeDependentBirthDeath"/>
+
+            <!-- Tree prior distributions -->
+            <connect srcID='CalibratedAgeDependentBirthDeath.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
+                Calibrated age-dependent birth-death prior on tree t:$(n)
+            </connect>
+            <connect srcID='CalibrationPriorADB.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
+                CalibrationPrior on clade ages for tree t:$(n)
+            </connect>
+
+            <!-- Origin parameter (state/prior/operator/tracelog) -->
+            <connect srcID='adOriginParam.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adOriginParam.t:$(n)/estimate=true'/>
+            <connect srcID='adOriginParam.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adOriginParam.t:$(n)/estimate=true'/>
+            <connect srcID='adOriginParamScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adOriginParam.t:$(n)/estimate=true'/>
+            <connect srcID='adOriginParam.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adOriginParam.t:$(n)/estimate=true'/>
+
+            <!-- Birth rate -->
+            <connect srcID='adBirthRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adBirthRate.t:$(n)/estimate=true'/>
+            <connect srcID='adBirthRate.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adBirthRate.t:$(n)/estimate=true'/>
+            <connect srcID='adBirthRateScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adBirthRate.t:$(n)/estimate=true'/>
+            <connect srcID='adBirthRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adBirthRate.t:$(n)/estimate=true'/>
+
+            <!-- Extant sampling probability -->
+            <connect srcID='adRho.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adRho.t:$(n)/estimate=true'/>
+            <connect srcID='adRho.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adRho.t:$(n)/estimate=true'/>
+            <connect srcID='adRhoScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adRho.t:$(n)/estimate=true'/>
+            <connect srcID='adRho.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and adRho.t:$(n)/estimate=true'/>
+
+            <!-- Lifetime distribution parameters (only the active family's params ever exist) -->
+            <connect srcID='lifetimeMean.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeMean.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeMean.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeMean.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeMeanScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeMean.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeMean.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeMean.t:$(n)/estimate=true'/>
+
+            <connect srcID='lifetimeGammaShape.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaShape.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeGammaShape.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaShape.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeGammaShapeScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaShape.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeGammaShape.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaShape.t:$(n)/estimate=true'/>
+
+            <connect srcID='lifetimeGammaScale.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaScale.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeGammaScale.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaScale.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeGammaScaleScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaScale.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeGammaScale.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeGammaScale.t:$(n)/estimate=true'/>
+
+            <connect srcID='lifetimeErlangScale.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeErlangScale.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeErlangScale.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeErlangScale.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeErlangScaleScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeErlangScale.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeErlangScale.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeErlangScale.t:$(n)/estimate=true'/>
+
+            <connect srcID='lifetimeLogNormalM.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalM.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeLogNormalM.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalM.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeLogNormalMRW.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalM.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeLogNormalM.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalM.t:$(n)/estimate=true'/>
+
+            <connect srcID='lifetimeLogNormalS.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalS.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeLogNormalS.prior.t:$(n)' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalS.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeLogNormalSScaler.t:$(n)' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalS.t:$(n)/estimate=true'/>
+            <connect srcID='lifetimeLogNormalS.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and lifetimeLogNormalS.t:$(n)/estimate=true'/>
+
+            <!-- Logging -->
+            <connect srcID='CalibratedAgeDependentBirthDeath.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+            <connect srcID='CalibrationPriorADB.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+
+        </subtemplate>
+
     </mergewith>
 </beast>
