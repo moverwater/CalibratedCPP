@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calibrated CPP</title>
+<meta name="description" content="A BEAST2 package implementing the Calibrated Coalescent Point Process for calibrated molecular clock dating.">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  MathJax = { tex: { inlineMath: [['$$', '$$']], displayMath: [['\\[', '\\]']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" defer></script>
+</head>
+<body>
+<button id="nav-toggle" class="nav-toggle" aria-label="Toggle navigation">&#9776;</button>
+<div class="layout">
+  <aside id="sidebar" class="sidebar"><div id="sidebar-nav"></div></aside>
+  <main>
+    <div class="content">
+
+      <!-- ==================== MODEL ==================== -->
+      <section id="model" class="doc-section">
+      <h1>The Calibrated Coalescent Point Process</h1>
+      <p class="lead">A BEAST2 package for calibrated molecular clock dating using the Coalescent Point Process (CPP).</p>
+
+      <h2>Coalescent Point Process Model</h2>
+      <p>
+        The Coalescent Point Process (CPP) (<a href="https://doi.org/10.1016/j.tpb.2013.10.002" target="_blank" rel="noopener">Lambert and Stadler (2012)</a>) is a model of ultrametric phylogenetic trees where that captures a general class of
+        birth-death processes with time-dependent birth and death rates (as in BDSKY) and age-dependent death rates:
+      </p>
+      <ul>
+        <li>Individuals die at some rate $$\mu(x,t)$$ that depends on the age of the individual $$x$$ and the time $$t$$.</li>
+        <li>Individuals give birth to new individuals at a rate $$\lambda(t)$$ depending only on time.</li>
+      </ul>
+      <p>
+        The Calibrated CPP is a <strong>calibrated tree prior</strong> built on the CPP: it is used for molecular clock
+        dating by conditioning on the existence and ages of the most recent common ancestors
+        (MRCAs) of monophyletic clades — i.e. fossil or other external age evidence.
+      </p>
+      <p>
+        The package provides two tree priors — a <strong>birth-death skyline</strong> model and
+        an <strong>age-dependent birth-death</strong> model — together with a shared way to
+        specify <strong>calibrations</strong>. The sections below describe each in turn, then show
+        how to set them up in BEAST2 XML, in BEAUti, and in an LPhy script.
+      </p>
+
+      <h2>Birth-Death Skyline</h2>
+      <p>
+        Rates are <strong>piecewise-constant over time</strong> (as in BDSKY): each of birth rate
+        $$\lambda(t)$$, death rate $$\mu(t)$$, diversification rate $$d(t)=\lambda-\mu$$,
+        reproductive number $$R_e(t)=\lambda/\mu$$, and turnover $$\tau(t)=\mu/\lambda$$ takes a
+        different value in a series of time intervals ("epochs"). You parameterise the model with
+        any <strong>two</strong> of these five rates, plus the sampling probability
+        $$\rho \in [0,1]$$; the other three are then determined. A single epoch recovers the
+        ordinary constant-rate birth-death process.
+      </p>
+
+      <h3>Skyline parameters</h3>
+      <p>
+        Each time-varying rate is a <strong>skyline parameter</strong> — a list of values, one per
+        epoch, together with the times at which they change:
+      </p>
+      <ul>
+        <li><strong>Values</strong> — the rate in each epoch, ordered from the root towards the present.</li>
+        <li><strong>Change times</strong> — the epoch boundaries. They can be fixed by the user or estimated, and given as ages before the present, as forward times, or as fractions of the tree's total age. If omitted, the epochs are spread evenly over the age of the tree.</li>
+      </ul>
+      <p>
+        The process is anchored in time in one of two ways: by conditioning on the tree's
+        <strong>root height</strong>, or by giving an explicit <strong>origin</strong> time (the
+        start of the process, which may predate the root).
+      </p>
+
+      <h2>Age Dependent Birth-Death</h2>
+      <p>
+        Individuals give birth at a constant rate $$\lambda$$, but rather than dying at a constant
+        rate $$\mu$$ (which implies exponentially distributed lifetimes), their lifetimes are drawn
+        from an <strong>arbitrary distribution</strong> that you supply. The model takes:
+      </p>
+      <ul>
+        <li>a <strong>birth rate</strong> $$\lambda$$,</li>
+        <li>a <strong>lifetime distribution</strong> (e.g. Exponential, Gamma, Erlang, or Log-Normal),</li>
+        <li>the <strong>sampling probability</strong> $$\rho$$.</li>
+      </ul>
+      <p>
+        The Erlang case (a Gamma distribution with integer shape) has a fast closed-form solution;
+        the general case is solved numerically as a Volterra integro-differential equation. As with
+        the skyline model, the process is anchored by conditioning on the root height or by an
+        explicit origin time.
+      </p>
+
+      <h2>Specifying Calibrations</h2>
+      <p>
+        Both tree priors are <em>calibrated</em>: on top of the birth-death dynamics you supply a
+        set of <strong>calibrations</strong>. A calibration is a clade — a named set of taxa —
+        that is constrained to be monophyletic, together with a soft <strong>lower</strong> and
+        <strong>upper</strong> bound on the age of its MRCA, coming from fossil or other external
+        evidence.
+      </p>
+      <p>
+        The tree prior can be <strong>conditioned</strong> on the calibrations holding (the
+        default), or they can be left as ordinary prior information. Calibrations are specified the
+        same way regardless of which of the two models you use — either as explicit taxon sets with
+        age bounds, or compactly as a single constraint-tree string. The sections below show both
+        forms.
+      </p>
+      </section>
+
+      <!-- ==================== CONSTRAINT TREE FORMAT ==================== -->
+      <section id="constraint-tree" class="doc-section">
+      <h1>Constraint tree format for calibration information</h1>
+      <p>
+        A constraint tree encodes information about the calibrations like the clades and upper/lower bounds into one <strong>Newick</strong>
+        string. Internal nodes carry a metadata annotation block
+        (<code>[&amp;key=value,...]</code>) giving the node a name and/or a soft age interval, as
+        in the examples below. Topology is used only to derive taxon sets — branch lengths
+        and tree shape carry no other meaning. For every internal node:
+      </p>
+      <table>
+        <thead><tr><th>Key</th><th>Aliases</th><th>Type</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td><code>name</code></td><td>—</td><td>string</td><td>Sets the node's ID (<code>TaxonSet</code> ID, and <code>CalibrationCladePrior</code> ID if bounds are also present)</td></tr>
+          <tr><td><code>lower</code></td><td><code>lowerAge</code></td><td>double</td><td>Soft lower age bound for the clade's MRCA</td></tr>
+          <tr><td><code>upper</code></td><td><code>upperAge</code></td><td>double</td><td>Soft upper age bound for the clade's MRCA</td></tr>
+          <tr><td><code>virtualRoot</code></td><td>—</td><td>boolean</td><td>Excludes the node from output — lets the outermost parenthesis bundle several independent calibrations without being read as a whole-tree calibration</td></tr>
+        </tbody>
+      </table>
+      <p>A node with neither <code>name</code> nor bounds is purely structural (groups taxa, emits nothing). A node with both <code>lower</code> and <code>upper</code> produces a <code>TaxonSet</code> and a <code>CalibrationCladePrior</code>; nested clades (subset taxa) are fitted jointly, but partially-overlapping clades are invalid.</p>
+
+      <p>More worked examples:</p>
+      <pre><code>&lt;!-- single calibrated clade --&gt;
+(A,B)[&amp;amp;name=Root,lower=10.0,upper=20.0];
+
+&lt;!-- nested calibrations: Inner's taxa are a subset of Outer's --&gt;
+((A,B)[&amp;amp;name=Inner,lower=5.0,upper=10.0],C)[&amp;amp;name=Outer,lower=15.0,upper=30.0];
+
+&lt;!-- named clade, no bounds: a topology-only constraint, no CalibrationCladePrior --&gt;
+(A,B)[&amp;amp;name=TopClade];</code></pre>
+      <p>
+        <code>&amp;</code> must be XML-escaped as <code>&amp;amp;</code> inside the
+        <code>newick</code> attribute, since <code>[&amp;...]</code> reuses standard
+        NEXUS/BEAST metadata-annotation syntax. An empty string (or one that trims to
+        <code>""</code>/<code>";"</code>) means no calibrations — this is the default, so omitting
+        <code>constraintTree</code> entirely is fine if you have none.
+      </p>
+      </section>
+
+      <!-- ==================== BEAST2 XML ==================== -->
+      <section id="beast-xml" class="doc-section">
+      <h1>Specify an analysis in BEAST2 XML</h1>
+      <p>
+        A Calibrated CPP analysis needs a <strong>tree prior</strong> distribution — either the
+        birth-death skyline model or the age-dependent birth-death model — and, if you have fossil
+        or other external age evidence, a set of <strong>calibrations</strong>. Both tree priors
+        share these inputs:
+      </p>
+      <table>
+        <thead><tr><th>Input</th><th>Type</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>tree</code></td><td>Tree</td><td>The phylogenetic tree</td></tr>
+          <tr><td><code>origin</code></td><td>RealScalar</td><td>Start time of the process (optional)</td></tr>
+          <tr><td><code>conditionOnRoot</code></td><td>Boolean</td><td>Condition on the root height instead of an <code>origin</code>. Either <code>origin</code> must be given, or this must be <code>true</code>.</td></tr>
+          <tr><td><code>calibrations</code></td><td>List&lt;TaxonSet&gt;</td><td>Clades to condition as monophyletic, with their MRCA age (see <a href="#specifying-calibrations">Specifying Calibrations</a>). A <code>TaxonSet</code> containing every taxon is equivalent to <code>conditionOnRoot=true</code>.</td></tr>
+          <tr><td><code>constraintTree</code></td><td>ConstraintTree</td><td>Alternative, single-string way to supply <code>calibrations</code>. Provide exactly one of <code>calibrations</code> / <code>constraintTree</code>.</td></tr>
+          <tr><td><code>conditionOnCalibrations</code></td><td>Boolean</td><td>Whether to condition on the supplied calibrations. Default <code>true</code>.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Birth-Death Skyline</h2>
+      <p>
+        <code>calibratedcpp.CalibratedBirthDeathSkylineModel</code> takes any <strong>two</strong>
+        of the five rates — <code>birthRate</code>, <code>deathRate</code>,
+        <code>diversificationRate</code>, <code>reproductiveNumber</code>, <code>turnover</code> —
+        as <code>SkylineParameter</code> inputs (piecewise-constant over time), plus
+        <code>rho</code> (sampling probability, valued in $$[0,1]$$) as a <code>RealScalar</code>. A
+        single-epoch skyline parameter recovers the constant-rate case.
+      </p>
+
+      <h3>Skyline parameters</h3>
+      <p>Each rate is a <code>calibratedcpp.SkylineParameter</code>, which takes:</p>
+      <table>
+        <thead><tr><th>Input</th><th>Type</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>values</code></td><td>RealVector<br>(RealScalar if single-epoch)</td><td>Parameter value in each epoch, ordered root &rarr; tips</td></tr>
+          <tr><td><code>changeTimes</code></td><td>RealVector</td><td>Optional epoch-boundary times. If omitted, epochs are spread evenly over the tree's age.</td></tr>
+          <tr><td><code>timesAreAges</code></td><td>Boolean</td><td><code>true</code> if <code>changeTimes</code> are ages before the present. Default <code>false</code>.</td></tr>
+          <tr><td><code>timesAreRelative</code></td><td>Boolean</td><td><code>true</code> if <code>changeTimes</code> are relative to the tree's age. Default <code>false</code>.</td></tr>
+        </tbody>
+      </table>
+      <p>If multiuple values are supplied but no change times then the change times are evenly distributed along the length of the process (root age or origin age depending on the conditioning).</p>
+      <h3>Worked example</h3>
+      <p>
+        Conditioned on the root, parameterised by a two-epoch diversification rate and a
+        constant turnover:
+      </p>
+      <pre><code>&lt;!-- rate values: a two-epoch diversification rate (vector), a constant turnover, and rho --&gt;
+&lt;stateNode id="diversificationValues" spec="beast.base.spec.inference.parameter.RealVectorParam"
+           domain="PositiveReal" dimension="2"&gt;0.2 0.1&lt;/stateNode&gt;
+&lt;stateNode id="changeTimes" spec="beast.base.spec.inference.parameter.RealVectorParam"
+           domain="NonNegativeReal" dimension="1"&gt;30.0&lt;/stateNode&gt;
+&lt;stateNode id="turnoverValue" spec="beast.base.spec.inference.parameter.RealScalarParam"
+           domain="UnitInterval" value="0.5"/&gt;
+&lt;stateNode id="rho" spec="beast.base.spec.inference.parameter.RealScalarParam"
+           domain="UnitInterval" value="1.0"/&gt;
+
+&lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
+              tree="@tree" conditionOnRoot="true" rho="@rho"&gt;
+    &lt;!-- two-epoch diversification rate; one change time (as an age) splits it in two --&gt;
+    &lt;diversificationRate spec="calibratedcpp.SkylineParameter"
+        values="@diversificationValues" changeTimes="@changeTimes" timesAreAges="true"/&gt;
+    &lt;!-- constant turnover: a single value, no change times --&gt;
+    &lt;turnover spec="calibratedcpp.SkylineParameter" values="@turnoverValue"/&gt;
+&lt;/distribution&gt;</code></pre>
+      <p>
+        Each <code>SkylineParameter</code>'s <code>values</code> reference a
+        <code>RealVectorParam</code> when there is more than one epoch, or a
+        <code>RealScalarParam</code> for a single constant value. To add calibrations, supply them
+        to the tree prior and a matching <code>CalibrationPrior</code> as shown in
+        <a href="#specifying-calibrations">Specifying Calibrations</a> below.
+      </p>
+
+      <h2>Age Dependent Birth-Death</h2>
+      <p>
+        <code>calibratedcpp.CalibratedAgeDependentBirthDeathModel</code> replaces the constant
+        death rate with an arbitrary lifetime distribution:
+      </p>
+      <table>
+        <thead><tr><th>Input</th><th>Type</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>lifetimeDistribution</code></td><td>ParametricDistribution</td><td>Distribution of individual lifetimes (e.g. an Erlang / integer-shape Gamma for the fast closed-form case)</td></tr>
+          <tr><td><code>birthRate</code></td><td>RealScalar</td><td>Rate $$\lambda$$ at which individuals give birth</td></tr>
+          <tr><td><code>rho</code></td><td>RealScalar</td><td>Sampling probability for each extant individual</td></tr>
+        </tbody>
+      </table>
+      <pre><code>&lt;stateNode id="birthRate" spec="beast.base.spec.inference.parameter.RealScalarParam"
+           domain="PositiveReal" value="1.0"/&gt;
+&lt;stateNode id="rho" spec="beast.base.spec.inference.parameter.RealScalarParam"
+           domain="UnitInterval" value="1.0"/&gt;
+&lt;stateNode id="lifetimeShape" spec="beast.base.spec.inference.parameter.RealScalarParam"
+           domain="PositiveReal" value="2.0"/&gt;
+&lt;stateNode id="lifetimeScale" spec="beast.base.spec.inference.parameter.RealScalarParam"
+           domain="PositiveReal" value="1.5"/&gt;
+
+&lt;distribution id="treePrior" spec="calibratedcpp.CalibratedAgeDependentBirthDeathModel"
+              tree="@tree" conditionOnRoot="true" birthRate="@birthRate" rho="@rho"&gt;
+    &lt;!-- Gamma lifetimes (shape alpha, scale theta); an integer shape gives the fast Erlang case --&gt;
+    &lt;lifetimeDistribution id="lifetime" spec="beast.base.spec.inference.distribution.Gamma"&gt;
+        &lt;alpha idref="lifetimeShape"/&gt;
+        &lt;theta idref="lifetimeScale"/&gt;
+    &lt;/lifetimeDistribution&gt;
+&lt;/distribution&gt;</code></pre>
+
+      <h2 id="specifying-calibrations">Specifying Calibrations</h2>
+      <p>
+        Every calibration is a clade — a set of taxa — with a soft <strong>lower</strong> and
+        <strong>upper</strong> bound on the age of its MRCA. There are two ways to write them:
+        as explicit taxon sets plus <code>CalibrationCladePrior</code> blocks, or as a single
+        <strong>constraint tree</strong> string (see <a href="#constraint-tree">Constraint tree
+        format</a>). Provide exactly one of the two to each prior. Calibrations work identically
+        for both tree priors.
+      </p>
+
+      <h3>As taxon sets and calibration clade priors</h3>
+      <p>
+        Declare a <code>TaxonSet</code> for each calibrated clade, then reference it from two
+        places: the tree prior's <code>calibrations</code> list (which conditions on the clade
+        being monophyletic), and a <code>CalibrationCladePrior</code> inside
+        <code>CalibrationPrior</code> (which carries the <code>lowerAge</code>/<code>upperAge</code>
+        bounds). The tree prior declares each taxon set inline; the calibration prior just refers
+        back to it by <code>id</code>.
+      </p>
+      <pre><code>&lt;!-- Tree prior: taxon sets are declared here as the calibrations to condition on --&gt;
+&lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
+    tree="@tree" conditionOnRoot="true"
+    diversificationRate="@diversification" turnover="@turnover" rho="@rho"&gt;
+
+    &lt;calibrations id="Clade1" spec="TaxonSet"&gt;
+        &lt;taxon idref="A"/&gt;
+        &lt;taxon idref="B"/&gt;
+    &lt;/calibrations&gt;
+    &lt;calibrations id="Clade2" spec="TaxonSet"&gt;
+        &lt;taxon idref="C"/&gt;
+        &lt;taxon idref="D"/&gt;
+    &lt;/calibrations&gt;
+&lt;/distribution&gt;
+
+&lt;!-- Calibration prior: one CalibrationCladePrior per clade, carrying the age bounds --&gt;
+&lt;distribution id="calibrationPrior" spec="calibrationprior.CalibrationPrior" tree="@tree"&gt;
+    &lt;calibration id="Clade1Prior" spec="calibrationprior.CalibrationCladePrior" taxa="@Clade1"&gt;
+        &lt;lowerAge spec="beast.base.spec.inference.parameter.RealScalarParam"
+                  domain="NonNegativeReal" value="10.0"/&gt;
+        &lt;upperAge spec="beast.base.spec.inference.parameter.RealScalarParam"
+                  domain="NonNegativeReal" value="20.0"/&gt;
+    &lt;/calibration&gt;
+    &lt;calibration id="Clade2Prior" spec="calibrationprior.CalibrationCladePrior" taxa="@Clade2"&gt;
+        &lt;lowerAge spec="beast.base.spec.inference.parameter.RealScalarParam"
+                  domain="NonNegativeReal" value="5.0"/&gt;
+        &lt;upperAge spec="beast.base.spec.inference.parameter.RealScalarParam"
+                  domain="NonNegativeReal" value="15.0"/&gt;
+    &lt;/calibration&gt;
+&lt;/distribution&gt;</code></pre>
+      <p>
+        The <code>taxa="@Clade1"</code> reference on each <code>CalibrationCladePrior</code> points
+        at the <em>same</em> <code>TaxonSet</code> the tree prior conditions on. Each clade needs
+        both a <code>lowerAge</code> and an <code>upperAge</code> (both <code>NonNegativeReal</code>,
+        with <code>lowerAge&nbsp;&le;&nbsp;upperAge</code>); an optional
+        <code>confidenceLevel</code> (default <code>0.9</code>) sets how much probability mass the
+        soft bounds enclose. Nested clades (one clade's taxa a subset of another's) are fitted
+        jointly; partially-overlapping clades are invalid.
+      </p>
+
+      <h4>MRCAPriors</h4>
+      <p>
+        Instead of a <code>CalibrationCladePrior</code>, you can place a standard BEAST
+        <code>MRCAPrior</code> on a clade with an explicit distribution over its MRCA age (here a
+        hard <code>Uniform</code> bound). The <code>taxonset</code> and <code>tree</code> inputs are
+        required, and <code>monophyletic="true"</code> constrains the clade:
+      </p>
+      <pre><code>&lt;distribution id="Clade1Prior" spec="beast.base.spec.evolution.tree.MRCAPrior"
+    monophyletic="true" taxonset="@Clade1" tree="@tree"&gt;
+    &lt;distr id="Uniform1" spec="beast.base.spec.inference.distribution.Uniform"
+        lower="10.0" upper="20.0"/&gt;
+&lt;/distribution&gt;</code></pre>
+
+      <h3>Inputting a constraint tree</h3>
+      <p>The objects <code>CalibratedBirthDeathSkylineModel</code>, <code>CalibratedAgeDependentBirthDeathModel</code> and <code>CalibrationPrior</code>
+        take a constraint tree as inputs. For <code>CalibrationPrior</code> the clades must have <code>upper</code> and <code>lower</code> annotations, since these inputs
+        are required by the <code>CalibrationPrior</code> object.</p>
+        <pre><code>&lt;constraintTree spec="calibration.ConstraintTree" id="myConstraints"
+    newick="((A,B)[&amp;amp;name=Clade1,lower=10.0,upper=20.0],
+             (C,D)[&amp;amp;name=Clade2,lower=5.0,upper=15.0])[&amp;amp;virtualRoot=true];"/&gt;
+
+&lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
+    tree="@tree" conditionOnRoot="true"
+    diversificationRate="@diversification" turnover="@turnover" rho="@rho"
+    constraintTree="@myConstraints"/&gt;
+
+&lt;distribution id="calibrationPrior" spec="calibrationprior.CalibrationPrior"
+    tree="@tree" constraintTree="@myConstraints"/&gt;</code></pre>
+      </section>
+
+      <!-- ==================== BEAUti ==================== -->
+      <section id="beauti" class="doc-section">
+      <h1>Specify an analysis in BEAUti</h1>
+      <p>
+        Once the package is installed (see the repository README), Calibrated CPP appears as a
+        tree prior option in BEAUti, alongside Yule, Birth-Death, and Coalescent. Set up your
+        alignment, site model, and clock model as normal, then in the <strong>Priors</strong>
+        panel set the tree prior for <code>Tree.t:...</code> to either <strong>Calibrated
+        Birth-Death Skyline</strong> or <strong>Calibrated Age Dependent Birth Death</strong>.
+      </p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-select-tree-prior.png" alt="BEAUti Priors panel showing the tree prior dropdown with the Calibrated CPP models">
+        <figcaption>Priors panel — selecting a Calibrated CPP tree prior.</figcaption>
+      </figure>
+      <p>
+        The rate settings differ between the two models (below), but they share the same
+        <strong>Conditioning</strong> controls and the same <strong>Manage calibrations</strong>
+        editor.
+      </p>
+
+      <h2>Birth-Death Skyline</h2>
+
+      <h3>Parameterization</h3>
+      <p>
+        A <strong>Parameterization</strong> dropdown lets you pick which two rate parameters to
+        estimate: any pair from birth rate, death rate, diversification rate, reproductive number,
+        and turnover (e.g. "Diversification rate + Turnover", "Birth rate + Death rate"). The other
+        three are then derived automatically.
+      </p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-parameterization.png" alt="BEAUti Parameterization dropdown listing rate-pair options">
+        <figcaption>Choosing which two rate parameters to estimate.</figcaption>
+      </figure>
+
+      <h3>Extant sampling probability (ρ)</h3>
+      <p>
+        Set the sampling probability ρ — either a fixed value, or check <strong>Estimate</strong>
+        to sample it as part of the analysis.
+      </p>
+
+      <h3>Epochs (skyline parameters)</h3>
+      <p>
+        For the piecewise-constant (skyline) rates, an <strong>Epochs</strong> section lets you set
+        the number of intervals, the epoch values (root &rarr; present), and the change times
+        between them. Change times can be entered as ages or as fractions of the process length
+        (check <strong>Times are ages</strong> / <strong>Relative to process length</strong>
+        accordingly), or spread evenly with <strong>Distribute evenly</strong>. A single epoch
+        gives constant rates.
+      </p>
+
+      <h3>Conditioning</h3>
+      <p>Under <strong>Conditioning</strong>, choose how the process is anchored in time:</p>
+      <ul>
+        <li><strong>Condition on root</strong> — the process is conditioned on the tree's root height.</li>
+        <li><strong>Set origin time</strong> — give an explicit origin (start of the process, which may predate the root), with its own value and an optional <strong>Estimate</strong> checkbox.</li>
+      </ul>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-conditioning.png" alt="BEAUti Conditioning section with Condition on root / Set origin time radio buttons">
+        <figcaption>Conditioning on the root height vs. an explicit origin time.</figcaption>
+      </figure>
+
+      <h2>Age Dependent Birth-Death</h2>
+
+      <h3>Birth rate (λ)</h3>
+      <p>
+        Set the constant birth rate λ — a fixed value, or check <strong>Estimate</strong> to sample
+        it.
+      </p>
+
+      <h3>Lifetime distribution</h3>
+      <p>
+        A <strong>Lifetime distribution</strong> dropdown selects the distribution of individual
+        lifetimes: <strong>Exponential</strong>, <strong>Gamma</strong>, <strong>Erlang</strong>
+        (Gamma with an integer shape <em>k</em> — the fast closed-form case), or
+        <strong>Log-Normal</strong>. The fields below the dropdown change to the parameters of the
+        chosen distribution (e.g. a mean for Exponential, a shape and rate for Gamma).
+      </p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-lifetime-distribution.png" alt="BEAUti Lifetime distribution dropdown with Exponential/Gamma/Erlang/Log-Normal options and parameter fields">
+        <figcaption>Choosing the lifetime distribution and its parameters.</figcaption>
+      </figure>
+
+      <h3>Extant sampling probability (ρ)</h3>
+      <p>Set the sampling probability ρ — either a fixed value, or check <strong>Estimate</strong>.</p>
+
+      <h3>Conditioning</h3>
+      <p>
+        The same <strong>Conditioning</strong> controls apply: <strong>Condition on root</strong>
+        or <strong>Set origin time</strong>, exactly as described for the skyline model above.
+      </p>
+
+      <h2>Specifying Calibrations</h2>
+      <p>
+        Both editors provide the same calibration workflow. Click <strong>Manage
+        calibrations</strong> to open the calibration editor.
+      </p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-manage-calibrations-button.png" alt="Manage calibrations button in the tree prior editor">
+        <figcaption>The Manage calibrations button.</figcaption>
+      </figure>
+      <p>In the dialog:</p>
+      <ul>
+        <li>Click <strong>+ Add</strong> to create a new calibration, then set its <strong>Lower</strong> / <strong>Upper</strong> age bounds.</li>
+        <li>Under <strong>Direct taxa</strong>, check the taxa that belong directly to this clade.</li>
+        <li>Under <strong>Child calibrations</strong>, check any other calibration to nest it inside this one (its taxa become part of this clade too). Nesting that would create a cycle is disabled.</li>
+        <li>Remove a calibration with the <strong>&times;</strong> button.</li>
+      </ul>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-manage-calibrations-dialog.png" alt="Manage Calibrations dialog with a list of calibration cards, taxa checkboxes, and bound fields">
+        <figcaption>The Manage Calibrations dialog — building calibrated clades.</figcaption>
+      </figure>
+      <p>
+        If you already have calibrations as a
+        <a href="#constraint-tree">constraint-tree Newick string</a>, use
+        <strong>Import Newick&hellip;</strong> instead of building clades by hand — paste the
+        string (annotations of the form <code>[&amp;name=Label,lower=X,upper=Y]</code>) and click
+        <strong>Import</strong>. Use <strong>Export Newick&hellip;</strong> to go the other way and
+        copy out the current calibrations as a string. Click <strong>Save &amp; Close</strong> when done.</p>
+
+      <h2>Setting Calibration Priors</h2>
+      <p>Once you have defined your calibrations, you can specity the calibration priors in the <strong>Calibration Prior</strong> panel.
+        You can choose <strong>CalibrationPrior</strong> which jointly fits distributions to all calibrations treating the provided
+        <strong>upper</strong> and <strong>lower</strong> as soft calibration bounds.</p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-calibrations-calibrationprior.png" alt="Specify CalibrationPrior">
+        <figcaption>Specify CalibrationPrior which jointly fits calibration distributions with soft upper and lower bounds.</figcaption>
+      </figure>
+      <p>Alternatively, you can choose <strong>MRCAPrior</strong> which
+        independently puts a specified distribution on each calibrations.</p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-calibrations-mrcaprior.png" alt="Specify MRCAPrior">
+        <figcaption>Specify independent MRCAPriors with a specified distribtuion.</figcaption>
+      </figure>
+      </section>
+
+      <!-- ==================== LPhy ==================== -->
+      <section id="lphy" class="doc-section">
+      <h1>Specify an analysis in an LPhy script</h1>
+      <p>
+        In <a href="https://linguaphylo.github.io/" target="_blank" rel="noopener">LPhy</a>, the
+        Calibrated CPP is provided as two generative distributions that produce a tip-labelled time
+        tree: <code>CalibratedCPP</code> (birth-death) and <code>CalibratedAgeDependentCPP</code>
+        (age-dependent lifetimes). Calibrations are ordinary LPhy values built with the
+        <code>calibration()</code> helper and a <code>ConditionedMRCAPrior</code>, and are shared
+        by both distributions.
+      </p>
+
+      <h2>Birth-Death</h2>
+      <p>
+        <code>CalibratedCPP</code> uses <strong>constant</strong> birth-death rates. Parameterise
+        it with exactly <strong>two</strong> of <code>lambda</code>, <code>mu</code>,
+        <code>diversification</code>, <code>turnover</code>:
+      </p>
+      <table>
+        <thead><tr><th>Parameter</th><th>Required?</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>lambda</code></td><td rowspan="4">exactly two of these four</td><td>per-lineage birth rate</td></tr>
+          <tr><td><code>mu</code></td><td>per-lineage death rate</td></tr>
+          <tr><td><code>diversification</code></td><td>diversification rate (<code>lambda - mu</code>)</td></tr>
+          <tr><td><code>turnover</code></td><td>turnover (<code>mu / lambda</code>)</td></tr>
+          <tr><td><code>rho</code></td><td>required</td><td>sampling probability</td></tr>
+          <tr><td><code>n</code></td><td>required</td><td>total number of taxa</td></tr>
+          <tr><td><code>calibrations</code></td><td>optional</td><td>an array of calibrations from <code>ConditionedMRCAPrior</code></td></tr>
+          <tr><td><code>otherNames</code></td><td>optional</td><td>taxa names for tips with no calibration</td></tr>
+          <tr><td><code>stemAge</code></td><td>optional</td><td>stem age to condition on (ignored if a root calibration is also given)</td></tr>
+          <tr><td><code>rootAge</code></td><td>optional</td><td>root age to condition on when no calibrations are given</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The LPhy generator itself is constant-rate; if you want the piecewise-constant
+        <em>skyline</em> rates, set those up on the generated BEAST2 XML side (see
+        <a href="#beast-xml">Specify in BEAST2 XML</a> or <a href="#beauti">Specify in BEAUti</a>).
+      </p>
+
+      <h3>Minimal example</h3>
+      <p>One calibrated clade with soft upper/lower age bounds, fixed stem age, constant birth-death rates:</p>
+      <pre><code>model {
+    clade1 = ["leaf_1", "leaf_2"];
+    c1 = calibration(taxa=clade1, lower=0.05, upper=0.2);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[c1]);
+
+    tree ~ CalibratedCPP(lambda=2, mu=0, rho=1, n=4, calibrations=calibrations, stemAge=1);
+}</code></pre>
+
+      <h2>Age Dependent Birth-Death</h2>
+      <p>
+        <code>CalibratedAgeDependentCPP</code> replaces the constant death rate with a lifetime
+        distribution:
+      </p>
+      <table>
+        <thead><tr><th>Parameter</th><th>Required?</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>lambda</code></td><td>required</td><td>per-lineage birth rate</td></tr>
+          <tr><td><code>lifetime</code></td><td>required</td><td>a continuous lifetime distribution (e.g. <code>Gamma</code>, <code>LogNormal</code>, <code>Exp</code>)</td></tr>
+          <tr><td><code>rho</code></td><td>required</td><td>sampling probability</td></tr>
+          <tr><td><code>n</code></td><td>required</td><td>total number of taxa</td></tr>
+          <tr><td><code>calibrations</code></td><td>optional</td><td>an array of calibrations from <code>ConditionedMRCAPrior</code></td></tr>
+          <tr><td><code>otherNames</code></td><td>optional</td><td>taxa names for tips with no calibration</td></tr>
+          <tr><td><code>stemAge</code></td><td>optional</td><td>stem age to condition on (ignored if a root calibration is also given)</td></tr>
+          <tr><td><code>rootAge</code></td><td>optional</td><td>root age to condition on when no calibrations are given</td></tr>
+        </tbody>
+      </table>
+      <pre><code>model {
+    clade1 = ["leaf_1", "leaf_2"];
+    c1 = calibration(taxa=clade1, lower=0.05, upper=0.2);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[c1]);
+
+    lifetime ~ Gamma(shape=2, scale=2);
+    tree ~ CalibratedAgeDependentCPP(lambda=2, lifetime=lifetime, rho=1, n=4,
+                                     calibrations=calibrations, stemAge=1);
+}</code></pre>
+
+      <h2>Specifying Calibrations</h2>
+      <p>
+        A calibration is built with <code>calibration(taxa=..., lower=..., upper=...)</code> —
+        a clade's taxa and the soft lower/upper bounds on its MRCA age — and the full list is
+        passed to <code>ConditionedMRCAPrior</code>, which conditions the tree on all of them
+        holding. The result is handed to the tree distribution's <code>calibrations</code>
+        argument (either <code>CalibratedCPP</code> or <code>CalibratedAgeDependentCPP</code>).
+      </p>
+      <p>A fuller script with several calibrations and real sequence data:</p>
+      <pre><code>data {
+    D = readNexus(file="./data/my_alignment.nex");
+    L = D.nchar();
+    taxa = D.taxa();
+    n = ntaxa(taxa=taxa);
+}
+model {
+    // whole-tree calibration
+    taxaAll = D.getTaxaNames();
+
+    // a calibrated subclade, age unit e.g. Mya
+    taxaClade1 = ["taxon_A", "taxon_B", "taxon_C"];
+
+    diversification ~ LogNormal(meanlog=-1, sdlog=0.5);
+    turnover ~ Beta(alpha=1, beta=4);
+    rho ~ Uniform(lower=0.0, upper=1.0);
+
+    cAll    = calibration(taxa=taxaAll,    lower=29.0, upper=35.0);
+    cClade1 = calibration(taxa=taxaClade1, lower=5.3,  upper=10.3);
+    calibrations ~ ConditionedMRCAPrior(calibrations=[cAll, cClade1]);
+
+    tree ~ CalibratedCPP(calibrations=calibrations, turnover=turnover,
+                          diversification=diversification, n=n, rho=rho);
+
+    // ... substitution model, clock model, and
+    // D ~ PhyloCTMC(L=L, tree=tree, ...) as in any other LPhy analysis
+}</code></pre>
+      <p>
+        This mirrors the <a href="#specifying-calibrations">calibrations</a> used
+        directly in BEAST2 XML — LPhyBEAST converts each <code>calibration()</code>/<code>ConditionedMRCAPrior</code>
+        into the equivalent <code>CalibrationPrior</code> and taxon-set wiring automatically when
+        generating the XML.
+      </p>
+
+      <h2>Trying it out in LPhy Studio</h2>
+      <p>
+        <a href="https://linguaphylo.github.io/">LPhy Studio</a> lets you type or load an
+        <code>.lphy</code> script and inspect the simulated tree, calibrations, and sampled ages
+        before converting to BEAST2 XML.
+      </p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/lphy-studio.png" alt="LPhy Studio showing a simulated calibrated tree with calibration taxa and sampled ages">
+        <figcaption>LPhy Studio — inspecting a simulated Calibrated CPP tree.</figcaption>
+      </figure>
+      </section>
+
+      <!-- ==================== CITING ==================== -->
+      <section id="citing" class="doc-section">
+      <h1>Citing</h1>
+      <p>
+        If you use Calibrated CPP in your research, please cite
+        <a href="https://doi.org/10.1016/j.tpb.2013.10.002" target="_blank" rel="noopener">Lambert and Stadler (2012)</a>
+        for the underlying Coalescent Point Process theory, and link back to this repository.
+      </p>
+      </section>
+
+      <!-- ===================== LICENSE ================= -->
+       <section id="license" class="doc-section">
+        <h1>License</h1>
+        <p>
+          CalibratedCPP is free software. It may be modified and distributed under the terms
+of the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GNU General Public License version 3</a> or, at your option, any later
+version.
+        </p>
+       </section>
+
+    </div>
+  </main>
+</div>
+<script src="assets/nav.js"></script>
+</body>
+</html>
