@@ -466,7 +466,8 @@
         <figcaption>Specify CalibrationPrior which jointly fits calibration distributions with soft upper and lower bounds.</figcaption>
       </figure>
       <p>Alternatively, you can choose <strong>MRCAPrior</strong> which
-        independently puts a specified distribution on each calibrations.</p>
+        independently puts a specified distribution on each calibrations. The default distribution is <code>Uniform</code> with the provided upper and lower bounds 
+        or 0 to 10 if no bounds are provided in the Calibration Manager.</p>
       <figure class="screenshot">
         <img src="assets/screenshots/beauti-calibrations-mrcaprior.png" alt="Specify MRCAPrior">
         <figcaption>Specify independent MRCAPriors with a specified distribtuion.</figcaption>

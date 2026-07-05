@@ -9,6 +9,7 @@ import beast.base.inference.CompoundDistribution;
 import beast.base.spec.domain.NonNegativeReal;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.Real;
+import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.evolution.tree.MRCAPrior;
 import beast.base.spec.inference.distribution.Beta;
 import beast.base.spec.inference.distribution.Exponential;
@@ -149,7 +150,8 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         hdr.getChildren().add(fixedLabel("Clade", 160, true));
         if (calMode) {
             hdr.getChildren().addAll(fixedLabel("Lower bound", 100, true),
-                                     fixedLabel("Upper bound", 100, true));
+                                     fixedLabel("Upper bound", 100, true),
+                                     fixedLabel("Confidence level", 100, true));
         } else {
             hdr.getChildren().addAll(fixedLabel("Distribution", 130, true),
                                      fixedLabel("Parameters", 300, true),
@@ -173,12 +175,16 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         CalibrationCladePrior ccp = findCladePrior(ts, partition);
         TextField loTf = numField(ccp != null ? fmt(ccp.getLower()) : "");
         TextField hiTf = numField(ccp != null ? fmt(ccp.getUpper()) : "");
+        TextField clTf = numField(ccp != null ? fmt(ccp.getCoverage()) : "0.9");
         loTf.setPrefWidth(100); loTf.setPromptText("optional");
         hiTf.setPrefWidth(100); hiTf.setPromptText("optional");
-        Runnable apply = () -> applyCladePrior(cp, ts, partition, loTf.getText(), hiTf.getText());
+        clTf.setPrefWidth(100); clTf.setPromptText("0–1");
+        clTf.setTooltip(new Tooltip("Probability mass within the bounds (between 0 and 1). Default 0.9."));
+        Runnable apply = () -> applyCladePrior(cp, ts, partition, loTf.getText(), hiTf.getText(), clTf.getText());
         loTf.focusedProperty().addListener((obs, o, n) -> { if (!n) apply.run(); });
         hiTf.focusedProperty().addListener((obs, o, n) -> { if (!n) apply.run(); });
-        row.getChildren().addAll(loTf, hiTf);
+        clTf.focusedProperty().addListener((obs, o, n) -> { if (!n) apply.run(); });
+        row.getChildren().addAll(loTf, hiTf, clTf);
     }
 
     private void buildMRCARow(HBox row, CalibrationPrior cp, TaxonSet ts, String partition) {
@@ -298,12 +304,13 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
     // ── Apply actions ─────────────────────────────────────────────────────────────
 
     private void applyCladePrior(CalibrationPrior cp, TaxonSet ts, String partition,
-                                  String loStr, String hiStr) {
+                                  String loStr, String hiStr, String pcovStr) {
         String ccpId = "CalibrationCladePrior." + labelOf(ts) + "." + partition;
         CalibrationCladePrior existing = (doc.pluginmap.get(ccpId) instanceof CalibrationCladePrior c) ? c : null;
         cp.cladesInput.get().remove(existing);
 
         loStr = loStr.trim(); hiStr = hiStr.trim();
+        pcovStr = pcovStr.trim();
         if (loStr.isEmpty() || hiStr.isEmpty()) {
             if (existing != null) doc.pluginmap.remove(ccpId);
             return;
@@ -311,17 +318,20 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         try {
             double lo = Double.parseDouble(loStr);
             double hi = Double.parseDouble(hiStr);
+            double pcov = Double.parseDouble(pcovStr);
             CalibrationCladePrior ccp;
             if (existing != null) {
                 ccp = existing;
                 ccp.lowerAgeInput.setValue(new RealScalarParam<>(lo, NonNegativeReal.INSTANCE), ccp);
                 ccp.upperAgeInput.setValue(new RealScalarParam<>(hi, NonNegativeReal.INSTANCE), ccp);
+                ccp.pCoverageInput.setValue(new RealScalarParam<>(pcov, UnitInterval.INSTANCE), ccp);
                 try { ccp.initAndValidate(); } catch (Exception ignored) {}
             } else {
                 ccp = new CalibrationCladePrior();
                 ccp.initByName("taxa", ts,
                     "lowerAge", new RealScalarParam<>(lo, NonNegativeReal.INSTANCE),
-                    "upperAge", new RealScalarParam<>(hi, NonNegativeReal.INSTANCE));
+                    "upperAge", new RealScalarParam<>(hi, NonNegativeReal.INSTANCE),
+                        "confidenceLevel", new RealScalarParam<UnitInterval>(pcov, UnitInterval.INSTANCE));
                 ccp.setID(ccpId);
                 doc.addPlugin(ccp);
             }

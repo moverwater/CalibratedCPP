@@ -44,6 +44,15 @@
         <fileSet>
             <directory>${project.basedir}/examples</directory>
             <outputDirectory>/examples</outputDirectory>
+            <!-- Ship example inputs only. MCMC run outputs are large (~3 GB locally),
+                 regenerable, and gitignored, so excluding them keeps the assembly fast. -->
+            <excludes>
+                <exclude>**/*.trees</exclude>
+                <exclude>**/*.log</exclude>
+                <exclude>**/*.state</exclude>
+                <exclude>**/*.ops</exclude>
+                <exclude>**/.DS_Store</exclude>
+            </excludes>
         </fileSet>
     </fileSets>
 </assembly>

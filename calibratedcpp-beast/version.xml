@@ -16,7 +16,7 @@
     </service>
 
     <service type="beastfx.app.inputeditor.InputEditor">
-        <provider classname="calibratedcpp.beauti.CalibratedCPPInputEditor"/>
+        <provider classname="calibratedcpp.beauti.CalibratedBirthDeathSkylineInputEditor"/>
         <provider classname="calibratedcpp.beauti.CalibratedAgeDependentBirthDeathInputEditor"/>
         <provider classname="calibratedcpp.beauti.CalibrationPriorInputEditor"/>
         <provider classname="calibratedcpp.beauti.SkylineParameterInputEditor"/>

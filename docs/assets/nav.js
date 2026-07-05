@@ -8,7 +8,7 @@ const NAV_SECTIONS = [
   { id: "beauti", label: "Specify in BEAUti" },
   { id: "lphy", label: "Specify in an LPhy script" },
   { id: "citing", label: "Citing" },
-  { id: "license", label: "License"}
+  { id: "license", label: "License"},
 ];
 
 const SPY_OFFSET = 150;
