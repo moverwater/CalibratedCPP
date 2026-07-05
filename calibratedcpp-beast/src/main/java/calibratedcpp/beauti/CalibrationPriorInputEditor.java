@@ -101,7 +101,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             recoverCalibrationTaxonSets(partition, cpp.calibrationsInput.get());
 
         if (cpp == null || cpp.calibrationsInput.get().isEmpty()) {
-            mainBox.getChildren().add(new Label("No calibration clades defined. Use 'Manage calibrations' to add them, then click Refresh."));
+            mainBox.getChildren().add(new Label("No calibration clades defined. Use 'Manage calibrations' to add them."));
             return;
         }
 
