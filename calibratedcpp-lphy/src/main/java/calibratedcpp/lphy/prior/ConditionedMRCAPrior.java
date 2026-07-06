@@ -27,7 +27,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
             @ParameterInfo(name = coverageName, description = "confidence level for probability mass after truncation, default 0.9", optional = true) Value<Number> coverage) {
         if (calibrationsInput == null)
             throw new IllegalArgumentException("calibrations must be provided");
-        Calibration[] specs = toCalibrationArray(calibrationsInput);
+        Calibration[] specs = extractCalibrations(calibrationsInput);
         if (specs.length < 1)
             throw new IllegalArgumentException("At least one calibration must be provided");
         for (Calibration c : specs) {
@@ -38,21 +38,11 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
         this.coverage = coverage;
     }
 
-    /** Converts the stored Value (Object[] or Calibration[]) to a Calibration[]. */
-    private static Calibration[] toCalibrationArray(Value<?> v) {
-        Object raw = v.value();
-        if (raw instanceof Calibration[] arr) return arr;
-        Object[] objs = (Object[]) raw;
-        Calibration[] result = new Calibration[objs.length];
-        for (int i = 0; i < objs.length; i++) result[i] = (Calibration) objs[i];
-        return result;
-    }
-
     @GeneratorInfo(name = "ConditionedMRCAPrior", examples = {"conditionedMRCAPrior.lphy"},
             description = "Generates an array of calibrated node ages with optimised distribution parameters for the MRCA nodes.")
     @Override
     public RandomVariable<CalibrationArray> sample() {
-        Calibration[] calibrationSpecs = toCalibrationArray(calibrationsInput);
+        Calibration[] calibrationSpecs = extractCalibrations(calibrationsInput);
         int n = calibrationSpecs.length;
 
         Double[] upperBounds = new Double[n];
@@ -246,7 +236,7 @@ public class ConditionedMRCAPrior implements GenerativeDistribution<CalibrationA
 
     /** Returns the input calibration specs (with taxa, upper, lower) as a properly-typed array. */
     public Value<Calibration[]> getCalibrations() {
-        return new Value<>("", toCalibrationArray(calibrationsInput));
+        return new Value<>("", extractCalibrations(calibrationsInput));
     }
 
     public Value<Number> getCoverage() {

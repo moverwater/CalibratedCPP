@@ -11,6 +11,7 @@ import beast.base.spec.type.RealScalar;
 import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
+import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
 import calibrationprior.CalibrationCladePrior;
@@ -89,12 +90,23 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
         model.setInputValue("calibrations", taxonSets);
         model.initAndValidate();
 
+        Value<CalibrationArray> calibrationsValue = generator.getCalibrations();
+        if (MRCAPriorCalibrationUtils.isIndependentMRCAPriorSource(calibrationsValue)) {
+            // calibrations came from array of independent UniformMRCA(taxa=,upper=,lower=)
+            // not ConditionedMRCAPrior's joint density
+            // build one plain, independently-bounded MRCAPrior per clade instead of a CalibrationPrior.
+            MRCAPriorCalibrationUtils.buildIndependentMRCAPriors(
+                    MRCAPriorCalibrationUtils.collectUniformMRCAs(calibrationsValue),
+                    taxonSets, value, context);
+            return model;
+        }
+
         /*
             map the conditioned MRCA prior objects
          */
         CalibrationPrior calibrationPrior = new CalibrationPrior();
         calibrationPrior.setInputValue("tree", value);
-        ConditionedMRCAPrior conditionedMRCAPrior = (ConditionedMRCAPrior) generator.getCalibrations().getInputs().get(0);
+        ConditionedMRCAPrior conditionedMRCAPrior = (ConditionedMRCAPrior) calibrationsValue.getInputs().get(0);
         Value<Calibration[]> calibrationSpecsInput = conditionedMRCAPrior.getCalibrations();
         Value<Double> covInput = conditionedMRCAPrior.getCoverage() != null
                 ? new Value<>("", conditionedMRCAPrior.getCoverage().value().doubleValue())

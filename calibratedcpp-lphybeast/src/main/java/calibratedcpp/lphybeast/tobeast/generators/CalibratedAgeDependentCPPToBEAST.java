@@ -16,6 +16,7 @@ import beast.base.spec.inference.parameter.RealScalarParam;
 import beast.base.spec.type.RealScalar;
 import calibratedcpp.CalibratedAgeDependentBirthDeathModel;
 import calibratedcpp.lphy.prior.Calibration;
+import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.tree.CalibratedAgeDependentCPPTree;
 import calibrationprior.CalibrationCladePrior;
@@ -83,11 +84,22 @@ public class CalibratedAgeDependentCPPToBEAST
         model.setInputValue("calibrations", taxonSets);
         model.initAndValidate();
 
+        Value<CalibrationArray> calibrationsValue = generator.getCalibrations();
+        if (MRCAPriorCalibrationUtils.isIndependentMRCAPriorSource(calibrationsValue)) {
+            // calibrations came from toArray/joinArray over independent UniformMRCA(taxa=,upper=,lower=)
+            // calls, not ConditionedMRCAPrior's joint density — build one plain, independently-
+            // bounded MRCAPrior per clade instead of a CalibrationPrior.
+            MRCAPriorCalibrationUtils.buildIndependentMRCAPriors(
+                    MRCAPriorCalibrationUtils.collectUniformMRCAs(calibrationsValue),
+                    taxonSets, value, context);
+            return model;
+        }
+
         // CalibrationPrior — same pattern as CalibratedCPPToBEAST
         CalibrationPrior calibrationPrior = new CalibrationPrior();
         calibrationPrior.setInputValue("tree", value);
         ConditionedMRCAPrior conditionedMRCAPrior =
-                (ConditionedMRCAPrior) generator.getCalibrations().getInputs().get(0);
+                (ConditionedMRCAPrior) calibrationsValue.getInputs().get(0);
         Value<Calibration[]> calibrationSpecsInput = conditionedMRCAPrior.getCalibrations();
         Value<Double> covInput = conditionedMRCAPrior.getCoverage() != null
                 ? new Value<>("", conditionedMRCAPrior.getCoverage().value().doubleValue())

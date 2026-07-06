@@ -1,9 +1,20 @@
 package calibratedcpp.lphy.prior;
 
+import lphy.core.model.Value;
 import org.apache.commons.math3.special.Erf;
 import org.apache.commons.math3.special.Gamma;
 
 public class ConditionedPriorUtils {
+
+    /** Converts an array-literal Value (e.g. {@code [cal1, cal2, ...]}) to a Calibration[]. */
+    public static Calibration[] extractCalibrations(Value<?> v) {
+        Object raw = v.value();
+        if (raw instanceof Calibration[] arr) return arr;
+        Object[] objs = (Object[]) raw;
+        Calibration[] result = new Calibration[objs.length];
+        for (int i = 0; i < objs.length; i++) result[i] = (Calibration) objs[i];
+        return result;
+    }
 
     // methods copied from calibratedcpp-beast/calibrationprior/CalibrationPrior.java
     public static double computeLogTargetsMu(double tLo, double tHi, double p){

@@ -2,8 +2,7 @@ package calibratedcpp.lphy.spi;
 
 import calibratedcpp.lphy.prior.CalibrationFunction;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
-import calibratedcpp.lphy.prior.MRCAPrior;
-import calibratedcpp.lphy.prior.joinCalibrationArray;
+import calibratedcpp.lphy.prior.UniformMRCA;
 import calibratedcpp.lphy.prior.toCalibrationArray;
 import calibratedcpp.lphy.tree.CPPTree;
 import calibratedcpp.lphy.tree.CalibratedAgeDependentCPPTree;
@@ -24,14 +23,14 @@ public class CalibratedcppImpl extends LPhyBaseImpl {
         return Arrays.asList(
             CPPTree.class, CalibratedCPPTree.class, CalibratedAgeDependentCPPTree.class,
                 TruncatedLogNormal.class, ConditionedMRCAPrior.class,
-                MRCAPrior.class
+                UniformMRCA.class
         );
     }
 
     @Override
     public List<Class<? extends BasicFunction>> declareFunctions() {
         return Arrays.asList(
-                toCalibrationArray.class, joinCalibrationArray.class, CalibrationFunction.class
+                toCalibrationArray.class, CalibrationFunction.class
         );
     }
 
