@@ -5,33 +5,29 @@ import lphy.core.model.Value;
 import lphy.core.model.annotation.GeneratorInfo;
 import lphy.core.model.annotation.ParameterInfo;
 
-public class toCalibrationArray extends DeterministicFunction<CalibrationArray> {
-    public final String calibration1Name = "calibration1";
-    public final String calibration2Name = "calibration2";
+import static calibratedcpp.lphy.prior.ConditionedPriorUtils.extractCalibrations;
 
-    public toCalibrationArray(@ParameterInfo(name = calibration1Name,description = "calibrations array")Value<Calibration> calibration1,
-                              @ParameterInfo(name = calibration2Name, description = "", optional = true) Value<Calibration> calibration2) {
-        setParam(calibration1Name, calibration1);
-        if (calibration2 != null) {
-        setParam(calibration2Name, calibration2);
-        }
+/**
+ * Collects any number of individual {@link Calibration} values (e.g. from {@link UniformMRCA})
+ * into one {@link CalibrationArray}, using the same array-literal syntax as
+ * {@code ConditionedMRCAPrior(calibrations=[cal1, cal2, ...])}:
+ * {@code toArray(calibrations=[cal1, cal2, ..., calN])}. Scales to any number of calibrations
+ * without pairwise nesting.
+ */
+public class toCalibrationArray extends DeterministicFunction<CalibrationArray> {
+    public static final String calibrationsParamName = "calibrations";
+
+    public toCalibrationArray(@ParameterInfo(name = calibrationsParamName, description = "array of individual calibration constraints") Value<?> calibrations) {
+        if (calibrations == null)
+            throw new IllegalArgumentException("calibrations must be provided");
+        setParam(calibrationsParamName, calibrations);
     }
 
-    @GeneratorInfo(name = "toArray", description = "")
+    @GeneratorInfo(name = "toArray", description = "Collects individual calibrations into one CalibrationArray.")
     @Override
     public Value<CalibrationArray> apply() {
-        Value<Calibration> c1 = getParams().get(calibration1Name);
-        Value<Calibration> c2 = getParams().get(calibration2Name);
-        Calibration calibration1 = c1.value();
-        CalibrationArray calibrationArray;
-        if (c2 != null) {
-            Calibration calibration2 = c2.value();
-
-            Calibration[] calibrationsValue = new Calibration[]{calibration1, calibration2};
-            calibrationArray = new CalibrationArray(calibrationsValue);
-        } else {
-            calibrationArray = new CalibrationArray(new Calibration[]{calibration1});
-        }
+        Value<?> calibrations = getParams().get(calibrationsParamName);
+        CalibrationArray calibrationArray = new CalibrationArray(extractCalibrations(calibrations));
         return new Value<>("", calibrationArray, this);
     }
 }
