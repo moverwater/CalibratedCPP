@@ -3,19 +3,14 @@ package calibratedcpp.lphybeast.tobeast.generators;
 import beast.base.core.BEASTInterface;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.tree.TreeInterface;
-import beast.base.spec.domain.NonNegativeReal;
 import beast.base.spec.domain.PositiveReal;
-import beast.base.spec.domain.UnitInterval;
 import beast.base.spec.inference.parameter.RealScalarParam;
-import beast.base.spec.type.RealScalar;
 import calibratedcpp.CalibratedBirthDeathSkylineModel;
 import calibratedcpp.SkylineParameter;
 import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
 import calibratedcpp.lphy.tree.CalibratedCPPTree;
-import calibrationprior.CalibrationCladePrior;
-import calibrationprior.CalibrationPrior;
 import lphy.core.model.Value;
 import lphybeast.BEASTContext;
 import lphybeast.GeneratorToBEAST;
@@ -101,43 +96,19 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
             return model;
         }
 
-        /*
-            map the conditioned MRCA prior objects
-         */
-        CalibrationPrior calibrationPrior = new CalibrationPrior();
-        calibrationPrior.setInputValue("tree", value);
+        // ConditionedMRCAPrior's joint density is only used to simulate consistent "true" ages;
+        // for inference, each clade gets its own independent monophyly + Uniform(lower,upper)
+        // MRCAPrior over its original bounds, same as the UniformMRCA path above.
         ConditionedMRCAPrior conditionedMRCAPrior = (ConditionedMRCAPrior) calibrationsValue.getInputs().get(0);
-        Value<Calibration[]> calibrationSpecsInput = conditionedMRCAPrior.getCalibrations();
-        Value<Double> covInput = conditionedMRCAPrior.getCoverage() != null
-                ? new Value<>("", conditionedMRCAPrior.getCoverage().value().doubleValue())
-                : new Value<>("", 0.9);
-        List<CalibrationCladePrior> cladeInput = getCalibrationCladePriors(covInput, calibrationsFromGenerator, calibrationSpecsInput.value(), taxonSets);
-        calibrationPrior.setInputValue("calibration", cladeInput);
-        calibrationPrior.initAndValidate();
-
-        context.addExtraLoggable(calibrationPrior);
-        context.addBEASTObject(calibrationPrior, conditionedMRCAPrior);
+        Calibration[] calibrationSpecs = conditionedMRCAPrior.getCalibrations().value();
+        for (int i = 0; i < calibrationSpecs.length; i++) {
+            beast.base.spec.evolution.tree.MRCAPrior mrcaPrior = MRCAPriorCalibrationUtils.buildBoundedMRCAPrior(
+                    value, taxonSets.get(i), calibrationSpecs[i].getLower(), calibrationSpecs[i].getUpper());
+            context.addBEASTObject(mrcaPrior, conditionedMRCAPrior);
+            context.addExtraLoggable(mrcaPrior);
+        }
 
         return model;
-    }
-
-    private List<CalibrationCladePrior> getCalibrationCladePriors(Value<Double> covInput, Calibration[] calibrationsFromGenerator, Calibration[] calibrationSpecs, List<TaxonSet> taxonSets) {
-        RealScalar<UnitInterval> confidenceLevel = new RealScalarParam<>(covInput.value(), UnitInterval.INSTANCE);
-
-        List<CalibrationCladePrior> cladeInput = new ArrayList<>();
-        for (int i = 0; i < calibrationsFromGenerator.length; i++) {
-            RealScalar<NonNegativeReal> upperAge = new RealScalarParam<>(calibrationSpecs[i].getUpper(), NonNegativeReal.INSTANCE);
-            RealScalar<NonNegativeReal> lowerAge = new RealScalarParam<>(calibrationSpecs[i].getLower(), NonNegativeReal.INSTANCE);
-
-            CalibrationCladePrior calibrationCladePrior = new CalibrationCladePrior();
-            calibrationCladePrior.setInputValue("upperAge", upperAge);
-            calibrationCladePrior.setInputValue("lowerAge", lowerAge);
-            calibrationCladePrior.setInputValue("confidenceLevel", confidenceLevel);
-            calibrationCladePrior.setInputValue("taxa", taxonSets.get(i));
-            calibrationCladePrior.initAndValidate();
-            cladeInput.add(calibrationCladePrior);
-        }
-        return cladeInput;
     }
 
     @Override

@@ -2,6 +2,10 @@ package calibratedcpp.lphybeast.tobeast.generators;
 
 import beast.base.core.BEASTInterface;
 import beast.base.evolution.alignment.TaxonSet;
+import beast.base.spec.domain.Real;
+import beast.base.spec.evolution.tree.MRCAPrior;
+import beast.base.spec.inference.distribution.Uniform;
+import beast.base.spec.inference.parameter.RealScalarParam;
 import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.UniformMRCA;
 import calibratedcpp.lphy.prior.toCalibrationArray;
@@ -78,5 +82,25 @@ public class MRCAPriorCalibrationUtils {
         for (int i = 0; i < uniformMRCAs.size(); i++) {
             converter.generatorToBEAST(uniformMRCAs.get(i), treeValue, taxonSets.get(i), context);
         }
+    }
+
+    /**
+     * Builds a plain BEAST {@code MRCAPrior(monophyletic=true, distr=Uniform(lower,upper))} from
+     * raw double bounds, for calibration sources (e.g. {@code ConditionedMRCAPrior}) that only
+     * expose bounds as plain numbers rather than as LPhy {@code Value}s.
+     */
+    public static MRCAPrior buildBoundedMRCAPrior(BEASTInterface treeValue, TaxonSet taxonSet, double lower, double upper) {
+        Uniform uniform = new Uniform();
+        uniform.setInputValue("lower", new RealScalarParam<>(lower, Real.INSTANCE));
+        uniform.setInputValue("upper", new RealScalarParam<>(upper, Real.INSTANCE));
+        uniform.initAndValidate();
+
+        MRCAPrior mrcaPrior = new MRCAPrior();
+        mrcaPrior.setInputValue("tree", treeValue);
+        mrcaPrior.setInputValue("taxonset", taxonSet);
+        mrcaPrior.setInputValue("monophyletic", true);
+        mrcaPrior.setInputValue("distr", uniform);
+        mrcaPrior.initAndValidate();
+        return mrcaPrior;
     }
 }
