@@ -1,6 +1,5 @@
 package calibration;
 
-import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.Taxon;
@@ -14,13 +13,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Parses clade definitions and optional upper/lower age bounds from a Newick string.
- * Distribution type is NOT stored here — it is a modelling choice on CalibrationPrior.
+ * A {@link CalibrationForest} parsed from a Newick string, in the same way {@code TreeParser}
+ * is a {@code Tree}. Internal nodes may carry {@code [&lower=X,upper=Y]} age-bound annotations;
+ * annotated nodes become clades with a {@link CalibrationCladePrior}, un-annotated named nodes
+ * become bound-free clades. Distribution type is NOT stored here — it is a modelling choice on
+ * {@code CalibrationPrior}.
  *
  * @author Marcus Overwater
  */
-@Description("Parses calibration clades (with optional upper/lower bounds) from a Newick string.")
-public class ConstraintTree extends BEASTObject {
+@Description("A calibration forest parsed from a Newick string; internal nodes may carry "
+        + "[&lower=X,upper=Y] age-bound annotations.")
+public class CalibrationForestParser extends CalibrationForest {
 
     public final Input<String> newickInput =
             new Input<>("newick",
@@ -31,17 +34,13 @@ public class ConstraintTree extends BEASTObject {
     private static final Pattern ANNOTATION_BLOCK = Pattern.compile("\\[&([^]]+)]");
     private static final Pattern KEY_VALUE         = Pattern.compile("([^=,]+)=([^,\\]]+)");
 
-    private List<TaxonSet>              taxonSets;
-    private List<CalibrationCladePrior> calibrationCladePriors;
-    private Set<String>                 allTaxa;
+    private Set<String> allTaxa = Collections.emptySet();
 
     @Override
-    public void initAndValidate() {
+    protected void populateNodes() {
         String newick = newickInput.get().trim();
         if (newick.isEmpty() || newick.equals(";")) {
-            taxonSets              = Collections.emptyList();
-            calibrationCladePriors = Collections.emptyList();
-            allTaxa                = Collections.emptySet();
+            allTaxa = Collections.emptySet();
             return;
         }
 
@@ -50,15 +49,11 @@ public class ConstraintTree extends BEASTObject {
         List<ParsedNode> calibrationNodes = new ArrayList<>();
         Set<String> taxa = new LinkedHashSet<>();
         collectNodes(root, calibrationNodes, taxa);
-
         this.allTaxa = Collections.unmodifiableSet(taxa);
-
-        List<TaxonSet>              taxonSetList = new ArrayList<>();
-        List<CalibrationCladePrior> priorList    = new ArrayList<>();
 
         for (ParsedNode node : calibrationNodes) {
             TaxonSet ts = buildTaxonSet(node);
-            taxonSetList.add(ts);
+            CalibrationNode cn = new CalibrationNode(ts);
 
             if (node.hasCalibrationBounds()) {
                 CalibrationCladePrior prior = new CalibrationCladePrior();
@@ -68,27 +63,13 @@ public class ConstraintTree extends BEASTObject {
                         "upperAge", new RealScalarParam<>(node.upper, NonNegativeReal.INSTANCE)
                 );
                 if (node.name != null) prior.setID(node.name);
-                priorList.add(prior);
+                cn.prior = prior;
             }
+            allNodes.add(cn);
         }
-
-        this.taxonSets              = Collections.unmodifiableList(taxonSetList);
-        this.calibrationCladePriors = Collections.unmodifiableList(priorList);
     }
 
-    // ── Public API ──────────────────────────────────────────────────────────────
-
-    /** Taxon sets for each calibrated clade. */
-    public List<TaxonSet> getTaxonSets() { return taxonSets; }
-
-    /**
-     * {@link CalibrationCladePrior} objects for clades that carry {@code lower} and {@code upper}
-     * bounds. Pass to {@code CalibrationPrior} via its {@code calibration} input, or use
-     * {@code CalibrationPrior}'s {@code constraintTree} input directly.
-     */
-    public List<CalibrationCladePrior> getCalibrationCladePriors() { return calibrationCladePriors; }
-
-    /** All leaf taxon names in the tree. */
+    /** All leaf taxon names in the parsed tree, including leaves outside any calibrated clade. */
     public Set<String> getAllTaxa() { return allTaxa; }
 
     // ── Internal helpers ────────────────────────────────────────────────────────

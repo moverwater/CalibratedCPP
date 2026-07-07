@@ -11,10 +11,10 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ConstraintTreeTest {
+public class CalibrationForestParserTest {
 
-    private static ConstraintTree parse(String newick) {
-        ConstraintTree ct = new ConstraintTree();
+    private static CalibrationForestParser parse(String newick) {
+        CalibrationForestParser ct = new CalibrationForestParser();
         ct.initByName("newick", newick);
         return ct;
     }
@@ -27,7 +27,7 @@ public class ConstraintTreeTest {
 
     @Test
     void singleCalibration_taxonSet() {
-        ConstraintTree ct = parse("(A,B)[&name=Root,lower=10.0,upper=20.0];");
+        CalibrationForestParser ct = parse("(A,B)[&name=Root,lower=10.0,upper=20.0];");
 
         List<TaxonSet> sets = ct.getTaxonSets();
         assertEquals(1, sets.size());
@@ -38,7 +38,7 @@ public class ConstraintTreeTest {
 
     @Test
     void twoNestedCalibrations_taxonSets() {
-        ConstraintTree ct = parse("((A,B)[&name=Inner,lower=5.0,upper=10.0],C)[&name=Outer,lower=15.0,upper=30.0];");
+        CalibrationForestParser ct = parse("((A,B)[&name=Inner,lower=5.0,upper=10.0],C)[&name=Outer,lower=15.0,upper=30.0];");
 
         List<TaxonSet> sets = ct.getTaxonSets();
         assertEquals(2, sets.size());
@@ -54,7 +54,7 @@ public class ConstraintTreeTest {
 
     @Test
     void boundsProduceCalibrationCladePrior() {
-        ConstraintTree ct = parse("(A,B)[&name=Root,lower=10.0,upper=20.0];");
+        CalibrationForestParser ct = parse("(A,B)[&name=Root,lower=10.0,upper=20.0];");
 
         List<CalibrationCladePrior> priors = ct.getCalibrationCladePriors();
         assertEquals(1, priors.size());
@@ -66,7 +66,7 @@ public class ConstraintTreeTest {
     @Test
     void nodeWithoutBounds_noCalibrationCladePrior() {
         // Root has neither name nor bounds — no TaxonSet, no prior
-        ConstraintTree ct = parse("((A,B)[&name=C1,lower=1.0,upper=2.0],(C,D)[&name=C2,lower=3.0,upper=4.0]);");
+        CalibrationForestParser ct = parse("((A,B)[&name=C1,lower=1.0,upper=2.0],(C,D)[&name=C2,lower=3.0,upper=4.0]);");
 
         assertEquals(2, ct.getTaxonSets().size());
         assertEquals(2, ct.getCalibrationCladePriors().size());
@@ -75,7 +75,7 @@ public class ConstraintTreeTest {
     @Test
     void namedNodeWithoutBounds_taxonSetOnly() {
         // Has name but no bounds — gets a TaxonSet but no CalibrationCladePrior
-        ConstraintTree ct = parse("(A,B)[&name=TopClade];");
+        CalibrationForestParser ct = parse("(A,B)[&name=TopClade];");
 
         assertEquals(1, ct.getTaxonSets().size());
         assertEquals(0, ct.getCalibrationCladePriors().size());
@@ -86,7 +86,7 @@ public class ConstraintTreeTest {
 
     @Test
     void virtualRoot_excludedFromBothOutputs() {
-        ConstraintTree ct = parse(
+        CalibrationForestParser ct = parse(
                 "((A,B)[&name=Clade1,lower=10.0,upper=20.0],(C,D)[&name=Clade2,lower=5.0,upper=15.0])[&virtualRoot=true];");
 
         // Virtual root is excluded from taxon sets and priors
@@ -99,7 +99,7 @@ public class ConstraintTreeTest {
 
     @Test
     void lowerUpperAgeVariants() {
-        ConstraintTree ct = parse("(A,B)[&name=X,lowerAge=8.0,upperAge=16.0];");
+        CalibrationForestParser ct = parse("(A,B)[&name=X,lowerAge=8.0,upperAge=16.0];");
 
         CalibrationCladePrior prior = ct.getCalibrationCladePriors().get(0);
         assertEquals(8.0, prior.getLower(), 1e-9);
@@ -111,7 +111,7 @@ public class ConstraintTreeTest {
     @Test
     void commentLinesIgnored() {
         String newick = "# comment\n(A,B)[&name=X,lower=1.0,upper=2.0];";
-        ConstraintTree ct = parse(newick);
+        CalibrationForestParser ct = parse(newick);
         assertEquals(1, ct.getTaxonSets().size());
     }
 
@@ -119,7 +119,7 @@ public class ConstraintTreeTest {
 
     @Test
     void branchLengthsIgnored() {
-        ConstraintTree ct = parse("((A:1.0,B:2.0):0.5)[&name=Cl,lower=5.0,upper=10.0];");
+        CalibrationForestParser ct = parse("((A:1.0,B:2.0):0.5)[&name=Cl,lower=5.0,upper=10.0];");
         assertEquals(Set.of("A", "B"), names(ct.getTaxonSets().get(0)));
     }
 
@@ -127,7 +127,7 @@ public class ConstraintTreeTest {
 
     @Test
     void allTaxaCollected() {
-        ConstraintTree ct = parse("((A,B)[&lower=1.0,upper=2.0],(C,D,E));");
+        CalibrationForestParser ct = parse("((A,B)[&lower=1.0,upper=2.0],(C,D,E));");
         assertEquals(Set.of("A", "B", "C", "D", "E"), ct.getAllTaxa());
     }
 
@@ -135,7 +135,7 @@ public class ConstraintTreeTest {
 
     @Test
     void priorSharesTaxonSetWithTaxonSetList() {
-        ConstraintTree ct = parse("(A,B)[&name=Root,lower=1.0,upper=2.0];");
+        CalibrationForestParser ct = parse("(A,B)[&name=Root,lower=1.0,upper=2.0];");
 
         TaxonSet fromSets = ct.getTaxonSets().get(0);
         TaxonSet fromPrior = ct.getCalibrationCladePriors().get(0).getTaxa();

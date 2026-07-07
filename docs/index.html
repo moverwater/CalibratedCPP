@@ -67,7 +67,7 @@
       <p>
         The process is anchored in time in one of two ways: by conditioning on the tree's
         <strong>root height</strong>, or by giving an explicit <strong>origin</strong> time (the
-        start of the process, which may predate the root).
+        start of the process, which must predate the root).
       </p>
 
       <h2>Age Dependent Birth-Death</h2>
@@ -140,7 +140,7 @@
         <code>newick</code> attribute, since <code>[&amp;...]</code> reuses standard
         NEXUS/BEAST metadata-annotation syntax. An empty string (or one that trims to
         <code>""</code>/<code>";"</code>) means no calibrations — this is the default, so omitting
-        <code>constraintTree</code> entirely is fine if you have none.
+        <code>calibrationForest</code> entirely is fine if you have none.
       </p>
       </section>
 
@@ -160,7 +160,7 @@
           <tr><td><code>origin</code></td><td>RealScalar</td><td>Start time of the process (optional)</td></tr>
           <tr><td><code>conditionOnRoot</code></td><td>Boolean</td><td>Condition on the root height instead of an <code>origin</code>. Either <code>origin</code> must be given, or this must be <code>true</code>.</td></tr>
           <tr><td><code>calibrations</code></td><td>List&lt;TaxonSet&gt;</td><td>Clades to condition as monophyletic, with their MRCA age (see <a href="#specifying-calibrations">Specifying Calibrations</a>). A <code>TaxonSet</code> containing every taxon is equivalent to <code>conditionOnRoot=true</code>.</td></tr>
-          <tr><td><code>constraintTree</code></td><td>ConstraintTree</td><td>Alternative, single-string way to supply <code>calibrations</code>. Provide exactly one of <code>calibrations</code> / <code>constraintTree</code>.</td></tr>
+          <tr><td><code>calibrationForest</code></td><td>CalibrationForest</td><td>Alternative way to supply <code>calibrations</code> — typically a <code>CalibrationForestParser</code> built from a constraint-tree Newick string. Provide exactly one of <code>calibrations</code> / <code>calibrationForest</code>.</td></tr>
           <tr><td><code>conditionOnCalibrations</code></td><td>Boolean</td><td>Whether to condition on the supplied calibrations. Default <code>true</code>.</td></tr>
         </tbody>
       </table>
@@ -321,21 +321,32 @@
         lower="10.0" upper="20.0"/&gt;
 &lt;/distribution&gt;</code></pre>
 
-      <h3>Inputting a constraint tree</h3>
+      <h3>Inputting a calibration forest (constraint tree)</h3>
       <p>The objects <code>CalibratedBirthDeathSkylineModel</code>, <code>CalibratedAgeDependentBirthDeathModel</code> and <code>CalibrationPrior</code>
-        take a constraint tree as inputs. For <code>CalibrationPrior</code> the clades must have <code>upper</code> and <code>lower</code> annotations, since these inputs
-        are required by the <code>CalibrationPrior</code> object.</p>
-        <pre><code>&lt;constraintTree spec="calibration.ConstraintTree" id="myConstraints"
+        take a <code>CalibrationForest</code> via their <code>calibrationForest</code> input. The easiest way to build one is
+        <code>calibration.CalibrationForestParser</code>, which parses a constraint-tree Newick string (see
+        <a href="#constraint-tree">Constraint tree format</a> above) — it is to <code>CalibrationForest</code> what
+        <code>TreeParser</code> is to <code>Tree</code>. Because the parsed object <em>is</em> a <code>CalibrationForest</code>, a
+        single declaration can be shared by <code>idref</code> across the tree prior and the <code>CalibrationPrior</code>, so both
+        models read <em>identical</em> clades from one source. For <code>CalibrationPrior</code> the clades must carry
+        <code>upper</code> and <code>lower</code> annotations, since bounds are required by the <code>CalibrationPrior</code> object.</p>
+        <pre><code>&lt;calibrationForest spec="calibration.CalibrationForestParser" id="myConstraints"
     newick="((A,B)[&amp;amp;name=Clade1,lower=10.0,upper=20.0],
              (C,D)[&amp;amp;name=Clade2,lower=5.0,upper=15.0])[&amp;amp;virtualRoot=true];"/&gt;
 
 &lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
     tree="@tree" conditionOnRoot="true"
     diversificationRate="@diversification" turnover="@turnover" rho="@rho"
-    constraintTree="@myConstraints"/&gt;
+    calibrationForest="@myConstraints"/&gt;
 
 &lt;distribution id="calibrationPrior" spec="calibrationprior.CalibrationPrior"
-    tree="@tree" constraintTree="@myConstraints"/&gt;</code></pre>
+    tree="@tree" calibrationForest="@myConstraints"/&gt;</code></pre>
+      <p>
+        A <code>CalibrationForest</code> can also be built declaratively without Newick, via its
+        <code>calibration</code> (list of <code>CalibrationCladePrior</code>, with bounds) and/or
+        <code>taxonSet</code> (list of bound-free <code>TaxonSet</code>) inputs — useful when the clades are
+        already defined elsewhere in the XML.
+      </p>
       </section>
 
       <!-- ==================== BEAUti ==================== -->
@@ -385,8 +396,13 @@
         between them. Change times can be entered as ages or as fractions of the process length
         (check <strong>Times are ages</strong> / <strong>Relative to process length</strong>
         accordingly), or spread evenly with <strong>Distribute evenly</strong>. A single epoch
-        gives constant rates.
+        gives constant rates. The following image shows an example where the diversificaton rate has a change time 66 million 
+        years before the present at the time of the K-Pg mass extinction.
       </p>
+      <figure class="screenshot">
+        <img src="assets/screenshots/beauti-skylineparam.png" alt="BEAUti setting skyline parameter">
+        <figcaption>Setting diversification rate change time to 66mya at the time of the K-Pg mass extinction.</figcaption>
+      </figure>
 
       <h3>Conditioning</h3>
       <p>Under <strong>Conditioning</strong>, choose how the process is anchored in time:</p>

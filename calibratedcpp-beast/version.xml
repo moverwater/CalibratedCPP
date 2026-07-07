@@ -12,7 +12,7 @@
         <provider classname="calibrationprior.CalibrationCladePrior"/>
         <provider classname="calibration.CalibrationNode"/>
         <provider classname="calibration.CalibrationForest"/>
-        <provider classname="calibration.ConstraintTree"/>
+        <provider classname="calibration.CalibrationForestParser"/>
     </service>
 
     <service type="beastfx.app.inputeditor.InputEditor">

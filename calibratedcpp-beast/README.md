@@ -12,6 +12,7 @@ Both `CalibratedBirthDeathModel` and `CalibratedBirthDeathSkylineModel` extend `
 - `conditionOnRoot`: A `Boolean` which is true the process is conditioned on the root height. Either `origin` must be provided or `conditionOnRoot` should be set to true.
 - `tree`: A phylogenetic tree.
 - `calibrations`: A list of `TaxonSet` objects which we want to condition being monophyletic and the TMRCA of the clade. Note: providing the all the taxa in the tree as a `TaxonSet` is equivalent to setting `conditionOnRoot=true`.
+- `calibrationForest`: A `CalibrationForest` supplying the same clades as an alternative to `calibrations` (provide exactly one of the two). It is typically a `CalibrationForestParser` built from an annotated Newick constraint tree. Because it *is* a `CalibrationForest`, a single parsed object can be shared by `idref` with a `CalibrationPrior` so both read identical clades. See the [documentation](https://moverwater.github.io/CalibratedCPP/) for the constraint-tree format.
 - `conditionOnCalibrations`: A `Boolean` which is `true` if we want to condition on the `calibrations` provided and `false` otherwise. Default is `true`.
 
 ## `CalibratedBirthDeathModel`

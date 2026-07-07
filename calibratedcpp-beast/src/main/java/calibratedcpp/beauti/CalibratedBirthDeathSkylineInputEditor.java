@@ -10,6 +10,7 @@ import beast.base.inference.StateNode;
 import beast.base.spec.domain.NonNegativeReal;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.Real;
+import beast.base.spec.inference.distribution.IID;
 import beast.base.spec.inference.distribution.LogNormal;
 import beast.base.spec.inference.distribution.Uniform;
 import beast.base.spec.inference.operator.ScaleOperator;
@@ -171,10 +172,10 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         for (String name : ALL_RATE_NAMES) {
             Input<SkylineParameter> in = getSkylineInput(cpp, name);
             if (in.get() != null) {
-                // Always deactivate the named scalar (the connect conditions key off it),
-                // regardless of whether the SP's valuesInput has been promoted to a vector.
-                BEASTInterface scalar = doc.pluginmap.get(name + "." + partition);
-                if (scalar instanceof RealScalarParam<?> rsp) setEstimated(rsp, false);
+                // Always deactivate the named values StateNode (the connect conditions key off it)
+                // so the deselected rate is dropped from the sampled state.
+                BEASTInterface valuesNode = doc.pluginmap.get(rateValuesId(name, partition));
+                if (valuesNode instanceof StateNode sn) setEstimated(sn, false);
                 in.setValue(null, cpp);
             }
         }
@@ -182,22 +183,51 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         activateSkylineParam(cpp, p2, partition);
     }
 
+    /**
+     * ID of a skyline rate's values StateNode. Prefixed with {@code CBDS_} so it cannot collide with
+     * standard BEAST tree-prior parameters that share these names — notably the Yule model's
+     * {@code birthRate.t:$(n)} (and its Gamma prior / scaler). Without the prefix, whichever
+     * tree-prior template BEAUti processes last wins the {@code birthRate.t:$(n)} slot in the
+     * pluginmap, clobbering our vector with a scalar and leaving birthRate out of the state.
+     */
+    private static String rateValuesId(String paramName, String partition) {
+        return "CBDS_" + paramName + "." + partition;
+    }
+
     private void activateSkylineParam(CalibratedBirthDeathSkylineModel cpp, String paramName, String partition) {
-        String paramId  = paramName + "." + partition;
+        String paramId  = rateValuesId(paramName, partition);
         String spId     = paramName + "SP." + partition;
         String priorId  = paramName + ".prior." + partition;
         String scalerId = paramName + "Scaler." + partition;
 
-        RealScalarParam<?> scalar;
+        // The per-epoch rate values are the sampled StateNode. They are stored as a RealVectorParam
+        // (dimension 1 for a single epoch) so that increasing the epoch count simply resizes this
+        // same vector in place — the prior and operator below stay attached to the actual values.
+        // Using a RealScalarParam here would break as soon as the values were promoted to a vector,
+        // leaving the prior/operator/estimate flag on an orphaned node unrelated to the model.
+        RealVectorParam<?> values;
         BEASTInterface existing = doc.pluginmap.get(paramId);
-        if (existing instanceof RealScalarParam<?> rsp) {
-            scalar = rsp;
+        if (existing instanceof RealVectorParam<?> rvp) {
+            values = rvp;
         } else {
-            scalar = new RealScalarParam<>(defaultValueFor(paramName), domainFor(paramName));
-            pluginPut(paramId, scalar);
+            // The rate values must be a RealVectorParam (the template declares them as such). If a
+            // RealScalarParam is found here it comes from a stale template/XML: replacing it in the
+            // pluginmap via a plain addPlugin leaves BEAUti's state tracking pointing at the old
+            // object, so the new vector never enters <state> and BEAST rejects the run
+            // ("operator has a statenode ... missing from the state"). Unregister the stale node
+            // first so the vector takes over the id cleanly.
+            if (existing != null) {
+                System.err.println("CalibratedCPP: replacing stale " + existing.getClass().getSimpleName()
+                        + " '" + paramId + "' with a RealVectorParam — rebuild the package so its "
+                        + "fxtemplates/CalibratedCPP.xml declares this rate as RealVectorParam.");
+                doc.unregisterPlugin(existing);
+            }
+            double seed = (existing instanceof RealScalarParam<?> rsp) ? (double) rsp.get() : defaultValueFor(paramName);
+            values = new RealVectorParam<>(new double[]{seed}, domainFor(paramName));
+            pluginPut(paramId, values);
         }
         // Only fire the BEAST2 change event if the estimate flag actually needs to change.
-        if (!scalar.isEstimatedInput.get()) setEstimated(scalar, true);
+        if (!values.isEstimatedInput.get()) setEstimated(values, true);
 
         SkylineParameter sp;
         BEASTInterface existingSP = doc.pluginmap.get(spId);
@@ -205,9 +235,16 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
             sp = esp;
         } else {
             sp = new SkylineParameter();
-            sp.valuesInput.setValue(scalar, sp);
-            sp.initAndValidate();
             pluginPut(spId, sp);
+        }
+        // Always bind the SkylineParameter's values to the canonical state node registered under
+        // paramId. A reused SkylineParameter (persisted in the pluginmap across sessions, or loaded
+        // from an older XML where the values were a promoted "<param>SP.values" vector) may still
+        // reference a stale object; if that diverges from the state node the exported XML would
+        // sample a parameter unrelated to the rate the model actually reads.
+        if (sp.valuesInput.get() != values) {
+            sp.valuesInput.setValue(values, sp);
+            sp.initAndValidate();
         }
         // Only call setValue if not already set — avoids triggering spurious
         // initAndValidate() calls on the model during every init().
@@ -215,12 +252,18 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
             getSkylineInput(cpp, paramName).setValue(sp, cpp);
 
         // Create prior and operator if not already present (only needed for non-default-pair params).
+        // The prior is an IID of a LogNormal so it applies to every epoch value in the vector,
+        // regardless of how many epochs the user later configures.
         if (!doc.pluginmap.containsKey(priorId)) {
             try {
-                LogNormal prior = new LogNormal();
-                prior.setInputValue("M",     new RealScalarParam<>(0.0, Real.INSTANCE));
-                prior.setInputValue("S",     new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
-                prior.setInputValue("param", scalar);
+                LogNormal base = new LogNormal();
+                base.setInputValue("M", new RealScalarParam<>(0.0, Real.INSTANCE));
+                base.setInputValue("S", new RealScalarParam<>(1.0, PositiveReal.INSTANCE));
+                base.initAndValidate();
+
+                IID prior = new IID();
+                prior.setInputValue("distr", base);
+                prior.setInputValue("param", values);
                 prior.initAndValidate();
                 pluginPut(priorId, prior);
             } catch (Exception e) { e.printStackTrace(); }
@@ -228,7 +271,7 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         if (!doc.pluginmap.containsKey(scalerId)) {
             try {
                 ScaleOperator scaler = new ScaleOperator();
-                scaler.setInputValue("parameter", scalar);
+                scaler.setInputValue("parameter", values);
                 scaler.setInputValue("weight",    1.0);
                 scaler.initAndValidate();
                 pluginPut(scalerId, scaler);

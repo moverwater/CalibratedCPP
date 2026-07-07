@@ -10,7 +10,6 @@ import beast.base.inference.State;
 import beast.base.spec.evolution.tree.MRCAPrior;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
-import calibration.ConstraintTree;
 import org.hipparchus.linear.*;
 import org.hipparchus.special.Erf;
 import org.hipparchus.special.Gamma;
@@ -30,7 +29,7 @@ public class CalibrationPrior extends Distribution {
             new Input<>("tree", "Tree to calibrate", Input.Validate.REQUIRED);
 
     public Input<List<CalibrationCladePrior>> cladesInput =
-            new Input<>("calibration", "List of calibration clades (alternative to constraintTree).", new ArrayList<>());
+            new Input<>("calibration", "List of calibration clades (alternative to calibrationForest).", new ArrayList<>());
 
     /** MRCA priors managed by the BEAUti editor when using MRCAPrior mode.
      *  Storing them here keeps them out of the top-level prior CompoundDistribution
@@ -38,8 +37,8 @@ public class CalibrationPrior extends Distribution {
     public Input<List<MRCAPrior>> mrcaPriorsInput =
             new Input<>("mrcaPrior", "MRCA priors evaluated as part of this calibration prior.", new ArrayList<>());
 
-    public Input<ConstraintTree> constraintTreeInput =
-            new Input<>("constraintTree",
+    public Input<CalibrationForest> calibrationForestInput =
+            new Input<>("calibrationForest",
                     "Constraint tree with [&lower=X,upper=Y] annotations. "
                     + "Alternative to providing an explicit list of calibration clades.");
 
@@ -51,11 +50,29 @@ public class CalibrationPrior extends Distribution {
         TreeInterface tree = treeInput.get();
         if (tree == null) throw new IllegalArgumentException("Tree is null");
 
-        List<CalibrationCladePrior> cladePriors = cladesInput.get();
+        List<CalibrationCladePrior> explicitClades = cladesInput.get();
+        CalibrationForest forest = calibrationForestInput.get();
 
-        // Accept clades from a ConstraintTree when no explicit list is given
-        if (cladePriors.isEmpty() && constraintTreeInput.get() != null) {
-            cladePriors = constraintTreeInput.get().getCalibrationCladePriors();
+        if (!explicitClades.isEmpty() && forest != null) {
+            throw new IllegalArgumentException(
+                    "Provide calibration clades via 'calibration' or 'calibrationForest', not both.");
+        }
+
+        List<CalibrationCladePrior> cladePriors;
+        if (forest != null) {
+            // A CalibrationForest is the shared currency; CalibrationPrior needs the bounded
+            // clades. A forest built from bare taxon sets carries no bounds — flag it rather
+            // than silently contributing nothing to the density.
+            cladePriors = forest.getCalibrationCladePriors();
+            if (cladePriors.isEmpty() && !forest.getAllNodes().isEmpty()) {
+                throw new IllegalArgumentException(
+                        "CalibrationPrior requires clades with age bounds, but the supplied "
+                        + "'calibrationForest' contains only bound-free clades. Add "
+                        + "[&lower=X,upper=Y] annotations (or lowerAge/upperAge) to the "
+                        + "calibrated clades.");
+            }
+        } else {
+            cladePriors = explicitClades;
         }
 
         if (cladePriors.isEmpty()) {

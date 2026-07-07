@@ -10,7 +10,6 @@ import beast.base.spec.type.RealScalar;
 import beast.base.evolution.alignment.TaxonSet;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
-import calibration.ConstraintTree;
 
 import java.util.*;
 import java.util.function.IntUnaryOperator;
@@ -32,10 +31,10 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
     public Input<List<TaxonSet>> calibrationsInput =
             new Input<>("calibrations", "Taxon sets whose MRCAs the model is conditioned on.", new ArrayList<>());
 
-    public Input<ConstraintTree> constraintTreeInput =
-            new Input<>("constraintTree", "Calibrations specified as a constraint tree in annotated "
+    public Input<CalibrationForest> calibrationForestInput =
+            new Input<>("calibrationForest", "Calibrations specified as a constraint tree in annotated "
                     + "Newick format. Alternative to listing taxon sets individually; "
-                    + "exactly one of 'calibrations' or 'constraintTree' should be provided.");
+                    + "exactly one of 'calibrations' or 'calibrationForest' should be provided.");
 
     public Input<Boolean> conditionOnCalibrationsInput =
             new Input<>("conditionOnCalibrations", "Boolean if the likelihood is conditioned on the clade calibrations (Default: true). " +
@@ -60,13 +59,13 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         tree = treeInput.get();
         calibrations = new ArrayList<>(calibrationsInput.get());
 
-        ConstraintTree constraintTree = constraintTreeInput.get();
-        if (constraintTree != null) {
+        calibrationForest = calibrationForestInput.get();
+        if (calibrationForest != null) {
             if (!calibrations.isEmpty()) {
                 throw new IllegalArgumentException(
-                        "Provide calibrations via 'calibrations' or 'constraintTree', not both.");
+                        "Provide calibrations via 'calibrations' or 'calibrationForest', not both.");
             }
-            calibrations.addAll(constraintTree.getTaxonSets());
+            calibrations.addAll(calibrationForest.getTaxonSets());
         }
         conditionOnCalibrations = (!calibrations.isEmpty()) ? conditionOnCalibrationsInput.get() : false;
         int nTaxa = tree.getLeafNodeCount();
@@ -93,7 +92,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         for (int i = 1; i <= nTaxa; i++) {
             logFactorials[i] = logFactorials[i - 1] + Math.log(i);
         }
-// TODO: make consistent with conditioning on root
+
         if (conditionOnCalibrations) {
             calibrationForest = new CalibrationForest(calibrations);
             calibrationNodes = calibrationForest.getAllNodes();

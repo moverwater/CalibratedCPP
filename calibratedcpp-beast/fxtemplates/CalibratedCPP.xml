@@ -6,7 +6,7 @@
         <subtemplate id='CalibratedBirthDeathSkyline'
                      class='calibratedcpp.CalibratedBirthDeathSkylineModel'
                      mainid='CalibratedCPP.t:$(n)'
-                     suppressInputs='calibratedcpp.CalibratedBirthDeathSkylineModel.calibrations,calibratedcpp.CalibratedBirthDeathSkylineModel.constraintTree,calibratedcpp.CalibratedBirthDeathSkylineModel.birthRate,calibratedcpp.CalibratedBirthDeathSkylineModel.deathRate,calibratedcpp.CalibratedBirthDeathSkylineModel.diversificationRate,calibratedcpp.CalibratedBirthDeathSkylineModel.reproductiveNumber,calibratedcpp.CalibratedBirthDeathSkylineModel.turnover,calibratedcpp.CalibratedBirthDeathSkylineModel.rho,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnRoot,calibratedcpp.CalibratedBirthDeathSkylineModel.origin,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnCalibrations,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.constraintTree,calibrationprior.CalibrationPrior.mrcaPrior'
+                     suppressInputs='calibratedcpp.CalibratedBirthDeathSkylineModel.calibrations,calibratedcpp.CalibratedBirthDeathSkylineModel.calibrationForest,calibratedcpp.CalibratedBirthDeathSkylineModel.birthRate,calibratedcpp.CalibratedBirthDeathSkylineModel.deathRate,calibratedcpp.CalibratedBirthDeathSkylineModel.diversificationRate,calibratedcpp.CalibratedBirthDeathSkylineModel.reproductiveNumber,calibratedcpp.CalibratedBirthDeathSkylineModel.turnover,calibratedcpp.CalibratedBirthDeathSkylineModel.rho,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnRoot,calibratedcpp.CalibratedBirthDeathSkylineModel.origin,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnCalibrations,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.calibrationForest,calibrationprior.CalibrationPrior.mrcaPrior'
                      hmc='
 CalibratedCPPOperator/index/=Operators/BactrianNodeOperator/,
 CalibratedCPPSubtreeSlide/index/=Operators/SubtreeSlide/,
@@ -19,20 +19,23 @@ CalibratedCPPBICEPSTreeFlex/index/=Operators/TreeStretcher/,
 CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
 '>
             <![CDATA[
-            <!-- Rate scalars. Default pair (diversificationRate + turnover) is estimated;
-                 all others start with estimate=false and are activated by the editor. -->
-            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
-                       id="diversificationRate.t:$(n)" domain="Real" value="0.1"/>
-            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
-                       id="turnover.t:$(n)" domain="PositiveReal" value="0.5"/>
+            <!-- Rate parameters. Each is the per-epoch values vector of the corresponding
+                 SkylineParameter, so they are declared as RealVectorParam (dimension 1 for a single
+                 epoch; the editor resizes them in place when more epochs are added). Default pair
+                 (diversificationRate + turnover) is estimated; all others start with estimate=false
+                 and are activated by the editor. -->
+            <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
+                       id="CBDS_diversificationRate.t:$(n)" domain="Real" value="0.1"/>
+            <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
+                       id="CBDS_turnover.t:$(n)" domain="PositiveReal" value="0.5"/>
             <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
                        id="samplingProportion.t:$(n)" domain="Real" value="0.01" estimate="false"/>
-            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
-                       id="birthRate.t:$(n)" domain="PositiveReal" value="1.0" estimate="false"/>
-            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
-                       id="deathRate.t:$(n)" domain="NonNegativeReal" value="0.5" estimate="false"/>
-            <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
-                       id="reproductiveNumber.t:$(n)" domain="PositiveReal" value="2.0" estimate="false"/>
+            <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
+                       id="CBDS_birthRate.t:$(n)" domain="PositiveReal" value="1.0" estimate="false"/>
+            <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
+                       id="CBDS_deathRate.t:$(n)" domain="NonNegativeReal" value="0.5" estimate="false"/>
+            <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
+                       id="CBDS_reproductiveNumber.t:$(n)" domain="PositiveReal" value="2.0" estimate="false"/>
 
             <!-- Origin parameter: declared so BEAUti tracks it, but NOT connected to the model
                  here. CalibratedCPPInputEditor connects it dynamically when the user selects
@@ -83,70 +86,70 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
 
             <!-- Priors connected to posterior -->
             <connect srcID='diversificationRate.prior.t:$(n)' targetID='prior' inputName='distribution'
-                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_diversificationRate.t:$(n)/estimate=true'/>
             <connect srcID='turnover.prior.t:$(n)' targetID='prior' inputName='distribution'
-                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_turnover.t:$(n)/estimate=true'/>
             <connect srcID='samplingProportion.prior.t:$(n)' targetID='prior' inputName='distribution'
                      if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
             <connect srcID='birthRate.prior.t:$(n)' targetID='prior' inputName='distribution'
-                     if='inposterior(CalibratedCPP.t:$(n)) and birthRate.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_birthRate.t:$(n)/estimate=true'/>
             <connect srcID='deathRate.prior.t:$(n)' targetID='prior' inputName='distribution'
-                     if='inposterior(CalibratedCPP.t:$(n)) and deathRate.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_deathRate.t:$(n)/estimate=true'/>
             <connect srcID='reproductiveNumber.prior.t:$(n)' targetID='prior' inputName='distribution'
-                     if='inposterior(CalibratedCPP.t:$(n)) and reproductiveNumber.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_reproductiveNumber.t:$(n)/estimate=true'/>
 
             <!-- State nodes -->
-            <connect srcID='diversificationRate.t:$(n)' targetID='state' inputName='stateNode'
-                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
-            <connect srcID='turnover.t:$(n)' targetID='state' inputName='stateNode'
-                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_diversificationRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_diversificationRate.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_turnover.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_turnover.t:$(n)/estimate=true'/>
             <connect srcID='samplingProportion.t:$(n)' targetID='state' inputName='stateNode'
                      if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
-            <connect srcID='birthRate.t:$(n)' targetID='state' inputName='stateNode'
-                     if='inposterior(CalibratedCPP.t:$(n)) and birthRate.t:$(n)/estimate=true'/>
-            <connect srcID='deathRate.t:$(n)' targetID='state' inputName='stateNode'
-                     if='inposterior(CalibratedCPP.t:$(n)) and deathRate.t:$(n)/estimate=true'/>
-            <connect srcID='reproductiveNumber.t:$(n)' targetID='state' inputName='stateNode'
-                     if='inposterior(CalibratedCPP.t:$(n)) and reproductiveNumber.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_birthRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_birthRate.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_deathRate.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_deathRate.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_reproductiveNumber.t:$(n)' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_reproductiveNumber.t:$(n)/estimate=true'/>
 
             <!-- Operators connected to MCMC -->
             <connect srcID='diversificationRateScaler.t:$(n)' targetID='mcmc' inputName='operator'
-                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_diversificationRate.t:$(n)/estimate=true'/>
             <connect srcID='turnoverScaler.t:$(n)' targetID='mcmc' inputName='operator'
-                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_turnover.t:$(n)/estimate=true'/>
             <connect srcID='samplingProportionScaler.t:$(n)' targetID='mcmc' inputName='operator'
                      if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
             <connect srcID='birthRateScaler.t:$(n)' targetID='mcmc' inputName='operator'
-                     if='inposterior(CalibratedCPP.t:$(n)) and birthRate.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_birthRate.t:$(n)/estimate=true'/>
             <connect srcID='deathRateScaler.t:$(n)' targetID='mcmc' inputName='operator'
-                     if='inposterior(CalibratedCPP.t:$(n)) and deathRate.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_deathRate.t:$(n)/estimate=true'/>
             <connect srcID='reproductiveNumberScaler.t:$(n)' targetID='mcmc' inputName='operator'
-                     if='inposterior(CalibratedCPP.t:$(n)) and reproductiveNumber.t:$(n)/estimate=true'/>
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_reproductiveNumber.t:$(n)/estimate=true'/>
 
             <!-- Logging -->
             <connect srcID='CalibratedCPP.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
             <connect srcID='CalibrationPrior.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
-            <connect srcID='diversificationRate.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(CalibratedCPP.t:$(n)) and diversificationRate.t:$(n)/estimate=true'/>
-            <connect srcID='turnover.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(CalibratedCPP.t:$(n)) and turnover.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_diversificationRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_diversificationRate.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_turnover.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_turnover.t:$(n)/estimate=true'/>
             <connect srcID='samplingProportion.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and samplingProportion.t:$(n)/estimate=true'/>
-            <connect srcID='birthRate.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(CalibratedCPP.t:$(n)) and birthRate.t:$(n)/estimate=true'/>
-            <connect srcID='deathRate.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(CalibratedCPP.t:$(n)) and deathRate.t:$(n)/estimate=true'/>
-            <connect srcID='reproductiveNumber.t:$(n)' targetID='tracelog' inputName='log'
-                     if='inposterior(CalibratedCPP.t:$(n)) and reproductiveNumber.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_birthRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_birthRate.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_deathRate.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_deathRate.t:$(n)/estimate=true'/>
+            <connect srcID='CBDS_reproductiveNumber.t:$(n)' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and CBDS_reproductiveNumber.t:$(n)/estimate=true'/>
 
         </subtemplate>
 
         <subtemplate id='CalibratedAgeDependentBirthDeath'
                      class='calibratedcpp.CalibratedAgeDependentBirthDeathModel'
                      mainid='CalibratedAgeDependentBirthDeath.t:$(n)'
-                     suppressInputs='calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.constraintTree,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnCalibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnRoot,calibratedcpp.CalibratedAgeDependentBirthDeathModel.origin,calibratedcpp.CalibratedAgeDependentBirthDeathModel.lifetimeDistribution,calibratedcpp.CalibratedAgeDependentBirthDeathModel.rho,calibratedcpp.CalibratedAgeDependentBirthDeathModel.birthRate,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.constraintTree,calibrationprior.CalibrationPrior.mrcaPrior'
+                     suppressInputs='calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrationForest,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnCalibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnRoot,calibratedcpp.CalibratedAgeDependentBirthDeathModel.origin,calibratedcpp.CalibratedAgeDependentBirthDeathModel.lifetimeDistribution,calibratedcpp.CalibratedAgeDependentBirthDeathModel.rho,calibratedcpp.CalibratedAgeDependentBirthDeathModel.birthRate,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.calibrationForest,calibrationprior.CalibrationPrior.mrcaPrior'
                      hmc='
 CalibratedAgeDependentBirthDeathOperator/index/=Operators/BactrianNodeOperator/,
 CalibratedAgeDependentBirthDeathSubtreeSlide/index/=Operators/SubtreeSlide/,

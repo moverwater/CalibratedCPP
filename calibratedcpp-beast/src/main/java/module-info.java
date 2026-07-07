@@ -31,5 +31,5 @@ open module calibratedcpp.beast {
         calibratedcpp.SkylineParameter,
         calibrationprior.CalibrationPrior,
         calibrationprior.CalibrationCladePrior,
-        calibration.ConstraintTree;
+        calibration.CalibrationForestParser;
 }

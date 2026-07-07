@@ -2,6 +2,7 @@ package calibration;
 
 import beast.base.core.BEASTObject;
 import beast.base.core.Description;
+import beast.base.core.Input;
 import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import calibrationprior.CalibrationCladePrior;
@@ -10,7 +11,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * A forest of CalibrationNodes built from a list of TaxonSets.
+ * A forest of {@link CalibrationNode}s over a set of clades. The nesting structure is
+ * derived purely from the clades' taxon sets; age bounds (carried by an optional
+ * {@link CalibrationCladePrior} per node) are decoration that only some consumers read.
+ *
+ * <p>A forest may be built declaratively from XML via the {@code calibration} and/or
+ * {@code taxonSet} inputs, programmatically via the constructors below, or parsed from a
+ * Newick string by the {@link CalibrationForestParser} subclass (the analogue of
+ * {@code TreeParser} to {@code Tree}).</p>
  *
  * @author Marcus Overwater
  */
@@ -18,8 +26,23 @@ import java.util.stream.Collectors;
 @Description("A forest of calibration nodes.")
 public class CalibrationForest extends BEASTObject {
 
-    private final List<CalibrationNode> allNodes = new ArrayList<>();
-    private final List<CalibrationNode> roots = new ArrayList<>();
+    public Input<List<CalibrationCladePrior>> calibrationInput =
+            new Input<>("calibration",
+                    "Calibrated clades, each carrying a taxon set and soft lower/upper age bounds.",
+                    new ArrayList<>());
+
+    public Input<List<TaxonSet>> taxonSetInput =
+            new Input<>("taxonSet",
+                    "Taxon sets defining clades without age bounds (structure only). Clades whose "
+                    + "taxa already appear in a 'calibration' entry are ignored here.",
+                    new ArrayList<>());
+
+    protected final List<CalibrationNode> allNodes = new ArrayList<>();
+    protected final List<CalibrationNode> roots = new ArrayList<>();
+
+    /** No-arg constructor for XML instantiation and subclassing (e.g. the Newick parser). */
+    public CalibrationForest() {
+    }
 
     /**
      * Builds a forest from a flat list of taxon sets. Nodes carry no calibration prior.
@@ -154,9 +177,49 @@ public class CalibrationForest extends BEASTObject {
         return roots;
     }
 
+    /** Taxon sets for every clade in the forest (bounded and unbounded), in forest order. */
+    public List<TaxonSet> getTaxonSets() {
+        List<TaxonSet> out = new ArrayList<>(allNodes.size());
+        for (CalibrationNode node : allNodes) out.add(node.taxa);
+        return out;
+    }
+
+    /** Calibration priors for the clades that carry age bounds, in forest order. */
+    public List<CalibrationCladePrior> getCalibrationCladePriors() {
+        List<CalibrationCladePrior> out = new ArrayList<>();
+        for (CalibrationNode node : allNodes) {
+            if (node.prior != null) out.add(node.prior);
+        }
+        return out;
+    }
+
     @Override
     public void initAndValidate() {
+        allNodes.clear();
+        roots.clear();
+        populateNodes();
         buildInclusionForest();
+    }
+
+    /**
+     * Populates {@link #allNodes} from the declarative inputs. Subclasses (e.g. a Newick
+     * parser) override this to source nodes from elsewhere; it is called before the inclusion
+     * hierarchy is built. A clade supplied via {@code taxonSet} is skipped when a
+     * {@code calibration} entry already covers the same taxa.
+     */
+    protected void populateNodes() {
+        Set<Set<String>> seen = new HashSet<>();
+        for (CalibrationCladePrior prior : calibrationInput.get()) {
+            CalibrationNode node = new CalibrationNode(prior.getTaxa());
+            node.prior = prior;
+            allNodes.add(node);
+            seen.add(taxaIds(prior.getTaxa()));
+        }
+        for (TaxonSet ts : taxonSetInput.get()) {
+            if (seen.add(taxaIds(ts))) {
+                allNodes.add(new CalibrationNode(ts));
+            }
+        }
     }
 
     // --- Helpers ---

@@ -1,5 +1,6 @@
 package calibratedcpp.beauti;
 
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -13,24 +14,32 @@ import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.util.FXUtils;
-import calibration.ConstraintTree;
+import calibration.CalibrationForestParser;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.Line;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -49,7 +58,12 @@ class CalibrationManagerPanel {
     private final Supplier<String> nextColor;
     private final Runnable onSaveClose;
 
-    private VBox previewBox; // live hierarchy preview; null while the popup is closed
+    /** Which visual form the live preview takes. */
+    private enum PreviewMode { LIST, TREE }
+
+    private VBox previewBox;          // live hierarchy preview; null while the popup is closed
+    private ScrollPane previewScroll; // wraps previewBox; fit-to-width is toggled per preview mode
+    private PreviewMode previewMode = PreviewMode.LIST;
 
     /**
      * @param doc         the BEAUti document (used only for Newick constraint-tree parsing)
@@ -112,17 +126,36 @@ class CalibrationManagerPanel {
         exportBtn.setOnAction(e -> exportNewick());
         saveBtn.setOnAction(e -> { onSaveClose.run(); stage.close(); });
 
-        // Preview pane: a nested outline of the calibration hierarchy that re-renders on every edit
-        // (add/remove clade, rename, bounds, taxon or child assignment).
+        // Preview pane: a live view of the calibration hierarchy that re-renders on every edit
+        // (add/remove clade, rename, bounds, taxon or child assignment). Two modes: an indented
+        // outline (List) and a node-link diagram (Tree).
         Label previewTitle = new Label("Preview");
         previewTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
-        HBox previewHeader = new HBox(previewTitle);
-        previewHeader.setPadding(new Insets(8, 10, 8, 10));
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+        ToggleGroup modeGroup = new ToggleGroup();
+        ToggleButton listBtn = new ToggleButton("List");
+        ToggleButton treeBtn = new ToggleButton("Tree");
+        for (ToggleButton b : new ToggleButton[]{listBtn, treeBtn}) {
+            b.setToggleGroup(modeGroup);
+            b.setFocusTraversable(false);
+            b.setStyle("-fx-font-size: 11px; -fx-padding: 2 10 2 10;");
+        }
+        listBtn.setSelected(previewMode == PreviewMode.LIST);
+        treeBtn.setSelected(previewMode == PreviewMode.TREE);
+        // Keep exactly one mode selected (block deselecting the active button).
+        modeGroup.selectedToggleProperty().addListener((o, ov, nv) -> { if (nv == null) ov.setSelected(true); });
+        listBtn.setOnAction(e -> { previewMode = PreviewMode.LIST; refreshPreview(); });
+        treeBtn.setOnAction(e -> { previewMode = PreviewMode.TREE; refreshPreview(); });
+        HBox modeToggle = new HBox(listBtn, treeBtn);
+        HBox previewHeader = new HBox(previewTitle, headerSpacer, modeToggle);
+        previewHeader.setAlignment(Pos.CENTER_LEFT);
+        previewHeader.setPadding(new Insets(6, 10, 6, 10));
         previewHeader.setStyle("-fx-background-color: #ececec; -fx-border-color: #d0d0d0; -fx-border-width: 0 0 1 0;");
         previewBox = FXUtils.newVBox();
         previewBox.setSpacing(2);
         previewBox.setPadding(new Insets(10));
-        ScrollPane previewScroll = new ScrollPane(previewBox);
+        previewScroll = new ScrollPane(previewBox);
         previewScroll.setFitToWidth(true);
         previewScroll.setStyle("-fx-background-color: white;");
         VBox previewPane = new VBox(previewHeader, previewScroll);
@@ -137,6 +170,28 @@ class CalibrationManagerPanel {
         HBox.setHgrow(scrollPane, Priority.ALWAYS);
         VBox root = new VBox(topBar, middle, bottomBar);
         VBox.setVgrow(middle, Priority.ALWAYS);
+
+        // Drop a Newick file anywhere on the popup to load it as the constraint tree. The empty-state
+        // placeholder (see buildDropPlaceholder) advertises this when there are no calibrations yet.
+        root.setOnDragOver(e -> {
+            if (e.getDragboard().hasFiles()) e.acceptTransferModes(TransferMode.COPY);
+            e.consume();
+        });
+        root.setOnDragEntered(e -> {
+            if (e.getDragboard().hasFiles()) scrollPane.setStyle("-fx-background-color: #eef6ff;");
+        });
+        root.setOnDragExited(e -> scrollPane.setStyle("-fx-background-color: #f5f5f5;"));
+        root.setOnDragDropped(e -> {
+            Dragboard db = e.getDragboard();
+            boolean ok = false;
+            if (db.hasFiles() && !db.getFiles().isEmpty()) {
+                importFromFile(db.getFiles().get(0), rebuild);
+                ok = true;
+            }
+            e.setDropCompleted(ok);
+            e.consume();
+        });
+
         stage.setScene(new Scene(root, 1000, 620));
         stage.setOnHidden(e -> previewBox = null);
         stage.showAndWait();
@@ -147,10 +202,33 @@ class CalibrationManagerPanel {
     private void rebuildCalibrationList(VBox cardBox, ScrollPane scrollPane) {
         double savedV = scrollPane.getVvalue();
         cardBox.getChildren().clear();
-        for (CalibrationEntry entry : entries)
-            cardBox.getChildren().add(buildCalibrationCard(entry, cardBox, scrollPane));
+        if (entries.isEmpty()) {
+            cardBox.setAlignment(Pos.CENTER);
+            cardBox.getChildren().add(buildDropPlaceholder());
+        } else {
+            cardBox.setAlignment(Pos.TOP_LEFT);
+            for (CalibrationEntry entry : entries)
+                cardBox.getChildren().add(buildCalibrationCard(entry, cardBox, scrollPane));
+        }
         refreshPreview();
         Platform.runLater(() -> scrollPane.setVvalue(savedV));
+    }
+
+    /** Centred empty-state prompt shown in the card area when there are no calibrations yet. */
+    private static Node buildDropPlaceholder() {
+        Label icon = new Label("⤓");
+        icon.setStyle("-fx-font-size: 36px; -fx-text-fill: #bbb;");
+        Label msg = new Label("Drag a Newick constraint tree file here");
+        msg.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #888;");
+        Label sub = new Label("or use \"Import Newick…\" to paste one, or \"+ Add\" to build clades manually");
+        sub.setStyle("-fx-font-size: 11px; -fx-text-fill: #aaa;");
+        VBox box = new VBox(8, icon, msg, sub);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(40, 20, 40, 20));
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.setStyle("-fx-border-color: #cfcfcf; -fx-border-width: 2; -fx-border-style: dashed;"
+            + " -fx-border-radius: 8; -fx-background-color: #fbfbfb; -fx-background-radius: 8;");
+        return box;
     }
 
     private VBox buildCalibrationCard(CalibrationEntry entry, VBox cardBox, ScrollPane scrollPane) {
@@ -351,10 +429,13 @@ class CalibrationManagerPanel {
 
     // ── Live preview ──────────────────────────────────────────────────────────────
 
-    /** Re-renders the calibration hierarchy outline. Safe to call when the popup is closed. */
+    /** Re-renders the calibration hierarchy in the currently-selected mode. Safe when popup closed. */
     private void refreshPreview() {
         if (previewBox == null) return;
         previewBox.getChildren().clear();
+        // The Tree view lays nodes out with absolute coordinates and needs horizontal scrolling,
+        // so fit-to-width (which suits the List outline) is disabled in Tree mode.
+        if (previewScroll != null) previewScroll.setFitToWidth(previewMode == PreviewMode.LIST);
 
         Set<CalibrationEntry> assignedAsChild = entries.stream()
             .flatMap(e -> e.directChildCals.stream()).collect(Collectors.toSet());
@@ -372,6 +453,13 @@ class CalibrationManagerPanel {
             return;
         }
 
+        if (previewMode == PreviewMode.TREE) renderTreePreview(roots, freeTaxa);
+        else                                 renderListPreview(roots, freeTaxa);
+    }
+
+    // ── List view (indented outline) ───────────────────────────────────────────────
+
+    private void renderListPreview(List<CalibrationEntry> roots, List<String> freeTaxa) {
         for (CalibrationEntry root : roots)
             previewBox.getChildren().add(previewNode(root, 0));
 
@@ -383,6 +471,99 @@ class CalibrationManagerPanel {
             for (String t : freeTaxa)
                 previewBox.getChildren().add(previewLeaf(t, 0, "#bbb"));
         }
+    }
+
+    // ── Tree view (node-link diagram) ──────────────────────────────────────────────
+
+    private static final double TREE_COL = 120;  // horizontal spacing per depth level
+    private static final double TREE_ROW = 24;    // vertical spacing per leaf
+    private static final double TREE_PAD = 12;    // left/top margin
+
+    /**
+     * Draws the calibration forest as a left-to-right rectangular dendrogram: clades are internal
+     * nodes (coloured), taxa are leaves, and unassigned taxa hang at the left as grey leaves.
+     */
+    private void renderTreePreview(List<CalibrationEntry> roots, List<String> freeTaxa) {
+        Pane canvas = new Pane();
+        double[] nextLeafY = { TREE_PAD + TREE_ROW / 2 }; // running y-centre for the next leaf
+        double[] maxRight  = { 0 };
+
+        for (CalibrationEntry root : roots)
+            drawTreeClade(canvas, root, 0, nextLeafY, maxRight);
+        for (String t : freeTaxa)
+            drawTreeLeaf(canvas, "• " + t, 0, nextLeafY, maxRight, "#bbb", false);
+
+        canvas.setMinWidth(maxRight[0] + TREE_PAD);
+        canvas.setPrefSize(maxRight[0] + TREE_PAD, nextLeafY[0] + TREE_ROW / 2);
+        previewBox.getChildren().add(canvas);
+    }
+
+    /** Draws a clade subtree and returns the y-centre of its node. */
+    private double drawTreeClade(Pane canvas, CalibrationEntry clade, int depth,
+                                 double[] nextLeafY, double[] maxRight) {
+        double x = TREE_PAD + depth * TREE_COL;
+        List<Double> childYs = new ArrayList<>();
+        for (String t : clade.directTaxa)
+            childYs.add(drawTreeLeaf(canvas, "• " + t, depth + 1, nextLeafY, maxRight, "#666", false));
+        for (CalibrationEntry child : clade.directChildCals)
+            childYs.add(drawTreeClade(canvas, child, depth + 1, nextLeafY, maxRight));
+
+        double y;
+        if (childYs.isEmpty()) {
+            // A clade with no members yet still needs a slot on the canvas.
+            y = nextLeafY[0];
+            nextLeafY[0] += TREE_ROW;
+        } else {
+            y = (childYs.get(0) + childYs.get(childYs.size() - 1)) / 2;
+            for (double cy : childYs) {
+                addTreeLine(canvas, x, y, x, cy);              // vertical stem to child's row
+                addTreeLine(canvas, x, cy, x + TREE_COL, cy);  // horizontal branch into child column
+            }
+        }
+
+        String txt = clade.label + (clade.lower != null && clade.upper != null
+            ? "  [" + fmtBound(clade.lower) + ", " + fmtBound(clade.upper) + "]" : "");
+        addTreeDot(canvas, x, y, clade.color);
+        addTreeLabel(canvas, txt, x, y, true, "#222", maxRight);
+        return y;
+    }
+
+    /** Draws a leaf (taxon) at the next free row and returns its y-centre. */
+    private double drawTreeLeaf(Pane canvas, String text, int depth,
+                                double[] nextLeafY, double[] maxRight, String color, boolean bold) {
+        double x = TREE_PAD + depth * TREE_COL;
+        double y = nextLeafY[0];
+        nextLeafY[0] += TREE_ROW;
+        addTreeDot(canvas, x, y, color);
+        addTreeLabel(canvas, text, x, y, bold, "#555", maxRight);
+        return y;
+    }
+
+    private static void addTreeDot(Pane canvas, double x, double y, String color) {
+        Region dot = new Region();
+        dot.setMinSize(9, 9); dot.setPrefSize(9, 9); dot.setMaxSize(9, 9);
+        dot.setStyle("-fx-background-color: " + color + "; -fx-background-radius: 5;");
+        dot.setLayoutX(x - 4.5);
+        dot.setLayoutY(y - 4.5);
+        canvas.getChildren().add(dot);
+    }
+
+    private static void addTreeLabel(Pane canvas, String text, double x, double y,
+                                     boolean bold, String color, double[] maxRight) {
+        Label lbl = new Label(text);
+        lbl.setStyle("-fx-font-size: 11px; -fx-text-fill: " + color + ";"
+            + (bold ? " -fx-font-weight: bold;" : ""));
+        lbl.setLayoutX(x + 8);
+        lbl.setLayoutY(y - 9);
+        canvas.getChildren().add(lbl);
+        // Approximate text width for canvas sizing (avoids a layout pass).
+        maxRight[0] = Math.max(maxRight[0], x + 8 + text.length() * 7.0 + 8);
+    }
+
+    private static void addTreeLine(Pane canvas, double x1, double y1, double x2, double y2) {
+        Line line = new Line(x1, y1, x2, y2);
+        line.setStyle("-fx-stroke: #c8c8c8;");
+        canvas.getChildren().add(line);
     }
 
     private Node previewNode(CalibrationEntry e, int depth) {
@@ -429,12 +610,37 @@ class CalibrationManagerPanel {
         dialog.setTitle("Import Constraint Tree (Newick)");
 
         TextArea ta = new TextArea();
-        ta.setPromptText("Paste Newick constraint tree here, e.g.:\n((A,B)[&name=Clade1,lower=5,upper=10],C)[&name=Root,lower=15,upper=30];");
+        ta.setPromptText("Paste Newick constraint tree here, or drag and drop a text file, e.g.:\n((A,B)[&name=Clade1,lower=5,upper=10],C)[&name=Root,lower=15,upper=30];");
         ta.setWrapText(true);
         ta.setPrefRowCount(6);
 
         Label hint = new Label("Annotations: [&name=Label,lower=X,upper=Y]  — name and bounds are optional.");
         hint.setStyle("-fx-font-size:11px; -fx-text-fill:#555;");
+
+        // Drag-and-drop: dropping a text file loads its contents into the box for review before
+        // the user clicks Import. Parsing still goes through the same path as pasted text.
+        ta.setOnDragOver(e -> {
+            if (e.getGestureSource() != ta && e.getDragboard().hasFiles())
+                e.acceptTransferModes(TransferMode.COPY);
+            e.consume();
+        });
+        ta.setOnDragDropped(e -> {
+            Dragboard db = e.getDragboard();
+            boolean ok = false;
+            if (db.hasFiles() && !db.getFiles().isEmpty()) {
+                try {
+                    ta.setText(Files.readString(db.getFiles().get(0).toPath()).trim());
+                    hint.setText("Annotations: [&name=Label,lower=X,upper=Y]  — name and bounds are optional.");
+                    hint.setStyle("-fx-font-size:11px; -fx-text-fill:#555;");
+                    ok = true;
+                } catch (Exception ex) {
+                    hint.setText("Could not read file: " + ex.getMessage());
+                    hint.setStyle("-fx-font-size:11px; -fx-text-fill:#c00;");
+                }
+            }
+            e.setDropCompleted(ok);
+            e.consume();
+        });
 
         Button okBtn = new Button("Import");
         Button cancelBtn = new Button("Cancel");
@@ -443,70 +649,7 @@ class CalibrationManagerPanel {
             String newick = ta.getText().trim();
             if (newick.isEmpty()) { dialog.close(); return; }
             try {
-                ConstraintTree ct = new ConstraintTree();
-                ct.initByName("newick", newick);
-                List<TaxonSet> allTs = ct.getTaxonSets();
-
-                Map<TaxonSet, Set<String>> allTaxaOf = new HashMap<>();
-                for (TaxonSet ts : allTs)
-                    allTaxaOf.put(ts, ts.getTaxonSet().stream().map(Taxon::getID)
-                        .collect(Collectors.toCollection(LinkedHashSet::new)));
-
-                Map<TaxonSet, double[]> boundsOf = new HashMap<>();
-                for (var ccp : ct.getCalibrationCladePriors())
-                    boundsOf.put(ccp.getTaxa(), new double[]{ccp.getLower(), ccp.getUpper()});
-
-                Map<TaxonSet, Integer> tsToIdx = new HashMap<>();
-                for (int i = 0; i < allTs.size(); i++) tsToIdx.put(allTs.get(i), i);
-
-                Map<TaxonSet, List<TaxonSet>> immChildren = new HashMap<>();
-                for (TaxonSet parent : allTs) {
-                    Set<String> pTaxa = allTaxaOf.get(parent);
-                    List<TaxonSet> children = new ArrayList<>();
-                    for (TaxonSet child : allTs) {
-                        if (child == parent) continue;
-                        Set<String> cTaxa = allTaxaOf.get(child);
-                        if (!pTaxa.containsAll(cTaxa)) continue;
-                        boolean hasIntermediate = allTs.stream()
-                            .filter(mid -> mid != parent && mid != child)
-                            .anyMatch(mid -> {
-                                Set<String> mTaxa = allTaxaOf.get(mid);
-                                return pTaxa.containsAll(mTaxa) && mTaxa.containsAll(cTaxa)
-                                    && !mTaxa.equals(cTaxa) && !mTaxa.equals(pTaxa);
-                            });
-                        if (!hasIntermediate) children.add(child);
-                    }
-                    immChildren.put(parent, children);
-                }
-
-                // Build CalibrationEntry list preserving index ordering
-                entries.clear();
-                Map<TaxonSet, CalibrationEntry> tsToEntry = new HashMap<>();
-                for (TaxonSet ts : allTs) {
-                    String label = ts.getID() != null ? ts.getID()
-                                 : "Clade_" + (tsToIdx.get(ts) + 1);
-                    CalibrationEntry entry = new CalibrationEntry(label, nextColor.get());
-                    double[] bounds = boundsOf.get(ts);
-                    if (bounds != null) {
-                        entry.lower = Double.isNaN(bounds[0]) ? null : bounds[0];
-                        entry.upper = Double.isNaN(bounds[1]) ? null : bounds[1];
-                    }
-                    Set<String> childCoveredTaxa = immChildren.get(ts).stream()
-                        .flatMap(child -> allTaxaOf.get(child).stream())
-                        .collect(Collectors.toSet());
-                    allTaxaOf.get(ts).stream()
-                        .filter(t -> !childCoveredTaxa.contains(t) && taxa.contains(t))
-                        .forEach(entry.directTaxa::add);
-                    tsToEntry.put(ts, entry);
-                    entries.add(entry);
-                }
-                // Wire parent-child relationships
-                for (TaxonSet ts : allTs) {
-                    CalibrationEntry parent = tsToEntry.get(ts);
-                    for (TaxonSet child : immChildren.get(ts))
-                        parent.directChildCals.add(tsToEntry.get(child));
-                }
-
+                loadConstraintTree(newick);
                 rebuildFn.run();
                 dialog.close();
             } catch (Exception ex) {
@@ -521,6 +664,97 @@ class CalibrationManagerPanel {
         content.setPadding(new Insets(12));
         dialog.setScene(new Scene(content, 560, 220));
         dialog.showAndWait();
+    }
+
+    /**
+     * Parses a Newick constraint tree and replaces {@link #entries} with the derived clades
+     * (bounds, direct taxa, and nesting). Does not touch the UI — callers rebuild afterwards.
+     * Throws if the string is not valid Newick.
+     */
+    private void loadConstraintTree(String newick) {
+        CalibrationForestParser ct = new CalibrationForestParser();
+        ct.initByName("newick", newick);
+        List<TaxonSet> allTs = ct.getTaxonSets();
+
+        Map<TaxonSet, Set<String>> allTaxaOf = new HashMap<>();
+        for (TaxonSet ts : allTs)
+            allTaxaOf.put(ts, ts.getTaxonSet().stream().map(Taxon::getID)
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
+
+        Map<TaxonSet, double[]> boundsOf = new HashMap<>();
+        for (var ccp : ct.getCalibrationCladePriors())
+            boundsOf.put(ccp.getTaxa(), new double[]{ccp.getLower(), ccp.getUpper()});
+
+        Map<TaxonSet, Integer> tsToIdx = new HashMap<>();
+        for (int i = 0; i < allTs.size(); i++) tsToIdx.put(allTs.get(i), i);
+
+        Map<TaxonSet, List<TaxonSet>> immChildren = new HashMap<>();
+        for (TaxonSet parent : allTs) {
+            Set<String> pTaxa = allTaxaOf.get(parent);
+            List<TaxonSet> children = new ArrayList<>();
+            for (TaxonSet child : allTs) {
+                if (child == parent) continue;
+                Set<String> cTaxa = allTaxaOf.get(child);
+                if (!pTaxa.containsAll(cTaxa)) continue;
+                boolean hasIntermediate = allTs.stream()
+                    .filter(mid -> mid != parent && mid != child)
+                    .anyMatch(mid -> {
+                        Set<String> mTaxa = allTaxaOf.get(mid);
+                        return pTaxa.containsAll(mTaxa) && mTaxa.containsAll(cTaxa)
+                            && !mTaxa.equals(cTaxa) && !mTaxa.equals(pTaxa);
+                    });
+                if (!hasIntermediate) children.add(child);
+            }
+            immChildren.put(parent, children);
+        }
+
+        // Build CalibrationEntry list preserving index ordering
+        entries.clear();
+        Map<TaxonSet, CalibrationEntry> tsToEntry = new HashMap<>();
+        for (TaxonSet ts : allTs) {
+            String label = ts.getID() != null ? ts.getID()
+                         : "Clade_" + (tsToIdx.get(ts) + 1);
+            CalibrationEntry entry = new CalibrationEntry(label, nextColor.get());
+            double[] bounds = boundsOf.get(ts);
+            if (bounds != null) {
+                entry.lower = Double.isNaN(bounds[0]) ? null : bounds[0];
+                entry.upper = Double.isNaN(bounds[1]) ? null : bounds[1];
+            }
+            Set<String> childCoveredTaxa = immChildren.get(ts).stream()
+                .flatMap(child -> allTaxaOf.get(child).stream())
+                .collect(Collectors.toSet());
+            allTaxaOf.get(ts).stream()
+                .filter(t -> !childCoveredTaxa.contains(t) && taxa.contains(t))
+                .forEach(entry.directTaxa::add);
+            tsToEntry.put(ts, entry);
+            entries.add(entry);
+        }
+        // Wire parent-child relationships
+        for (TaxonSet ts : allTs) {
+            CalibrationEntry parent = tsToEntry.get(ts);
+            for (TaxonSet child : immChildren.get(ts))
+                parent.directChildCals.add(tsToEntry.get(child));
+        }
+    }
+
+    /**
+     * Reads a dropped file as a Newick constraint tree and loads it, rebuilding the UI on success.
+     * Read/parse failures are surfaced in a modal alert rather than thrown.
+     */
+    private void importFromFile(java.io.File file, Runnable rebuild) {
+        try {
+            String newick = Files.readString(file.toPath()).trim();
+            if (newick.isEmpty()) return;
+            loadConstraintTree(newick);
+            rebuild.run();
+        } catch (Exception ex) {
+            Alert alert = new Alert(Alert.AlertType.ERROR,
+                "Could not import constraint tree from " + file.getName() + ":\n" + ex.getMessage(),
+                ButtonType.OK);
+            alert.initModality(Modality.APPLICATION_MODAL);
+            alert.setHeaderText(null);
+            alert.showAndWait();
+        }
     }
 
     private void exportNewick() {
