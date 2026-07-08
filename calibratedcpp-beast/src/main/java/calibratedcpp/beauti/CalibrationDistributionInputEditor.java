@@ -3,9 +3,11 @@ package calibratedcpp.beauti;
 import java.util.*;
 
 import beast.base.core.BEASTInterface;
+import beast.base.core.BEASTObject;
 import beast.base.core.Input;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.inference.CompoundDistribution;
+import beast.base.inference.Logger;
 import beast.base.spec.domain.NonNegativeReal;
 import beast.base.spec.domain.PositiveReal;
 import beast.base.spec.domain.Real;
@@ -18,6 +20,7 @@ import beast.base.spec.inference.distribution.InverseGamma;
 import beast.base.spec.inference.distribution.Laplace;
 import beast.base.spec.inference.distribution.LogNormal;
 import beast.base.spec.inference.distribution.Normal;
+import beast.base.spec.inference.distribution.OffsetReal;
 import beast.base.spec.inference.distribution.ScalarDistribution;
 import beast.base.spec.inference.distribution.Uniform;
 import beast.base.spec.inference.parameter.RealScalarParam;
@@ -26,14 +29,20 @@ import beastfx.app.inputeditor.InputEditor;
 import beastfx.app.util.FXUtils;
 import calibratedcpp.CalibratedCoalescentPointProcess;
 import calibrationprior.CalibrationCladePrior;
+import calibrationprior.CalibrationDistribution;
 import calibrationprior.CalibrationPrior;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.text.FontWeight;
 
-public class CalibrationPriorInputEditor extends InputEditor.Base {
+/**
+ * BEAUti editor for {@link CalibrationDistribution} — the wrapper prior that holds either a
+ * {@link CalibrationPrior} (topology-consistent clade prior) or a set of independent
+ * {@link MRCAPrior}s as its children. Offers a mode toggle plus a single table; only the wrapper
+ * appears in the Priors list, so its children never show as separate rows.
+ */
+public class CalibrationDistributionInputEditor extends InputEditor.Base {
 
     record DistDef(String name, List<ParamDef> params) {}
     record ParamDef(String key, String label, double defaultVal) {}
@@ -52,7 +61,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             new ParamDef("offset", "Offset", 0.0))),
         new DistDef("Gamma", List.of(
             new ParamDef("alpha",  "Shape",  2.0),
-            new ParamDef("beta",   "Rate",   0.5),
+            new ParamDef("lambda", "Rate",   0.5),
             new ParamDef("offset", "Offset", 0.0))),
         new DistDef("Inverse Gamma", List.of(
             new ParamDef("alpha",  "Alpha",  3.0),
@@ -70,34 +79,31 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             new ParamDef("offset", "Offset", 0.0)))
     );
 
-    public CalibrationPriorInputEditor(BeautiDoc doc) { super(doc); }
-    public CalibrationPriorInputEditor() { super(); }
+    public CalibrationDistributionInputEditor(BeautiDoc doc) { super(doc); }
+    public CalibrationDistributionInputEditor() { super(); }
 
     @Override
-    public Class<?> type() { return CalibrationPrior.class; }
+    public Class<?> type() { return CalibrationDistribution.class; }
 
     @Override
     public void init(Input<?> input, BEASTInterface beastObject, int listItemNr,
                      ExpandOption isExpandOption, boolean addButtons) {
         super.init(input, beastObject, listItemNr, isExpandOption, addButtons);
-        // Keep the label added by Base (matches other prior rows), remove only the editor widget
         pane.getChildren().removeIf(n -> !(n instanceof Label));
         VBox mainBox = new VBox(6);
         mainBox.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(mainBox, Priority.ALWAYS);
         pane.getChildren().add(mainBox);
-        rebuild((CalibrationPrior) beastObject, mainBox);
+        rebuild((CalibrationDistribution) beastObject, mainBox);
     }
 
-    private void rebuild(CalibrationPrior cp, VBox mainBox) {
+    private void rebuild(CalibrationDistribution cd, VBox mainBox) {
         mainBox.getChildren().clear();
-        String partition = partitionOf(cp);
+        String partition = partitionOf(cd);
         CalibratedCoalescentPointProcess cpp = getCPP(partition);
 
         // After a tree-prior template switch the active model is freshly built with an empty
         // calibrations list, but the TaxonSet.*/.partition plugins survive in the pluginmap.
-        // Recover them here so this panel doesn't depend on the tree-prior editor's init having
-        // already run (render order between the two panels is not guaranteed).
         if (cpp != null && cpp.calibrationsInput.get().isEmpty())
             recoverCalibrationTaxonSets(partition, cpp.calibrationsInput.get());
 
@@ -107,7 +113,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         }
 
         List<TaxonSet> clades = new ArrayList<>(cpp.calibrationsInput.get());
-        boolean mrcaMode = hasMRCAPriors(partition);
+        boolean mrcaMode = hasMRCAPriors(cd);
 
         ToggleGroup tg = new ToggleGroup();
         RadioButton calRb  = new RadioButton("CalibrationPrior");
@@ -121,28 +127,27 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         modeRow.setAlignment(Pos.CENTER_LEFT);
         mainBox.getChildren().add(modeRow);
 
-        // Ensure cp.cladesInput and the prior CompoundDistribution stay consistent
-        // on every render, not just when the user explicitly clicks a radio button.
-        if (!mrcaMode) syncCalibrationPriorClades(cp, clades, partition);
+        // Keep the CalibrationPrior child + clades consistent on every render (not just on click).
+        if (!mrcaMode) syncCalibrationPriorClades(cd, clades, partition);
 
         VBox content = FXUtils.newVBox();
         content.setSpacing(4);
         mainBox.getChildren().add(content);
-        renderRows(content, cp, clades, partition, !mrcaMode);
+        renderRows(content, cd, clades, partition, !mrcaMode);
 
         calRb.setOnAction(e -> {
-            switchToCalibrationPrior(cp, clades, partition);
-            renderRows(content, cp, clades, partition, true);
+            switchToCalibrationPrior(cd, clades, partition);
+            renderRows(content, cd, clades, partition, true);
         });
         mrcaRb.setOnAction(e -> {
-            switchToMRCAPriors(cp, clades, partition);
-            renderRows(content, cp, clades, partition, false);
+            switchToMRCAPriors(cd, clades, partition);
+            renderRows(content, cd, clades, partition, false);
         });
     }
 
     // ── Row rendering ─────────────────────────────────────────────────────────────
 
-    private void renderRows(VBox box, CalibrationPrior cp, List<TaxonSet> clades,
+    private void renderRows(VBox box, CalibrationDistribution cd, List<TaxonSet> clades,
                              String partition, boolean calMode) {
         box.getChildren().clear();
 
@@ -165,13 +170,13 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             row.setPadding(new Insets(3, 0, 3, 0));
             row.setAlignment(Pos.CENTER_LEFT);
             row.getChildren().add(fixedLabel(labelOf(ts), 160, false));
-            if (calMode) buildCalRow(row, cp, ts, partition);
-            else         buildMRCARow(row, cp, ts, partition);
+            if (calMode) buildCalRow(row, cd, ts, partition);
+            else         buildMRCARow(row, cd, ts, partition);
             box.getChildren().add(row);
         }
     }
 
-    private void buildCalRow(HBox row, CalibrationPrior cp, TaxonSet ts, String partition) {
+    private void buildCalRow(HBox row, CalibrationDistribution cd, TaxonSet ts, String partition) {
         CalibrationCladePrior ccp = findCladePrior(ts, partition);
         TextField loTf = numField(ccp != null ? fmt(ccp.getLower()) : "");
         TextField hiTf = numField(ccp != null ? fmt(ccp.getUpper()) : "");
@@ -180,14 +185,14 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         hiTf.setPrefWidth(100); hiTf.setPromptText("optional");
         clTf.setPrefWidth(100); clTf.setPromptText("0–1");
         clTf.setTooltip(new Tooltip("Probability mass within the bounds (between 0 and 1). Default 0.9."));
-        Runnable apply = () -> applyCladePrior(cp, ts, partition, loTf.getText(), hiTf.getText(), clTf.getText());
+        Runnable apply = () -> applyCladePrior(cd, ts, partition, loTf.getText(), hiTf.getText(), clTf.getText());
         loTf.focusedProperty().addListener((obs, o, n) -> { if (!n) apply.run(); });
         hiTf.focusedProperty().addListener((obs, o, n) -> { if (!n) apply.run(); });
         clTf.focusedProperty().addListener((obs, o, n) -> { if (!n) apply.run(); });
         row.getChildren().addAll(loTf, hiTf, clTf);
     }
 
-    private void buildMRCARow(HBox row, CalibrationPrior cp, TaxonSet ts, String partition) {
+    private void buildMRCARow(HBox row, CalibrationDistribution cd, TaxonSet ts, String partition) {
         MRCAPrior mrca = findMRCAPrior(ts, partition);
         DistDef curDef = findDef(detectDistName(mrca));
 
@@ -203,7 +208,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         CheckBox monoCb = new CheckBox();
         monoCb.setSelected(mrca == null || Boolean.TRUE.equals(mrca.getInputValue("monophyletic")));
 
-        Runnable apply = () -> applyMRCAPrior(cp, ts, partition, findDef(distCb.getValue()),
+        Runnable apply = () -> applyMRCAPrior(cd, ts, partition, findDef(distCb.getValue()),
                                                readParams(paramsBox), monoCb.isSelected());
         attachParamListeners(paramsBox, apply);
         monoCb.setOnAction(e -> apply.run());
@@ -212,7 +217,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
             DistDef nd = findDef(distCb.getValue());
             renderParamFields(paramsBox, nd, null);
             attachParamListeners(paramsBox, apply);
-            applyMRCAPrior(cp, ts, partition, nd, defaultParams(nd), monoCb.isSelected());
+            applyMRCAPrior(cd, ts, partition, nd, defaultParams(nd), monoCb.isSelected());
         });
 
         row.getChildren().addAll(distCb, paramsBox, monoCb);
@@ -257,25 +262,31 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
 
     // ── Mode switching ────────────────────────────────────────────────────────────
 
-    private void switchToCalibrationPrior(CalibrationPrior cp, List<TaxonSet> clades, String partition) {
-        removeMRCAPriors(cp, partition);
-        syncCalibrationPriorClades(cp, clades, partition);
+    private void switchToCalibrationPrior(CalibrationDistribution cd, List<TaxonSet> clades, String partition) {
+        removeMRCAPriors(cd, partition);
+        syncCalibrationPriorClades(cd, clades, partition);
     }
 
-    private void syncCalibrationPriorClades(CalibrationPrior cp, List<TaxonSet> clades, String partition) {
+    private void syncCalibrationPriorClades(CalibrationDistribution cd, List<TaxonSet> clades, String partition) {
+        CalibrationPrior cp = calibrationPriorOf(cd, partition);
         cp.cladesInput.get().clear();
         for (TaxonSet ts : clades) {
             CalibrationCladePrior ccp = findCladePrior(ts, partition);
             if (ccp != null) cp.cladesInput.get().add(ccp);
         }
-        if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd
-                && !cd.pDistributions.get().contains(cp))
-            cd.pDistributions.get().add(cp);
+        if (!cd.pDistributions.get().contains(cp)) cd.pDistributions.get().add(cp);
+        addToTraceLog(cp);
+        ensureWrapperConnected(cd);
     }
 
-    private void switchToMRCAPriors(CalibrationPrior cp, List<TaxonSet> clades, String partition) {
+    private void switchToMRCAPriors(CalibrationDistribution cd, List<TaxonSet> clades, String partition) {
+        // Drop the CalibrationPrior child (kept in the pluginmap so a toggle back restores it) and
+        // seed one Uniform(lower, upper) MRCAPrior per clade from its constraint bounds.
+        CalibrationPrior cp = calibrationPriorOf(cd, partition);
         cp.cladesInput.get().clear();
-        cp.mrcaPriorsInput.get().clear();
+        cd.pDistributions.get().remove(cp);
+        removeFromTraceLog(cp);
+
         DistDef uniform = findDef("Uniform");
         for (TaxonSet ts : clades) {
             Map<String, Double> params = defaultParams(uniform);
@@ -284,27 +295,26 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
                 params.put("lower", ccp.getLower());
                 params.put("upper", ccp.getUpper());
             }
-            applyMRCAPrior(cp, ts, partition, uniform, params, true);
+            applyMRCAPrior(cd, ts, partition, uniform, params, true);
         }
+        ensureWrapperConnected(cd);
     }
 
-    private void removeMRCAPriors(CalibrationPrior cp, String partition) {
-        cp.mrcaPriorsInput.get().clear();
+    private void removeMRCAPriors(CalibrationDistribution cd, String partition) {
         String pfx = "MRCAPrior.", sfx = "." + partition;
-        List<String> ids = doc.pluginmap.keySet().stream()
-            .filter(id -> id.startsWith(pfx) && id.endsWith(sfx))
-            .toList();
-        ids.forEach(doc.pluginmap::remove);
-        List<String> distIds = doc.pluginmap.keySet().stream()
-            .filter(id -> id.startsWith("MRCAPriorDist.") && id.endsWith(sfx))
-            .toList();
-        distIds.forEach(doc.pluginmap::remove);
+        for (String id : new ArrayList<>(doc.pluginmap.keySet())) {
+            if (id.startsWith(pfx) && id.endsWith(sfx) && doc.pluginmap.get(id) instanceof MRCAPrior mrca) {
+                cd.pDistributions.get().remove(mrca);
+                removeFromTraceLog(mrca);
+            }
+        }
     }
 
     // ── Apply actions ─────────────────────────────────────────────────────────────
 
-    private void applyCladePrior(CalibrationPrior cp, TaxonSet ts, String partition,
+    private void applyCladePrior(CalibrationDistribution cd, TaxonSet ts, String partition,
                                   String loStr, String hiStr, String pcovStr) {
+        CalibrationPrior cp = calibrationPriorOf(cd, partition);
         String ccpId = "CalibrationCladePrior." + labelOf(ts) + "." + partition;
         CalibrationCladePrior existing = (doc.pluginmap.get(ccpId) instanceof CalibrationCladePrior c) ? c : null;
         cp.cladesInput.get().remove(existing);
@@ -340,7 +350,7 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         } catch (Exception ignored) {}
     }
 
-    private void applyMRCAPrior(CalibrationPrior cp, TaxonSet ts, String partition, DistDef def,
+    private void applyMRCAPrior(CalibrationDistribution cd, TaxonSet ts, String partition, DistDef def,
                                   Map<String, Double> params, boolean monophyletic) {
         CalibratedCoalescentPointProcess cpp = getCPP(partition);
         if (cpp == null) return;
@@ -348,9 +358,10 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         String mrcaId = "MRCAPrior." + labelOf(ts) + "." + partition;
         String distId = "MRCAPriorDist." + labelOf(ts) + "." + partition;
 
-        // Remove old objects from pluginmap first so addPlugin won't see a conflict
-        if (doc.pluginmap.get(mrcaId) instanceof MRCAPrior old)
-            cp.mrcaPriorsInput.get().remove(old);
+        if (doc.pluginmap.get(mrcaId) instanceof MRCAPrior old) {
+            cd.pDistributions.get().remove(old);
+            removeFromTraceLog(old);
+        }
         doc.pluginmap.remove(mrcaId);
         doc.pluginmap.remove(distId);
 
@@ -365,53 +376,52 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         try { mrca.initAndValidate(); } catch (Exception e) { e.printStackTrace(); }
         mrca.setID(mrcaId);
         doc.addPlugin(mrca);
-        // Add to CalibrationPrior's internal list, NOT to the top-level prior compound,
-        // so MRCA priors don't appear as separate rows in BEAUti's Priors panel.
-        if (!cp.mrcaPriorsInput.get().contains(mrca))
-            cp.mrcaPriorsInput.get().add(mrca);
+        if (!cd.pDistributions.get().contains(mrca)) cd.pDistributions.get().add(mrca);
+        addToTraceLog(mrca);
+        ensureWrapperConnected(cd);
     }
 
     // ── Distribution builder ──────────────────────────────────────────────────────
 
     private ScalarDistribution buildDistribution(DistDef def, Map<String, Double> params) {
         try {
-            return switch (def.name()) {
+            // The spec distributions have NO "offset" input (unlike the legacy BEAST ones); an offset
+            // is applied by wrapping the distribution in an OffsetReal. Build the base distribution
+            // here (never setting a non-existent "offset" input, which would throw and silently drop
+            // the whole distribution), then wrap it below if an offset was requested.
+            ScalarDistribution base = switch (def.name()) {
                 case "Log-Normal" -> {
                     LogNormal d = new LogNormal();
-                    d.setInputValue("M",      new RealScalarParam<>(params.getOrDefault("M",      1.0), Real.INSTANCE));
-                    d.setInputValue("S",      new RealScalarParam<>(params.getOrDefault("S",      0.5), PositiveReal.INSTANCE));
-                    d.setInputValue("offset", new RealScalarParam<>(params.getOrDefault("offset", 0.0), Real.INSTANCE));
+                    d.setInputValue("M", new RealScalarParam<>(params.getOrDefault("M", 1.0), Real.INSTANCE));
+                    d.setInputValue("S", new RealScalarParam<>(params.getOrDefault("S", 0.5), PositiveReal.INSTANCE));
                     d.initAndValidate();
                     yield d;
                 }
                 case "Normal" -> {
                     Normal d = new Normal();
-                    d.setInputValue("mean",   new RealScalarParam<>(params.getOrDefault("mean",   5.0), Real.INSTANCE));
-                    d.setInputValue("sigma",  new RealScalarParam<>(params.getOrDefault("sigma",  1.0), PositiveReal.INSTANCE));
-                    d.setInputValue("offset", new RealScalarParam<>(params.getOrDefault("offset", 0.0), Real.INSTANCE));
+                    d.setInputValue("mean",  new RealScalarParam<>(params.getOrDefault("mean",  5.0), Real.INSTANCE));
+                    d.setInputValue("sigma", new RealScalarParam<>(params.getOrDefault("sigma", 1.0), PositiveReal.INSTANCE));
                     d.initAndValidate();
                     yield d;
                 }
                 case "Exponential" -> {
                     Exponential d = new Exponential();
-                    d.setInputValue("mean",   new RealScalarParam<>(params.getOrDefault("mean",   2.0), PositiveReal.INSTANCE));
-                    d.setInputValue("offset", new RealScalarParam<>(params.getOrDefault("offset", 0.0), Real.INSTANCE));
+                    d.setInputValue("mean", new RealScalarParam<>(params.getOrDefault("mean", 2.0), PositiveReal.INSTANCE));
                     d.initAndValidate();
                     yield d;
                 }
                 case "Gamma" -> {
                     Gamma d = new Gamma();
+                    // Gamma's rate parameter is "lambda" (Shape–Rate form); it has no "beta" input.
                     d.setInputValue("alpha",  new RealScalarParam<>(params.getOrDefault("alpha",  2.0), PositiveReal.INSTANCE));
-                    d.setInputValue("beta",   new RealScalarParam<>(params.getOrDefault("beta",   0.5), PositiveReal.INSTANCE));
-                    d.setInputValue("offset", new RealScalarParam<>(params.getOrDefault("offset", 0.0), Real.INSTANCE));
+                    d.setInputValue("lambda", new RealScalarParam<>(params.getOrDefault("lambda", 0.5), PositiveReal.INSTANCE));
                     d.initAndValidate();
                     yield d;
                 }
                 case "Inverse Gamma" -> {
                     InverseGamma d = new InverseGamma();
-                    d.setInputValue("alpha",  new RealScalarParam<>(params.getOrDefault("alpha",  3.0), PositiveReal.INSTANCE));
-                    d.setInputValue("beta",   new RealScalarParam<>(params.getOrDefault("beta",   2.0), PositiveReal.INSTANCE));
-                    d.setInputValue("offset", new RealScalarParam<>(params.getOrDefault("offset", 0.0), Real.INSTANCE));
+                    d.setInputValue("alpha", new RealScalarParam<>(params.getOrDefault("alpha", 3.0), PositiveReal.INSTANCE));
+                    d.setInputValue("beta",  new RealScalarParam<>(params.getOrDefault("beta",  2.0), PositiveReal.INSTANCE));
                     d.initAndValidate();
                     yield d;
                 }
@@ -433,16 +443,84 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
                     Laplace d = new Laplace();
                     d.setInputValue("mu",    new RealScalarParam<>(params.getOrDefault("mu",    5.0), Real.INSTANCE));
                     d.setInputValue("scale", new RealScalarParam<>(params.getOrDefault("scale", 1.0), PositiveReal.INSTANCE));
-                    d.setInputValue("offset",new RealScalarParam<>(params.getOrDefault("offset",0.0), Real.INSTANCE));
                     d.initAndValidate();
                     yield d;
                 }
                 default -> null;
             };
+            if (base == null) return null;
+
+            double offset = params.getOrDefault("offset", 0.0);
+            if (offset != 0.0 && defHasOffset(def)) {
+                OffsetReal wrapped = new OffsetReal();
+                wrapped.setInputValue("distribution", base);
+                wrapped.setInputValue("offset", new RealScalarParam<>(offset, Real.INSTANCE));
+                wrapped.initAndValidate();
+                return wrapped;
+            }
+            return base;
         } catch (Exception e) { e.printStackTrace(); return null; }
     }
 
-    // ── Lookups ───────────────────────────────────────────────────────────────────
+    private static boolean defHasOffset(DistDef def) {
+        return def.params().stream().anyMatch(p -> p.key().equals("offset"));
+    }
+
+    /** Unwraps an OffsetReal to its inner distribution; returns the argument unchanged otherwise. */
+    private static Object innerDist(Object distr) {
+        if (distr instanceof OffsetReal or) {
+            try { return or.getInputValue("distribution"); } catch (Exception ignored) {}
+        }
+        return distr;
+    }
+
+    // ── Lookups / connection helpers ───────────────────────────────────────────────
+
+    /** The CalibrationPrior for this partition — the wrapper's current child, else the
+     *  disconnected one kept in the pluginmap across toggles, else a freshly created one. */
+    private CalibrationPrior calibrationPriorOf(CalibrationDistribution cd, String partition) {
+        for (var d : cd.pDistributions.get())
+            if (d instanceof CalibrationPrior c) return c;
+        String sfx = "." + partition;
+        for (BEASTInterface bi : doc.pluginmap.values())
+            if (bi instanceof CalibrationPrior c && c.getID() != null && c.getID().endsWith(sfx))
+                return c;
+        CalibratedCoalescentPointProcess cpp = getCPP(partition);
+        CalibrationPrior c = new CalibrationPrior();
+        if (cpp != null) c.setInputValue("tree", cpp.treeInput.get());
+        c.setID(cd.getID().replace("CalibrationDistribution", "CalibrationPrior"));
+        try { c.initAndValidate(); } catch (Exception ignored) {}
+        doc.addPlugin(c);
+        return c;
+    }
+
+    private void ensureWrapperConnected(CalibrationDistribution cd) {
+        CompoundDistribution prior = topLevelPrior();
+        if (prior != null && !prior.pDistributions.get().contains(cd))
+            prior.pDistributions.get().add(cd);
+    }
+
+    private CompoundDistribution topLevelPrior() {
+        return (doc.pluginmap.get("prior") instanceof CompoundDistribution c) ? c : null;
+    }
+
+    private Logger traceLog() {
+        return (doc.pluginmap.get("tracelog") instanceof Logger l) ? l : null;
+    }
+
+    private void addToTraceLog(BEASTObject o) {
+        Logger t = traceLog();
+        if (t != null && !t.loggersInput.get().contains(o)) t.loggersInput.get().add(o);
+    }
+
+    private void removeFromTraceLog(BEASTObject o) {
+        Logger t = traceLog();
+        if (t != null) t.loggersInput.get().remove(o);
+    }
+
+    private boolean hasMRCAPriors(CalibrationDistribution cd) {
+        return cd.pDistributions.get().stream().anyMatch(d -> d instanceof MRCAPrior);
+    }
 
     private CalibrationCladePrior findCladePrior(TaxonSet ts, String partition) {
         String id = "CalibrationCladePrior." + labelOf(ts) + "." + partition;
@@ -454,14 +532,9 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         return (doc.pluginmap.get(id) instanceof MRCAPrior m) ? m : null;
     }
 
-    private boolean hasMRCAPriors(String partition) {
-        String sfx = "." + partition;
-        return doc.pluginmap.keySet().stream().anyMatch(id -> id.startsWith("MRCAPrior.") && id.endsWith(sfx));
-    }
-
     private String detectDistName(MRCAPrior mrca) {
         if (mrca == null) return "Uniform";
-        Object d = mrca.getInputValue("distr");
+        Object d = innerDist(mrca.getInputValue("distr"));
         if (d instanceof LogNormal)    return "Log-Normal";
         if (d instanceof Normal)       return "Normal";
         if (d instanceof Exponential)  return "Exponential";
@@ -476,7 +549,8 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
     private double getDistParam(MRCAPrior mrca, String distName, String key, double defaultVal) {
         if (mrca == null) return defaultVal;
         Object distr = mrca.getInputValue("distr");
-        if (!(distr instanceof BEASTInterface bi)) return defaultVal;
+        Object target = key.equals("offset") ? distr : innerDist(distr);
+        if (!(target instanceof BEASTInterface bi)) return defaultVal;
         try {
             Object v = bi.getInputValue(key);
             if (v instanceof Number n)            return n.doubleValue();
@@ -499,19 +573,14 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         return second >= 0 ? id.substring(first + 1, second) : id;
     }
 
-    private static String partitionOf(CalibrationPrior cp) {
-        // The skyline template names its object CalibrationPrior.{partition}; the age-dependent
-        // template uses CalibrationPriorADB.{partition} (a distinct ID avoids a shared-target
-        // connector fight). Strip either prefix to recover the partition.
-        return cp.getID().replaceFirst("^CalibrationPrior(ADB)?\\.", "");
+    private static String partitionOf(CalibrationDistribution cd) {
+        // Skyline template: CalibrationDistribution.{partition}; age-dependent: CalibrationDistributionADB.{partition}.
+        return cd.getID().replaceFirst("^CalibrationDistribution(ADB)?\\.", "");
     }
 
     /** Finds the active calibrated tree-prior instance (of any concrete type) for this partition. */
     private CalibratedCoalescentPointProcess getCPP(String partition) {
         String suffix = "." + partition;
-        // Prefer the model connected in the posterior's prior compound (the active one). A
-        // tree-prior template switch only disconnects the old model — the other concrete type may
-        // still linger in the pluginmap, so a bare pluginmap scan could return the stale one.
         if (doc.pluginmap.get("prior") instanceof CompoundDistribution cd) {
             for (var d : cd.pDistributions.get()) {
                 if (d instanceof CalibratedCoalescentPointProcess m
@@ -526,16 +595,10 @@ public class CalibrationPriorInputEditor extends InputEditor.Base {
         return null;
     }
 
-    /**
-     * Re-attaches calibration TaxonSets that survive in the pluginmap (e.g. after a tree-prior
-     * template switch) to the model's calibrations list. Only IDs of the form
-     * {@code TaxonSet.{label}.{partition}} with a non-empty label are recovered, so the alignment's
-     * own {@code TaxonSet.{partition}} and unrelated taxon sets are skipped.
-     */
     private void recoverCalibrationTaxonSets(String partition, List<TaxonSet> target) {
         String prefix = "TaxonSet.";
         String suffix = "." + partition;
-        int minLen = prefix.length() + suffix.length() + 1; // +1 ensures a non-empty label between
+        int minLen = prefix.length() + suffix.length() + 1;
         for (BEASTInterface bi : doc.pluginmap.values()) {
             if (bi instanceof TaxonSet ts && ts.getID() != null
                     && ts.getID().startsWith(prefix) && ts.getID().endsWith(suffix)

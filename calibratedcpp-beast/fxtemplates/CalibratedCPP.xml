@@ -6,7 +6,7 @@
         <subtemplate id='CalibratedBirthDeathSkyline'
                      class='calibratedcpp.CalibratedBirthDeathSkylineModel'
                      mainid='CalibratedCPP.t:$(n)'
-                     suppressInputs='calibratedcpp.CalibratedBirthDeathSkylineModel.calibrations,calibratedcpp.CalibratedBirthDeathSkylineModel.calibrationForest,calibratedcpp.CalibratedBirthDeathSkylineModel.birthRate,calibratedcpp.CalibratedBirthDeathSkylineModel.deathRate,calibratedcpp.CalibratedBirthDeathSkylineModel.diversificationRate,calibratedcpp.CalibratedBirthDeathSkylineModel.reproductiveNumber,calibratedcpp.CalibratedBirthDeathSkylineModel.turnover,calibratedcpp.CalibratedBirthDeathSkylineModel.rho,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnRoot,calibratedcpp.CalibratedBirthDeathSkylineModel.origin,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnCalibrations,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.calibrationForest,calibrationprior.CalibrationPrior.mrcaPrior'
+                     suppressInputs='calibratedcpp.CalibratedBirthDeathSkylineModel.calibrations,calibratedcpp.CalibratedBirthDeathSkylineModel.calibrationForest,calibratedcpp.CalibratedBirthDeathSkylineModel.birthRate,calibratedcpp.CalibratedBirthDeathSkylineModel.deathRate,calibratedcpp.CalibratedBirthDeathSkylineModel.diversificationRate,calibratedcpp.CalibratedBirthDeathSkylineModel.reproductiveNumber,calibratedcpp.CalibratedBirthDeathSkylineModel.turnover,calibratedcpp.CalibratedBirthDeathSkylineModel.rho,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnRoot,calibratedcpp.CalibratedBirthDeathSkylineModel.origin,calibratedcpp.CalibratedBirthDeathSkylineModel.conditionOnCalibrations,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.calibrationForest'
                      hmc='
 CalibratedCPPOperator/index/=Operators/BactrianNodeOperator/,
 CalibratedCPPSubtreeSlide/index/=Operators/SubtreeSlide/,
@@ -53,9 +53,12 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                 <rho idref="samplingProportion.t:$(n)"/>
             </distribution>
 
-            <!-- CalibrationPrior: clades and mrcaPriors populated by the BEAUti editor -->
-            <distribution spec="calibrationprior.CalibrationPrior" id="CalibrationPrior.t:$(n)">
-                <tree idref="Tree.t:$(n)"/>
+            <!-- Calibration prior wrapper: holds either the CalibrationPrior (clade bounds) or a set
+                 of MRCAPriors as its children, swapped by the BEAUti editor's mode toggle. -->
+            <distribution spec="calibrationprior.CalibrationDistribution" id="CalibrationDistribution.t:$(n)">
+                <distribution spec="calibrationprior.CalibrationPrior" id="CalibrationPrior.t:$(n)">
+                    <tree idref="Tree.t:$(n)"/>
+                </distribution>
             </distribution>
 
             <!-- No priors, operators, or SkylineParameters are pre-declared in CDATA.
@@ -69,7 +72,7 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
                 Calibrated CPP birth-death skyline prior on tree t:$(n)
             </connect>
-            <connect srcID='CalibrationPrior.t:$(n)' targetID='prior' inputName='distribution'
+            <connect srcID='CalibrationDistribution.t:$(n)' targetID='prior' inputName='distribution'
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
                 CalibrationPrior on clade ages for tree t:$(n)
             </connect>
@@ -129,7 +132,7 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
             <!-- Logging -->
             <connect srcID='CalibratedCPP.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
-            <connect srcID='CalibrationPrior.t:$(n)' targetID='tracelog' inputName='log'
+            <connect srcID='CalibrationDistribution.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
             <connect srcID='CBDS_diversificationRate.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedCPP.t:$(n)) and CBDS_diversificationRate.t:$(n)/estimate=true'/>
@@ -149,7 +152,7 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
         <subtemplate id='CalibratedAgeDependentBirthDeath'
                      class='calibratedcpp.CalibratedAgeDependentBirthDeathModel'
                      mainid='CalibratedAgeDependentBirthDeath.t:$(n)'
-                     suppressInputs='calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrationForest,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnCalibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnRoot,calibratedcpp.CalibratedAgeDependentBirthDeathModel.origin,calibratedcpp.CalibratedAgeDependentBirthDeathModel.lifetimeDistribution,calibratedcpp.CalibratedAgeDependentBirthDeathModel.rho,calibratedcpp.CalibratedAgeDependentBirthDeathModel.birthRate,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.calibrationForest,calibrationprior.CalibrationPrior.mrcaPrior'
+                     suppressInputs='calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.calibrationForest,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnCalibrations,calibratedcpp.CalibratedAgeDependentBirthDeathModel.conditionOnRoot,calibratedcpp.CalibratedAgeDependentBirthDeathModel.origin,calibratedcpp.CalibratedAgeDependentBirthDeathModel.lifetimeDistribution,calibratedcpp.CalibratedAgeDependentBirthDeathModel.rho,calibratedcpp.CalibratedAgeDependentBirthDeathModel.birthRate,calibrationprior.CalibrationPrior.calibration,calibrationprior.CalibrationPrior.calibrationForest'
                      hmc='
 CalibratedAgeDependentBirthDeathOperator/index/=Operators/BactrianNodeOperator/,
 CalibratedAgeDependentBirthDeathSubtreeSlide/index/=Operators/SubtreeSlide/,
@@ -196,13 +199,13 @@ CalibratedAgeDependentBirthDeathTreeRootScaler/index/=Operators/BactrianTreeScal
                 <lifetimeDistribution idref="lifetimeDistribution.exponential.t:$(n)"/>
             </distribution>
 
-            <!-- CalibrationPrior: clades and mrcaPriors populated by the BEAUti editor.
-                 Uses a distinct ID from the skyline template's CalibrationPrior so the two
-                 templates' prior/tracelog connectors don't fight over a shared target (BEAUti
-                 evaluates connectors in template order and the last one wins, which would
-                 disconnect a shared CalibrationPrior whenever this model is not the active one). -->
-            <distribution spec="calibrationprior.CalibrationPrior" id="CalibrationPriorADB.t:$(n)">
-                <tree idref="Tree.t:$(n)"/>
+            <!-- Calibration prior wrapper (age-dependent model). Uses a distinct ID from the skyline
+                 template's wrapper so the two templates' connectors don't fight over a shared target
+                 (BEAUti evaluates connectors in template order and the last one wins). -->
+            <distribution spec="calibrationprior.CalibrationDistribution" id="CalibrationDistributionADB.t:$(n)">
+                <distribution spec="calibrationprior.CalibrationPrior" id="CalibrationPriorADB.t:$(n)">
+                    <tree idref="Tree.t:$(n)"/>
+                </distribution>
             </distribution>
 
             <!-- No priors or operators are pre-declared for adBirthRate/lifetimeMean here.
@@ -216,7 +219,7 @@ CalibratedAgeDependentBirthDeathTreeRootScaler/index/=Operators/BactrianTreeScal
                      if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
                 Calibrated age-dependent birth-death prior on tree t:$(n)
             </connect>
-            <connect srcID='CalibrationPriorADB.t:$(n)' targetID='prior' inputName='distribution'
+            <connect srcID='CalibrationDistributionADB.t:$(n)' targetID='prior' inputName='distribution'
                      if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
                 CalibrationPrior on clade ages for tree t:$(n)
             </connect>
@@ -309,7 +312,7 @@ CalibratedAgeDependentBirthDeathTreeRootScaler/index/=Operators/BactrianTreeScal
             <!-- Logging -->
             <connect srcID='CalibratedAgeDependentBirthDeath.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
-            <connect srcID='CalibrationPriorADB.t:$(n)' targetID='tracelog' inputName='log'
+            <connect srcID='CalibrationDistributionADB.t:$(n)' targetID='tracelog' inputName='log'
                      if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
 
         </subtemplate>

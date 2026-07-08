@@ -9,6 +9,7 @@
         <provider classname="calibratedcpp.SkylineParameter"/>
         <provider classname="calibratedcpp.distribution.Erlang"/>
         <provider classname="calibrationprior.CalibrationPrior"/>
+        <provider classname="calibrationprior.CalibrationDistribution"/>
         <provider classname="calibrationprior.CalibrationCladePrior"/>
         <provider classname="calibration.CalibrationNode"/>
         <provider classname="calibration.CalibrationForest"/>
@@ -18,7 +19,7 @@
     <service type="beastfx.app.inputeditor.InputEditor">
         <provider classname="calibratedcpp.beauti.CalibratedBirthDeathSkylineInputEditor"/>
         <provider classname="calibratedcpp.beauti.CalibratedAgeDependentBirthDeathInputEditor"/>
-        <provider classname="calibratedcpp.beauti.CalibrationPriorInputEditor"/>
+        <provider classname="calibratedcpp.beauti.CalibrationDistributionInputEditor"/>
         <provider classname="calibratedcpp.beauti.SkylineParameterInputEditor"/>
     </service>
 </package>

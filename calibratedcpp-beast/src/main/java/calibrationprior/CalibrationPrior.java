@@ -7,7 +7,6 @@ import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.Distribution;
 import beast.base.inference.State;
-import beast.base.spec.evolution.tree.MRCAPrior;
 import calibration.CalibrationForest;
 import calibration.CalibrationNode;
 import org.hipparchus.linear.*;
@@ -30,12 +29,6 @@ public class CalibrationPrior extends Distribution {
 
     public Input<List<CalibrationCladePrior>> cladesInput =
             new Input<>("calibration", "List of calibration clades (alternative to calibrationForest).", new ArrayList<>());
-
-    /** MRCA priors managed by the BEAUti editor when using MRCAPrior mode.
-     *  Storing them here keeps them out of the top-level prior CompoundDistribution
-     *  so they don't appear as separate rows in BEAUti's Priors panel. */
-    public Input<List<MRCAPrior>> mrcaPriorsInput =
-            new Input<>("mrcaPrior", "MRCA priors evaluated as part of this calibration prior.", new ArrayList<>());
 
     public Input<CalibrationForest> calibrationForestInput =
             new Input<>("calibrationForest",
@@ -425,13 +418,6 @@ public class CalibrationPrior extends Distribution {
             cladeLogP.put(n, lp);
             logP += lp;
         }
-        // Evaluate any MRCA priors nested here (MRCAPrior mode)
-        for (MRCAPrior mrca : mrcaPriorsInput.get()) {
-            double lp = mrca.calculateLogP();
-            if (Double.isInfinite(lp) && lp < 0) return this.logP = Double.NEGATIVE_INFINITY;
-            logP += lp;
-        }
-
         return this.logP = logP;
     }
 

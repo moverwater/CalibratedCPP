@@ -19,7 +19,7 @@ open module calibratedcpp.beast {
     provides beastfx.app.inputeditor.InputEditor with
         calibratedcpp.beauti.CalibratedBirthDeathSkylineInputEditor,
         calibratedcpp.beauti.CalibratedAgeDependentBirthDeathInputEditor,
-        calibratedcpp.beauti.CalibrationPriorInputEditor,
+        calibratedcpp.beauti.CalibrationDistributionInputEditor,
         calibratedcpp.beauti.SkylineParameterInputEditor;
 
     // CalibratedCoalescentPointProcess (abstract) and CalibrationNode/Forest (no default ctor)
@@ -30,6 +30,7 @@ open module calibratedcpp.beast {
         calibratedcpp.CalibratedAgeDependentBirthDeathModel,
         calibratedcpp.SkylineParameter,
         calibrationprior.CalibrationPrior,
+        calibrationprior.CalibrationDistribution,
         calibrationprior.CalibrationCladePrior,
         calibration.CalibrationForestParser;
 }
