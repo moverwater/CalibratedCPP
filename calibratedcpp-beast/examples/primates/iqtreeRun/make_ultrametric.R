@@ -75,6 +75,44 @@ print(calib_rows)
 
 chrono_tree <- chronos(tree, calibration = calib_rows, model = "relaxed")
 
+# Post-hoc numerical safety margin -- NOT a change to the fit. chronos() fits ages against
+# the exact bounds above, and correctly lands exactly on a boundary when that bound is the
+# binding constraint (the mathematically correct constrained optimum). But writing an
+# exactly-on-the-boundary value to text and having a *different* program (BEAST/Java)
+# re-sum branch lengths in its own floating-point order can push the reconstructed age a
+# few ULPs outside the hard Uniform bound, which BEAST then rejects outright (zero prior
+# density) when trying to initialise. Nudge only calibrated nodes that land within EPS of
+# their own bound, by EPS, toward the interior -- purely so the value survives the R -> text
+# -> Java round trip; the calibration-constrained fit itself (chronos() call above) is
+# completely untouched.
+EPS <- 1e-4  # 100 years; negligible at Ma timescales
+depths <- node.depth.edgelength(chrono_tree)  # root-to-node distance, ape node numbering
+root_depth <- max(depths[1:Ntip(chrono_tree)])  # tip depth = root-to-tip distance (ultrametric)
+
+n_nudged <- 0
+for (i in seq_len(nrow(calib_rows))) {
+  node <- calib_rows$node[i]
+  lo <- calib_rows$age.min[i]
+  hi <- calib_rows$age.max[i]
+  age <- root_depth - depths[node]
+  # age = root_depth - depths[node], so increasing age requires DECREASING depth, and
+  # decreasing age requires INCREASING depth -- opposite sign from age itself.
+  if (age - lo < EPS) {
+    depths[node] <- depths[node] - EPS  # decrease depth -> increase age, away from lower bound
+    n_nudged <- n_nudged + 1
+  } else if (hi - age < EPS) {
+    depths[node] <- depths[node] + EPS  # increase depth -> decrease age, away from upper bound
+    n_nudged <- n_nudged + 1
+  }
+}
+cat("Nudged", n_nudged, "boundary-touching node(s) by", EPS, "Ma for numerical safety\n")
+
+# Rebuild branch lengths from the (locally nudged) depths so the tree stays fully consistent
+chrono_tree$edge.length <- depths[chrono_tree$edge[, 2]] - depths[chrono_tree$edge[, 1]]
+if (any(chrono_tree$edge.length < 0)) {
+  stop("Nudging produced a negative branch length -- two adjacent nudges collided; reduce EPS.")
+}
+
 write.tree(chrono_tree, output_path)
 cat("Wrote ultrametric tree to", output_path, "\n")
 cat("Root age:", max(node.depth.edgelength(chrono_tree)), "\n")
