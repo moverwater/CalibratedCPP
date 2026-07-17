@@ -25,9 +25,9 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                  (diversificationRate + turnover) is estimated; all others start with estimate=false
                  and are activated by the editor. -->
             <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
-                       id="CBDS_diversificationRate.t:$(n)" domain="Real" value="0.1"/>
+                       id="CBDS_diversificationRate.t:$(n)" domain="Real" value="0.1" estimate="true"/>
             <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
-                       id="CBDS_turnover.t:$(n)" domain="PositiveReal" value="0.5"/>
+                       id="CBDS_turnover.t:$(n)" domain="PositiveReal" value="0.5" estimate="true"/>
             <stateNode spec="beast.base.spec.inference.parameter.RealScalarParam"
                        id="samplingProportion.t:$(n)" domain="Real" value="0.01" estimate="false"/>
             <stateNode spec="beast.base.spec.inference.parameter.RealVectorParam"
@@ -61,11 +61,23 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                 </distribution>
             </distribution>
 
+            <!-- Starting-tree initialiser: simulates a tree that already satisfies the calibrated-CPP
+                 constraints (monophyletic clades, clade MRCA ages within their priors, root/origin
+                 conditioning), replacing the default RandomTree init. It carries NO 'model' or
+                 'calibration' reference: it discovers the calibrated-CPP prior and the MRCA/Calibration
+                 priors from the tree at runtime, so those stay defined once, in the posterior, rather
+                 than being inlined into this <init> element. -->
+            <tree spec="calibratedcpp.CalibratedCPPTreeInitialiser" id="CalibratedCPPInit.t:$(n)"
+                  estimate="false" initial="@Tree.t:$(n)"/>
+
             <!-- No priors, operators, or SkylineParameters are pre-declared in CDATA.
                  All are created dynamically by the editor on first activation.
                  This avoids BEAUti re-processing this CDATA on sync() and resetting their state. -->
 ]]>
-            <plate fragment="TreeOperators" var="m" range="CalibratedBirthDeathSkyline"/>
+            <!-- range MUST be the model's mainid prefix (CalibratedCPP), not the subtemplate id:
+                 the TreeOperators fragment gates each connector on inposterior($(m).t:$(n)), so with
+                 $(m)=CalibratedBirthDeathSkyline (no such object) the tree operators never connect. -->
+            <plate fragment="TreeOperators" var="m" range="CalibratedCPP"/>
 
             <!-- Tree prior distributions -->
             <connect srcID='CalibratedCPP.t:$(n)' targetID='prior' inputName='distribution'
@@ -76,6 +88,14 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                      if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
                 CalibrationPrior on clade ages for tree t:$(n)
             </connect>
+
+            <!-- Starting tree: use the calibrated-CPP initialiser and drop the default RandomTree.
+                 The RandomTree connector's condition (estimate=false) is false in the normal
+                 estimate=true case, so BEAUti disconnects it whenever this initialiser is active. -->
+            <connect srcID='CalibratedCPPInit.t:$(n)' targetID='mcmc' inputName='init'
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+            <connect srcID='RandomTree.t:$(n)' targetID='mcmc' inputName='init'
+                     if='inposterior(CalibratedCPP.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=false'/>
 
             <!-- Origin parameter (state/prior/operator/tracelog) -->
             <connect srcID='originParam.t:$(n)' targetID='state' inputName='stateNode'
@@ -208,6 +228,12 @@ CalibratedAgeDependentBirthDeathTreeRootScaler/index/=Operators/BactrianTreeScal
                 </distribution>
             </distribution>
 
+            <!-- Starting-tree initialiser (age-dependent model), replacing the default RandomTree.
+                 Carries no 'model'/'calibration' reference — it discovers them from the tree at
+                 runtime, so both stay defined only in the posterior. -->
+            <tree spec="calibratedcpp.CalibratedCPPTreeInitialiser" id="CalibratedCPPInitADB.t:$(n)"
+                  estimate="false" initial="@Tree.t:$(n)"/>
+
             <!-- No priors or operators are pre-declared for adBirthRate/lifetimeMean here.
                  They are created dynamically by the editor on first activation, mirroring
                  CalibratedCPPInputEditor's handling of the skyline rate parameters. -->
@@ -223,6 +249,12 @@ CalibratedAgeDependentBirthDeathTreeRootScaler/index/=Operators/BactrianTreeScal
                      if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'>
                 CalibrationPrior on clade ages for tree t:$(n)
             </connect>
+
+            <!-- Starting tree: use the calibrated-CPP initialiser and drop the default RandomTree. -->
+            <connect srcID='CalibratedCPPInitADB.t:$(n)' targetID='mcmc' inputName='init'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=true'/>
+            <connect srcID='RandomTree.t:$(n)' targetID='mcmc' inputName='init'
+                     if='inposterior(CalibratedAgeDependentBirthDeath.t:$(n)) and inposterior(Tree.t:$(n)) and Tree.t:$(n)/estimate=false'/>
 
             <!-- Origin parameter (state/prior/operator/tracelog) -->
             <connect srcID='adOriginParam.t:$(n)' targetID='state' inputName='stateNode'

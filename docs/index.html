@@ -164,6 +164,20 @@
           <tr><td><code>conditionOnCalibrations</code></td><td>Boolean</td><td>Whether to condition on the supplied calibrations. Default <code>true</code>.</td></tr>
         </tbody>
       </table>
+      <h2>Initialising a valid tree</h2>
+          A valid tree needs to be initialised satisfying monophyly constraints as well as any hard calibration bounds.
+          This can be acheived with the <code>CalibratedCPPTreeInitialiser</code> in an <code>init</code> element after the
+          <code>state</code> element where the tree is defined in the usual way. The following example assumes there is
+          an <code>alignment</code> element with <code>id="alignment"</code>.
+          <pre><code>&lt;state&gt;
+    &lt;tree id="tree" spec="beast.base.evolution.tree.Tree" name="stateNode"&gt;
+        &lt;taxonset id="taxa" spec="TaxonSet"&gt;
+            &lt;alignment idref="alignment"/&gt;
+        &lt;/taxonset&gt;
+    &lt;/tree&gt;
+    &lt;!-- other stateNodes --&gt;
+&lt;/state&gt;
+&lt;init id="InitialTree" spec="calibratedcpp.CalibratedCPPTreeInitialiser" estimate="false" initial="@tree"/&gt;</code></pre>
 
       <h2>Birth-Death Skyline</h2>
       <p>
@@ -330,14 +344,13 @@
         single declaration can be shared by <code>idref</code> across the tree prior and the <code>CalibrationPrior</code>, so both
         models read <em>identical</em> clades from one source. For <code>CalibrationPrior</code> the clades must carry
         <code>upper</code> and <code>lower</code> annotations, since bounds are required by the <code>CalibrationPrior</code> object.</p>
-        <pre><code>&lt;calibrationForest spec="calibration.CalibrationForestParser" id="myConstraints"
+        <pre><code>&lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
+    tree="@tree" conditionOnRoot="true"
+    diversificationRate="@diversification" turnover="@turnover" rho="@rho"&gt;
+    &lt;calibrationForest spec="calibration.CalibrationForestParser" id="myConstraints"
     newick="((A,B)[&amp;amp;name=Clade1,lower=10.0,upper=20.0],
              (C,D)[&amp;amp;name=Clade2,lower=5.0,upper=15.0])[&amp;amp;virtualRoot=true];"/&gt;
-
-&lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
-    tree="@tree" conditionOnRoot="true"
-    diversificationRate="@diversification" turnover="@turnover" rho="@rho"
-    calibrationForest="@myConstraints"/&gt;
+&lt;/distribution&gt;
 
 &lt;distribution id="calibrationPrior" spec="calibrationprior.CalibrationPrior"
     tree="@tree" calibrationForest="@myConstraints"/&gt;</code></pre>

@@ -668,6 +668,31 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         maxTime = (conditionOnRoot) ? rootAge : origin;
     }
 
+    // --- Accessors used by tree initialisers / other consumers ---
+
+    /** Origin age (time of process start), or {@code null} when conditioning on the root. */
+    public Double getOrigin() {
+        return origin;
+    }
+
+    /** Whether the process is conditioned on the root age rather than an explicit origin. */
+    public boolean isConditionOnRoot() {
+        return conditionOnRoot;
+    }
+
+    /** Whether the likelihood is conditioned on the clade calibrations. */
+    public boolean isConditionOnCalibrations() {
+        return conditionOnCalibrations;
+    }
+
+    /**
+     * Calibration clades the model is conditioned on, with any whole-tree (root) clade
+     * removed by {@link #initAndValidate()}. Bound-free — carries clade structure only.
+     */
+    public List<TaxonSet> getCalibrations() {
+        return calibrations;
+    }
+
     @Override
     public boolean requiresRecalculation() {
         return true;

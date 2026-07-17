@@ -326,6 +326,12 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
     // Density and CDF
     // -------------------------------------------------------------------------
 
+    private static final double LOG_ARG_FLOOR = Double.MIN_NORMAL;
+
+    private static double logFloored(double x) {
+        return Math.log(Math.max(x, LOG_ARG_FLOOR));
+    }
+
     @Override
     public double calculateLogNodeAgeDensity(double time) {
         time = Math.min(time, maxTime);
@@ -334,12 +340,14 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
             double maxExp    = s[0], scaledF = s[1], scaledFP = s[2];
             double constTerm = (1.0 - rho) + rho * gammaConst;
             double innerFp = constTerm * Math.exp(-maxExp) + rho * scaledF;
-            return Math.log(rho) + Math.log(scaledFP) - maxExp - 2.0 * Math.log(innerFp);
+            if (innerFp <= 0.0) return Double.NEGATIVE_INFINITY;
+            return Math.log(rho) + logFloored(scaledFP) - maxExp - 2.0 * Math.log(innerFp);
         } else if (useNumericalSolver) {
             double g       = gSpline.value(time);
             double fp      = 1.0 + rho * g;
+            if (fp <= 0.0) return Double.NEGATIVE_INFINITY; // G(t) < -1/rho: outside the model's support
             double fpPrime = rho * evaluateGPrime(time);
-            return Math.log(fpPrime) - 2.0 * Math.log(fp);
+            return logFloored(fpPrime) - 2.0 * Math.log(fp);
         }
         return 0.0;
     }
@@ -352,12 +360,16 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
             double maxExp    = s[0], scaledF = s[1];
             double constTerm = (1.0 - rho) + rho * gammaConst;
             double innerFp = constTerm * Math.exp(-maxExp) + rho * scaledF;
-            return Math.log1p(-Math.exp(-maxExp) / innerFp);
+            if (innerFp <= 0.0) return Double.NEGATIVE_INFINITY;
+            // Q(t) = 1 - exp(-maxExp)/innerFp; clamp the ratio into [0,1] so log1p stays finite.
+            double oneMinusQ = Math.min(1.0, Math.exp(-maxExp) / innerFp);
+            return Math.log1p(-oneMinusQ);
         } else if (useNumericalSolver) {
             double g          = gSpline.value(time); // G(t) = F(t) - 1
-            double fpMinusOne = rho * g;              // fp - 1 = rho*G, no cancellation
             double fp         = 1.0 + rho * g;
-            return Math.log(fpMinusOne) - Math.log(fp);
+            if (fp <= 0.0) return Double.NEGATIVE_INFINITY;
+            double fpMinusOne = rho * g;              // fp - 1 = rho*G, no cancellation
+            return logFloored(fpMinusOne) - Math.log(fp);
         }
         return 0.0;
     }

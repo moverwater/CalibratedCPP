@@ -315,13 +315,19 @@ public abstract class CalibratedCPPInputEditor extends TreeDistributionInputEdit
             .toList();
         staleKeys.forEach(doc.pluginmap::remove);
 
+        Map<String, Taxon> taxonPool = new LinkedHashMap<>();
+
         for (CalibrationEntry entry : calibrationEntries) {
             List<String> allLeaves = entry.allLeafTaxa();
             if (allLeaves.isEmpty()) continue;
 
             List<Taxon> taxonList = new ArrayList<>();
             for (String t : allLeaves) {
-                Taxon tx = new Taxon(t); tx.setID(t); taxonList.add(tx);
+                taxonList.add(taxonPool.computeIfAbsent(t, id -> {
+                    Taxon tx = new Taxon(id);
+                    tx.setID(id);
+                    return tx;
+                }));
             }
             TaxonSet ts = new TaxonSet();
             ts.initByName("taxon", taxonList);

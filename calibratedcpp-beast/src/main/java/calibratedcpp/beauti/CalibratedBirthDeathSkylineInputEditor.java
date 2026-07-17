@@ -93,10 +93,11 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         paramRow.getChildren().add(paramChoice);
         pane.getChildren().add(paramRow);
 
-        // Ensure priors and operators exist for the currently active pair (bootstraps on first load)
+        // Ensure priors and operators exist for the currently active pair (bootstraps on first load).
+        // resetEstimate=false: a plain panel load must respect each rate's current Estimate choice.
         String[] currentPair = PARAM_PAIRS[currentPairIdx];
         String partition = partitionOf(cpp);
-        for (int i = 1; i <= 2; i++) activateSkylineParam(cpp, currentPair[i], partition);
+        for (int i = 1; i <= 2; i++) activateSkylineParam(cpp, currentPair[i], partition, false);
 
         skylineEditorsBox = FXUtils.newVBox();
         skylineEditorsBox.setSpacing(10);
@@ -179,8 +180,9 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
                 in.setValue(null, cpp);
             }
         }
-        activateSkylineParam(cpp, p1, partition);
-        activateSkylineParam(cpp, p2, partition);
+        // resetEstimate=true: (re)selecting a parameterization pair estimates both of its rates.
+        activateSkylineParam(cpp, p1, partition, true);
+        activateSkylineParam(cpp, p2, partition, true);
     }
 
     /**
@@ -194,7 +196,15 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         return "CBDS_" + paramName + "." + partition;
     }
 
-    private void activateSkylineParam(CalibratedBirthDeathSkylineModel cpp, String paramName, String partition) {
+    /**
+     * Ensures the state node, SkylineParameter, prior and scaler for {@code paramName} exist and are
+     * wired to the model. {@code resetEstimate} controls the Estimate default: pass {@code true} when
+     * the user actively (re)selects this rate's parameterization pair (both rates should then be
+     * sampled), and {@code false} on a plain panel reload so an existing rate keeps whatever its
+     * Estimate checkbox last set. A freshly-created rate is always estimated regardless.
+     */
+    private void activateSkylineParam(CalibratedBirthDeathSkylineModel cpp, String paramName,
+                                      String partition, boolean resetEstimate) {
         String paramId  = rateValuesId(paramName, partition);
         String spId     = paramName + "SP." + partition;
         String priorId  = paramName + ".prior." + partition;
@@ -206,6 +216,7 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         // Using a RealScalarParam here would break as soon as the values were promoted to a vector,
         // leaving the prior/operator/estimate flag on an orphaned node unrelated to the model.
         RealVectorParam<?> values;
+        boolean created = false;
         BEASTInterface existing = doc.pluginmap.get(paramId);
         if (existing instanceof RealVectorParam<?> rvp) {
             values = rvp;
@@ -225,9 +236,11 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
             double seed = (existing instanceof RealScalarParam<?> rsp) ? (double) rsp.get() : defaultValueFor(paramName);
             values = new RealVectorParam<>(new double[]{seed}, domainFor(paramName));
             pluginPut(paramId, values);
+            created = true;
         }
-        // Only fire the BEAST2 change event if the estimate flag actually needs to change.
-        if (!values.isEstimatedInput.get()) setEstimated(values, true);
+        // Estimate by default when the rate is newly created or its pair is (re)selected; on a plain
+        // reload leave the flag alone so an unchecked Estimate box is not silently undone.
+        if (created || resetEstimate) setEstimated(values, true);
 
         SkylineParameter sp;
         BEASTInterface existingSP = doc.pluginmap.get(spId);
@@ -380,7 +393,24 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         box.setSpacing(4);
         box.setPadding(new Insets(6));
         box.setStyle("-fx-border-color: #b0b0b0; -fx-border-radius: 4;");
-        box.getChildren().add(new Label(displayNameOf(paramName)));
+
+        // Header: parameter name + Estimate checkbox. Unchecking holds this rate fixed at its epoch
+        // value(s): the values StateNode is dropped from the sampled state (the template's connectors
+        // key its prior/operator/state off <values>/estimate=true), while the model still reads its
+        // value as a constant. Both rates may be fixed for a fully-fixed birth-death process.
+        HBox headerRow = FXUtils.newHBox();
+        headerRow.setSpacing(8);
+        headerRow.setAlignment(Pos.CENTER_LEFT);
+        headerRow.getChildren().add(new Label(displayNameOf(paramName)));
+        CheckBox estimateCb = new CheckBox("Estimate");
+        estimateCb.setSelected(sp.valuesInput.get() instanceof StateNode sn && sn.isEstimatedInput.get());
+        estimateCb.setTooltip(new Tooltip("Sample this rate. Uncheck to hold it fixed at its epoch value(s)."));
+        estimateCb.setOnAction(e -> {
+            setEstimated(sp.valuesInput.get(), estimateCb.isSelected());
+            sync();
+        });
+        headerRow.getChildren().add(estimateCb);
+        box.getChildren().add(headerRow);
 
         int nChanges = sp.changeTimesInput.get() == null ? 0 : sp.changeTimesInput.get().size();
         // Guard against corrupted state (e.g. from prior append-instead-of-replace bug).
