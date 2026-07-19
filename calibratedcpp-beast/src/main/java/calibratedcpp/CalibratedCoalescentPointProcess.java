@@ -113,7 +113,8 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
 
     public double calculateUnConditionedTreeLogLikelihood(TreeInterface tree) {
 
-        double logP = Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
+        double logSurv = logSurvival(maxTime);
+        double logP = Double.isFinite(logSurv) ? logSurv : 0.0;
         int numTaxa = tree.getLeafNodeCount();
 
         for (Node node : tree.getInternalNodes()) {
@@ -134,6 +135,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         int cladeSize = calibration.taxa.getTaxonSet().size();
 
         double logQ_t = calculateLogNodeAgeCDF(cladeHeight);
+        double logS_t = calculateLogNodeAgeSurvival(cladeHeight);
         double logDensity = calculateLogNodeAgeDensity(cladeHeight);
 
         // Base case: leaf calibration
@@ -158,8 +160,10 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
                 return Double.POSITIVE_INFINITY;
             }
             childCladeSizes[i] = child.taxa.getTaxonSet().size();
-            childCDFs[i] = calculateLogNodeAgeCDF(child.getCommonAncestor(tree).getHeight());
-            logDiff[i] = logDiffExp(logQ_t, childCDFs[i]); // log(Q(t)-Q(x_i))
+            // log(Q(t)-Q(x_i)) computed as log(S(x_i)-S(t)); the survivals stay distinct even
+            // when both CDFs have saturated at 1, where the direct difference would underflow.
+            childCDFs[i] = calculateLogNodeAgeSurvival(child.getCommonAncestor(tree).getHeight());
+            logDiff[i] = logDiffExp(childCDFs[i], logS_t);
             if (Double.isInfinite(logDiff[i])) {
                 return Double.POSITIVE_INFINITY;
             }
@@ -187,6 +191,7 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         List<CalibrationNode> rootNodes = calibrationForest.getRoots();
 
         double logQ_t = calculateLogNodeAgeCDF(maxTime);
+        double logS_t = calculateLogNodeAgeSurvival(maxTime);
 
         int numRoots = rootNodes.size();
         double[] logRootDensities = new double[numRoots];
@@ -202,8 +207,8 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
                 return Double.POSITIVE_INFINITY;
             }
             rootCladeSizes[i] = rootNodes.get(i).taxa.getTaxonSet().size();
-            rootCDFs[i] = calculateLogNodeAgeCDF(rootNodes.get(i).getCommonAncestor(tree).getHeight());
-            logDiff[i] = logDiffExp(logQ_t, rootCDFs[i]);
+            rootCDFs[i] = calculateLogNodeAgeSurvival(rootNodes.get(i).getCommonAncestor(tree).getHeight());
+            logDiff[i] = logDiffExp(rootCDFs[i], logS_t);
             if (Double.isInfinite(logDiff[i])) {
                 return Double.POSITIVE_INFINITY;
             }
@@ -243,9 +248,13 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
         logP = 0.0;
 
         logP += calculateUnConditionedTreeLogLikelihood(tree);
+        if (!conditionOnRoot && !conditionOnCalibrations) {
+            double logSurv = logSurvival(maxTime);
+            logP += Double.isFinite(logSurv) ? 0.0 : logSurv;
+        }
 
         if (conditionOnRoot && !conditionOnCalibrations) {
-            logP -= calculateLogNodeAgeDensity(maxTime) + Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
+            logP += -calculateLogNodeAgeDensity(maxTime) + logSurvival(maxTime);
         }
 
         if (conditionOnCalibrations) {
@@ -262,22 +271,44 @@ public abstract class CalibratedCoalescentPointProcess extends SpeciesTreeDistri
             if (marginalDensityOfCalibrations == Double.NEGATIVE_INFINITY) {
                 return Double.NEGATIVE_INFINITY;
             }
-            logP -=  marginalDensityOfCalibrations + Math.log1p(-Math.exp(calculateLogNodeAgeCDF(maxTime)));
+            logP -=  marginalDensityOfCalibrations;
+            double logSurv = logSurvival(maxTime);
+            logP -= Double.isFinite(logSurv) ? logSurv : 0.0;
         }
 
         return logP;
     }
 
+    private static double log1mExp(double x) {
+        if (x >= 0.0) return Double.NEGATIVE_INFINITY; // 1 - exp(0) = 0
+        return (x > Math.log(0.5)) ? Math.log(-Math.expm1(x)) : Math.log1p(-Math.exp(x));
+    }
+
+    /**
+     * log(1 - Q(time)), the log survival function.
+     * <p>
+     * This generic fallback derives the complement from the log-CDF, which is only safe while
+     * Q(time) stays away from 1.
+     */
+    public double calculateLogNodeAgeSurvival(double time) {
+        return log1mExp(calculateLogNodeAgeCDF(time));
+    }
+
+    protected double logSurvival(double time) {
+        return calculateLogNodeAgeSurvival(time);
+    }
+
     private double logDiffExp(double a, double b) {
         if (b >= a) return Double.NEGATIVE_INFINITY;
-        return a + Math.log1p(-Math.exp(b - a));
+        return a + log1mExp(b - a);
     }
 
     private double logAdd(double logA, double logB) {
-        if (Double.isInfinite(logA)) return logB;
-        if (Double.isInfinite(logB)) return logA;
-        double m = Math.max(logA, logB);
-        return m + Math.log(Math.exp(logA - m) + Math.exp(logB - m));
+        if (logA == Double.NEGATIVE_INFINITY) return logB;
+        if (logB == Double.NEGATIVE_INFINITY) return logA;
+        double max = Math.max(logA, logB);
+        double min = Math.min(logA, logB);
+        return max + Math.log1p(Math.exp(min - max)); // min - max <= 0
     }
 
     public double computeBellmanHeldKarpWithTruncatedESP(double[] lx, int M) {

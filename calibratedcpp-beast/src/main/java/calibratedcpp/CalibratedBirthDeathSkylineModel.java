@@ -293,6 +293,21 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
         return logInt - logSumExp(0.0, logInt);
     }
 
+    /**
+     * Computes log(1 - Q(time)) directly rather than via the CDF.
+     *
+     * <p>Since Q = I / (1 + I) for the accumulated integral I, the survival is exactly
+     * 1 - Q = 1 / (1 + I), so log(1 - Q) = -logSumExp(0, log I). As I grows this decays
+     * linearly with no cancellation, whereas deriving it from the CDF loses all precision
+     * once Q rounds to 1.0.</p>
+     */
+    @Override
+    public double calculateLogNodeAgeSurvival(double time) {
+        int m = getInterval(time);
+        double logInt = logSumExp(cumulativeIntegral[m], calculateSegment(lambda[m], r[m], time - intervalStartTimes[m], cumulativeExpR[m]));
+        return -logSumExp(0.0, logInt);
+    }
+
     private int getInterval(double t) {
         int i = Arrays.binarySearch(intervalStartTimes, t);
         return i < 0 ? Math.max(0, -i - 2) : i;

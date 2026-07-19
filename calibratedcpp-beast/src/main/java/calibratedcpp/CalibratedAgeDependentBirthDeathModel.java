@@ -374,6 +374,39 @@ public class CalibratedAgeDependentBirthDeathModel extends CalibratedCoalescentP
         return 0.0;
     }
 
+    /**
+     * Computes log(1 - Q(time)) directly rather than via the CDF.
+     *
+     * <p>Both paths have an exact closed form. For Erlang lifetimes the survival is the
+     * {@code oneMinusQ} ratio the CDF already forms internally, kept in log space as
+     * {@code -maxExp - log(innerFp)} so the linear decay in {@code maxExp} is carried
+     * explicitly. For the numerical solver, F_p = 1 + rho*G and Q = rho*G / F_p, so
+     * 1 - Q = 1 / F_p exactly.</p>
+     *
+     * <p>Deriving either from the CDF instead would lose all precision once Q rounds to 1.0.</p>
+     */
+    @Override
+    public double calculateLogNodeAgeSurvival(double time) {
+        time = Math.min(time, maxTime);
+        if (lifetimesAreErlang) {
+            double[] s       = computeScaledSums(time);
+            double maxExp    = s[0], scaledF = s[1];
+            double constTerm = (1.0 - rho) + rho * gammaConst;
+            double innerFp = constTerm * Math.exp(-maxExp) + rho * scaledF;
+            // Mirrors the CDF's guard: innerFp <= 0 is treated as Q = 0, hence 1 - Q = 1.
+            if (innerFp <= 0.0) return 0.0;
+            // min(0, .) is the log-space form of the CDF's min(1.0, .) clamp on the ratio.
+            return Math.min(0.0, -maxExp - Math.log(innerFp));
+        } else if (useNumericalSolver) {
+            double g  = gSpline.value(time); // G(t) = F(t) - 1
+            double fp = 1.0 + rho * g;
+            if (fp <= 0.0) return 0.0;
+            return -Math.log(fp);
+        }
+        // Degenerate branch: the CDF returns log Q = 0, i.e. Q = 1, so the survival is 0.
+        return Double.NEGATIVE_INFINITY;
+    }
+
     @Override
     public double calculateTreeLogLikelihood(TreeInterface tree) {
         updateModel();

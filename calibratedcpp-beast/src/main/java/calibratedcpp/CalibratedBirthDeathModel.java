@@ -158,6 +158,38 @@ public class CalibratedBirthDeathModel extends CalibratedCoalescentPointProcess 
     }
 
     /**
+     * Computes log(1 - Q(time)) directly, without going through the CDF.
+     *
+     * <p>Because A + B = rho*lambda + lambda*(1 - rho) - mu = lambda - mu = r, the survival
+     * function collapses to the exact closed form</p>
+     *
+     * <pre>  1 - Q(t) = r * exp(-r t) / (A + B * exp(-r t))</pre>
+     *
+     * <p>which in logs decays linearly in t with no cancellation. Deriving the complement from
+     * the CDF instead would lose all precision once Q(t) rounds to 1.0, i.e. for r*t above ~36 --
+     * routine for a supercritical process with r &gt; 1 over a deep tree.</p>
+     *
+     * @param time node age
+     * @return log survival value
+     */
+    @Override
+    public double calculateLogNodeAgeSurvival(double time) {
+        if (isCritical) {
+            // r ~ 0: Q = A t / (1 + A t), so 1 - Q = 1 / (1 + A t)
+            return -Math.log1p(A * time);
+        } else if (diversificationRate < 0) {
+            // Subcritical: multiply through by exp(r t) to keep the decaying exponential
+            double exp_rt = Math.exp(diversificationRate * time);
+            return logDiversificationRate - Math.log(-A * exp_rt - B);
+        } else {
+            // Supercritical: the -r t term carries the decay explicitly
+            double exp_neg_rt = Math.exp(-diversificationRate * time);
+            return logDiversificationRate - diversificationRate * time
+                    - Math.log(A + B * exp_neg_rt);
+        }
+    }
+
+    /**
      * Updates derived parameters based on which two input parameters were specified.
      *
      * <p>This method determines the remaining model parameters using algebraic relationships
