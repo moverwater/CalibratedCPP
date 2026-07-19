@@ -17,11 +17,30 @@
   <aside id="sidebar" class="sidebar"><div id="sidebar-nav"></div></aside>
   <main>
     <div class="content">
-
-      <!-- ==================== MODEL ==================== -->
+            <!-- ==================== MODEL ==================== -->
       <section id="model" class="doc-section">
       <h1>The Calibrated Coalescent Point Process</h1>
       <p class="lead">A BEAST2 package for calibrated molecular clock dating using the Coalescent Point Process (CPP).</p>
+          <h2>Bayesian Molecular Clock Dating</h2>
+          Bayesian molecular clock dating jointly infers substitution rates, diversificaiton dynamics, and time calibrated phylogenetic trees from molecular sequences.
+         However, when sequences are taken from a single time (like extant species), calibrations derived from fossil data are needed to separate evolutionary distance (substitutions/site)
+          into evolutionary rates (substitutions/site/time) and evolutionary time in calendar units. Calibrations take the form of priors on the TMRCA of clades we know are monophyletic,
+          these priors are informed by occurence dates of fossils belonging to or ancestral to the clade.
+          <figure class="screenshot">
+              <img src="assets/screenshots/clock-dating.png" alt="Clock Dating schematic">
+              <figcaption>Schematic showing the Bayesian clock dating workflow, data, and models.</figcaption>
+          </figure>
+          <h2>Calibrated Tree Priors</h2>
+          Simply multiplying the calibration priors with tree prior with results in a marginal prior over the TMRCA of the calibration clades
+          that is different from the one the user specifies. This can be problematic because now the prior used for calibrating the molecular clock into calendar time is not
+          the prior supported by prior evidence. To deal with this, we introduce a "Calibrated Tree Prior". This is the tree prior conditioned on calibration clades being monophyletic and having a specified TMRCA,
+          calibration priors are then priors over these TMRCAs. This is a mathematically consistent factorisation of the priors
+          and preserves the distribution specified by the user.
+          <figure class="screenshot">
+              <img src="assets/screenshots/bayes-uncond.png" alt="Multiplicative vs. Calibrated Tree Prior">
+              <figcaption>The top equation shows the multiplicative approach to specifying calibration priors, the bottom shows the
+                  consistent approach using a calibration tree prior.</figcaption>
+          </figure>
 
       <h2>Coalescent Point Process Model</h2>
       <p>
