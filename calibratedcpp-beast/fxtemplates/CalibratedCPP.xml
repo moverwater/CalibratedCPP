@@ -1,6 +1,32 @@
 <beast version='2.0'
        namespace='beastfx.app.beauti:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.branchratemodel:beast.base.evolution.speciation:beast.base.evolution.tree.coalescent:beast.base.util:beast.base.math:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.evolution:beast.base.inference.distribution:beast.base.spec.inference.distribution:beast.base.spec.inference.parameter:beast.base.spec.inference.operator:beast.base.spec.domain:calibratedcpp:calibration:calibrationprior'>
 
+    <mergewith point='misc'>
+
+        <!-- Change-time connectors, instantiated once per rate by the <plate fragment=...> in the
+             skyline subtemplate. $(ct) is the rate name.
+
+             The SkylineParameters are created dynamically by CalibratedBirthDeathSkylineInputEditor
+             rather than declared in CDATA, so these ids follow its naming: the change-times vector
+             is "<rate>SP.t:$(n).changeTimes", with its prior and ChangeTimeOperator suffixed
+             ".prior" and "Operator". Those objects are likewise created by the editor when the user
+             ticks "Estimate change times" — this fragment only wires up what already exists, which
+             is why it carries no CDATA of its own. -->
+        <fragment id='CalibratedCPPChangeTimes' spec='beastfx.app.beauti.Fragment'>
+            <connect srcID='$(ct)SP.t:$(n).changeTimes' targetID='state' inputName='stateNode'
+                     if='inposterior(CalibratedCPP.t:$(n)) and $(ct)SP.t:$(n).changeTimes/estimate=true'/>
+            <connect srcID='$(ct)SP.t:$(n).changeTimes.prior' targetID='prior' inputName='distribution'
+                     if='inposterior(CalibratedCPP.t:$(n)) and $(ct)SP.t:$(n).changeTimes/estimate=true'>
+                Uniform prior on the $(ct) change times of tree t:$(n)
+            </connect>
+            <connect srcID='$(ct)SP.t:$(n).changeTimesOperator' targetID='mcmc' inputName='operator'
+                     if='inposterior(CalibratedCPP.t:$(n)) and $(ct)SP.t:$(n).changeTimes/estimate=true'/>
+            <connect srcID='$(ct)SP.t:$(n).changeTimes' targetID='tracelog' inputName='log'
+                     if='inposterior(CalibratedCPP.t:$(n)) and $(ct)SP.t:$(n).changeTimes/estimate=true'/>
+        </fragment>
+
+    </mergewith>
+
     <mergewith point='treePriorTemplates'>
 
         <subtemplate id='CalibratedBirthDeathSkyline'
@@ -148,6 +174,11 @@ CalibratedCPPTreeRootScaler/index/=Operators/BactrianTreeScaler/
                      if='inposterior(CalibratedCPP.t:$(n)) and CBDS_deathRate.t:$(n)/estimate=true'/>
             <connect srcID='reproductiveNumberScaler.t:$(n)' targetID='mcmc' inputName='operator'
                      if='inposterior(CalibratedCPP.t:$(n)) and CBDS_reproductiveNumber.t:$(n)/estimate=true'/>
+
+            <!-- Change times: state/prior/operator/tracelog per rate. See the
+                 CalibratedCPPChangeTimes fragment in the 'misc' mergewith above. -->
+            <plate fragment='CalibratedCPPChangeTimes' var='ct'
+                   range='birthRate,deathRate,diversificationRate,reproductiveNumber,turnover'/>
 
             <!-- Logging -->
             <connect srcID='CalibratedCPP.t:$(n)' targetID='tracelog' inputName='log'

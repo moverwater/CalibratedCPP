@@ -16,11 +16,16 @@ import beast.base.evolution.alignment.Taxon;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.inference.StateNode;
 import beast.base.spec.domain.NonNegativeReal;
+import beast.base.spec.domain.Real;
+import beast.base.spec.inference.distribution.IID;
+import beast.base.spec.inference.distribution.Uniform;
 import beast.base.spec.inference.parameter.RealScalarParam;
+import beast.base.spec.inference.parameter.RealVectorParam;
 import beastfx.app.beauti.TreeDistributionInputEditor;
 import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.util.FXUtils;
 import calibratedcpp.CalibratedCoalescentPointProcess;
+import calibratedcpp.operators.ChangeTimeOperator;
 import calibrationprior.CalibrationCladePrior;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -366,6 +371,110 @@ public abstract class CalibratedCPPInputEditor extends TreeDistributionInputEdit
 
     protected static void setEstimated(Object node, boolean estimated) {
         if (node instanceof StateNode sn) sn.isEstimatedInput.setValue(estimated, sn);
+    }
+
+    /**
+     * Default upper bound on the change-time prior for absolute times.
+     *
+     * <p>An arbitrary starting value, matching BDMM-Prime's hardcoded {@code Uniform(0, 10)}
+     * default. It is not a modelling claim and will be wrong for datasets on a different
+     * timescale — it exists only so the Priors panel opens with something editable. Set it there
+     * rather than relying on this.
+     *
+     * <p>It must not be derived from the root height or origin: truncating at a tree-dependent
+     * boundary makes the truncation's normalising constant a function of the tree, and omitting
+     * that constant biases the tree posterior. Times above it are not an error either — they
+     * simply bound an epoch lying outside the process, which contributes nothing.
+     */
+    public static final double CHANGE_TIME_PRIOR_UPPER = 10.0;
+
+    /**
+     * Upper bound for the change-time prior: 1 for relative times, otherwise whichever is larger of
+     * {@link #CHANGE_TIME_PRIOR_UPPER} and twice the largest current change time.
+     *
+     * <p>The bound must contain the current values or the prior cannot be built at all — IID
+     * validates its parameter against the distribution's support and throws "Tensor param is not
+     * valid" otherwise, which is why a fixed default silently suppressed the prior for anyone
+     * working on a timescale larger than it. Widening to fit is a starting value, not an inference:
+     * the factor of two is arbitrary headroom, and the bound belongs in the Priors panel.
+     */
+    private static double changeTimePriorUpper(RealVectorParam<?> ct, boolean relative) {
+        if (relative) return 1.0;
+        double max = 0.0;
+        for (int i = 0; i < ct.size(); i++) max = Math.max(max, ct.get(i));
+        return Math.max(CHANGE_TIME_PRIOR_UPPER, max * 2.0);
+    }
+
+    /**
+     * Widens the change-time prior if the times have grown past its support. Called after a panel
+     * edit so that typing a larger time does not leave the prior unbuildable on the next sync.
+     */
+    public static void refreshChangeTimePrior(BeautiDoc doc, RealVectorParam<?> ct, boolean relative) {
+        if (ct == null || !ct.isEstimatedInput.get()) return;
+        setChangeTimesEstimated(doc, ct, relative, true);
+    }
+
+    /**
+     * Sets the estimate flag on a change-times vector, creating its prior and
+     * {@link ChangeTimeOperator} on first activation and refreshing the prior's bounds thereafter.
+     * Static so that both this panel's skyline editor and {@link SkylineParameterInputEditor} share
+     * one implementation.
+     */
+    public static void setChangeTimesEstimated(BeautiDoc doc, RealVectorParam<?> ct,
+                                               boolean relative, boolean estimated) {
+        if (ct == null) return;
+
+        ct.isEstimatedInput.setValue(estimated, ct);
+        if (!estimated) return;
+
+        double upper = changeTimePriorUpper(ct, relative);
+        String priorId    = ct.getID() + ".prior";
+        String operatorId = ct.getID() + "Operator";
+
+        // Uniform is wrapped in an IID so the prior applies to every change time in the vector,
+        // however many epochs the user later configures.
+        try {
+            if (doc.pluginmap.get(priorId) instanceof IID prior) {
+                // Update the existing bound values in place. Re-setting the "distr" input instead
+                // fails with "could not add entry for distr": BEAST's Input.setValue does not
+                // replace an input that already holds a value.
+                if (prior.distInput.get() instanceof Uniform u) {
+                    if (u.lowerInput.get() instanceof RealScalarParam<?> lo) lo.set(0.0);
+                    if (u.upperInput.get() instanceof RealScalarParam<?> hi) hi.set(upper);
+                    u.initAndValidate();  // Uniform caches its distribution from the bounds
+                }
+            } else {
+                Uniform base = new Uniform();
+                base.setInputValue("lower", new RealScalarParam<>(0.0, Real.INSTANCE));
+                base.setInputValue("upper", new RealScalarParam<>(upper, Real.INSTANCE));
+                base.initAndValidate();
+
+                IID prior = new IID();
+                prior.setInputValue("distr", base);
+                prior.setInputValue("param", ct);
+                prior.initAndValidate();
+                prior.setID(priorId);
+                doc.addPlugin(prior);
+            }
+        } catch (Exception e) {
+            System.err.println("CalibratedCPP: could not build the change-time prior for "
+                    + ct.getID() + " with upper=" + upper + " — " + e.getMessage()
+                    + ". The prior will be missing from the Priors panel.");
+        }
+
+        // The operator takes no bounds of its own — it reads them from the parameter's domain, so
+        // the support is defined in exactly one place per concern: the domain for hard limits, the
+        // prior above for the density.
+        if (!doc.pluginmap.containsKey(operatorId)) {
+            try {
+                ChangeTimeOperator op = new ChangeTimeOperator();
+                op.setInputValue("changeTimes", ct);
+                op.setInputValue("weight", 1.0);
+                op.initAndValidate();
+                op.setID(operatorId);
+                doc.addPlugin(op);
+            } catch (Exception e) { e.printStackTrace(); }
+        }
     }
 
     protected static TextField compactField(double value) {

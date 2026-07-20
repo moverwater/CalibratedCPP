@@ -2,11 +2,15 @@ package calibratedcpp.beauti;
 
 import beast.base.core.BEASTInterface;
 import beast.base.core.Input;
+import beast.base.inference.StateNode;
 import beast.base.spec.domain.NonNegativeReal;
 import beast.base.spec.domain.Real;
+import beast.base.spec.inference.distribution.IID;
+import beast.base.spec.inference.distribution.Uniform;
 import beast.base.spec.inference.parameter.RealScalarParam;
 import beast.base.spec.inference.parameter.RealVectorParam;
 import beast.base.spec.type.Tensor;
+import calibratedcpp.operators.ChangeTimeOperator;
 import beastfx.app.inputeditor.BeautiDoc;
 import beastfx.app.inputeditor.InputEditor;
 import beastfx.app.util.FXUtils;
@@ -87,10 +91,15 @@ public class SkylineParameterInputEditor extends InputEditor.Base {
         timesAreRelativeCb.setSelected(skylineParameter.timesAreRelativeInput.get());
         timesAreRelativeCb.setTooltip(new Tooltip(
                 "If checked, change times are expressed as fractions of the total process length (must be between 0 and 1)."));
+        CheckBox estimateTimesCb = new CheckBox("Estimate change times");
+        estimateTimesCb.setTooltip(new Tooltip(
+                "Sample the change times rather than holding them fixed. Proposals come from a "
+                        + "ChangeTimeOperator, which preserves their ordering."));
+        estimateTimesCb.setSelected(changeTimesParam() instanceof StateNode sn && sn.isEstimatedInput.get());
         Button distributeEvenlyBtn = new Button("Distribute evenly");
         distributeEvenlyBtn.setTooltip(new Tooltip(
                 "Space change times evenly over the process (fractions if relative, else 1, 2, ... )."));
-        timeFlagsRow.getChildren().addAll(timesAreAgesCb, timesAreRelativeCb, distributeEvenlyBtn);
+        timeFlagsRow.getChildren().addAll(timesAreAgesCb, timesAreRelativeCb, estimateTimesCb, distributeEvenlyBtn);
         changeTimesBox.getChildren().add(timeFlagsRow);
 
         changeTimesRow = FXUtils.newHBox();
@@ -113,9 +122,18 @@ public class SkylineParameterInputEditor extends InputEditor.Base {
         // ── Listeners ────────────────────────────────────────────────────────
         epochSpinner.valueProperty().addListener((obs, oldVal, newVal) -> {
             int nNew = newVal - 1;
+            // Dropping to a single epoch detaches the change-times parameter from the model, so
+            // clear the estimate flag first — otherwise its prior and operator would stay connected
+            // to a StateNode the model no longer reads, and BEAST would reject the run.
+            if (nNew == 0 && estimateTimesCb.isSelected()) estimateTimesCb.setSelected(false);
             ensureChangeTimes(nNew);
             ensureValues(newVal);
             rebuildUI(nNew, timesAreAgesCb, timesAreRelativeCb);
+            sync();
+        });
+
+        estimateTimesCb.selectedProperty().addListener((obs, o, n) -> {
+            setChangeTimesEstimated(n);
             sync();
         });
 
@@ -127,6 +145,9 @@ public class SkylineParameterInputEditor extends InputEditor.Base {
 
         timesAreRelativeCb.selectedProperty().addListener((obs, o, n) -> {
             skylineParameter.timesAreRelativeInput.setValue(n, skylineParameter);
+            // The support changes with the scale (fractions vs absolute times), so refresh the
+            // prior and operator bounds before redistributing into the new scale.
+            if (estimateTimesCb.isSelected()) setChangeTimesEstimated(true);
             // Redistribute evenly in the new scale so existing values don't violate constraints
             distributeEvenly(currentChangeCount(), n);
             rebuildUI(currentChangeCount(), timesAreAgesCb, timesAreRelativeCb);
@@ -233,16 +254,25 @@ public class SkylineParameterInputEditor extends InputEditor.Base {
         if (ctParam == null) {
             double[] init = evenlySpaced(nChanges, relative);
             ctParam = new RealVectorParam<>(init, NonNegativeReal.INSTANCE);
+            // See the matching note in CalibratedBirthDeathSkylineInputEditor: StateNode defaults
+            // "estimate" to true, which would sample change times nobody asked to estimate.
+            ctParam.isEstimatedInput.setValue(false, ctParam);
             ctParam.setID(skylineParameter.getID() + ".changeTimes");
             doc.addPlugin(ctParam);
             skylineParameter.changeTimesInput.setValue(ctParam, skylineParameter);
         } else {
-            double[] old = toDoubles(ctParam);
-            double[] updated = new double[nChanges];
-            for (int i = 0; i < nChanges; i++)
-                updated[i] = i < old.length ? old[i] : evenlySpaced(nChanges, relative)[i];
-            resetVectorValues(ctParam, updated);
+            // Continue past the last existing entry rather than filling from evenlySpaced, which
+            // would produce a non-monotonic vector once the user has typed a large value.
+            resetVectorValues(ctParam,
+                    CalibratedBirthDeathSkylineInputEditor.extendChangeTimes(
+                            toDoubles(ctParam), nChanges, relative));
         }
+    }
+
+    /** Delegates to the shared implementation so both skyline editors behave identically. */
+    private void setChangeTimesEstimated(boolean estimated) {
+        CalibratedCPPInputEditor.setChangeTimesEstimated(
+                doc, changeTimesParam(), skylineParameter.timesAreRelativeInput.get(), estimated);
     }
 
     private void distributeEvenly(int nChanges, boolean relative) {

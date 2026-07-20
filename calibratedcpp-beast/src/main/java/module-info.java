@@ -30,6 +30,7 @@ open module calibratedcpp.beast {
         calibratedcpp.CalibratedAgeDependentBirthDeathModel,
         calibratedcpp.CalibratedCPPTreeInitialiser,
         calibratedcpp.SkylineParameter,
+        calibratedcpp.operators.ChangeTimeOperator,
         calibrationprior.CalibrationPrior,
         calibrationprior.CalibrationDistribution,
         calibrationprior.CalibrationCladePrior,

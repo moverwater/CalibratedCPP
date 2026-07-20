@@ -117,18 +117,6 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
     }
 
     @Override
-    protected void onOriginReconnected(CalibratedCoalescentPointProcess model) {
-        // Reconnecting origin means process length is measured from origin, so skyline change times
-        // must be interpreted relative to that length.
-        CalibratedBirthDeathSkylineModel cpp = (CalibratedBirthDeathSkylineModel) model;
-        for (String name : ALL_RATE_NAMES) {
-            SkylineParameter sp = getSkylineInput(cpp, name).get();
-            if (sp == null) continue;
-            sp.timesAreRelativeInput.setValue(true, sp);
-        }
-    }
-
-    @Override
     protected void ensureOriginPriorAndOperator(String partition, RealScalarParam<?> scalar) {
         String priorId  = "originParam.prior." + partition;
         String scalerId = "originParamScaler." + partition;
@@ -177,6 +165,11 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
                 // so the deselected rate is dropped from the sampled state.
                 BEASTInterface valuesNode = doc.pluginmap.get(rateValuesId(name, partition));
                 if (valuesNode instanceof StateNode sn) setEstimated(sn, false);
+                // The change times need the same treatment: their connectors key off this rate's
+                // own changeTimes/estimate flag, so leaving it set would keep the prior, operator
+                // and state node attached to a SkylineParameter the model no longer references —
+                // an operator acting on a StateNode outside the posterior, which BEAST rejects.
+                setEstimated(changeTimesParam(in.get()), false);
                 in.setValue(null, cpp);
             }
         }
@@ -445,9 +438,14 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         CheckBox relCb = new CheckBox("Relative to process length (0–1)");
         relCb.setSelected(sp.timesAreRelativeInput.get());
         relCb.setTooltip(new Tooltip("Change times as fractions of process length — must be between 0 and 1."));
+        CheckBox estTimesCb = new CheckBox("Estimate change times");
+        estTimesCb.setSelected(changeTimesParam(sp) instanceof StateNode sn && sn.isEstimatedInput.get());
+        estTimesCb.setTooltip(new Tooltip("Sample the change times rather than holding them fixed. "
+                + "Proposals come from a ChangeTimeOperator, which preserves their ordering."));
+        estTimesCb.setDisable(nChanges == 0);
         Button distBtn = new Button("Distribute evenly");
         distBtn.setTooltip(new Tooltip("Space change times evenly (fractions if relative, else 1, 2, ...)."));
-        flagsRow.getChildren().addAll(agesCb, relCb, distBtn);
+        flagsRow.getChildren().addAll(agesCb, relCb, estTimesCb, distBtn);
         box.getChildren().add(flagsRow);
 
         HBox ctRow = FXUtils.newHBox();
@@ -470,30 +468,50 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
 
         epochSpinner.valueProperty().addListener((obs, o, nv) -> {
             int nc = nv - 1;
+            // Dropping to a single epoch detaches the change-times vector from the model, so clear
+            // the estimate flag first — otherwise its prior and operator would stay connected to a
+            // StateNode the model no longer reads, and BEAST would reject the run.
+            if (nc == 0 && estTimesCb.isSelected()) estTimesCb.setSelected(false);
             ensureChangeTimes(sp, nc);
             ensureValues(sp, nv);
             ctBox.setVisible(nc > 0);
             ctBox.setManaged(nc > 0);
+            estTimesCb.setDisable(nc == 0);
+            // Adopt the flag of whatever vector now backs this rate, so the box never claims the
+            // opposite of what will be written to the XML.
+            estTimesCb.setSelected(changeTimesParam(sp) instanceof StateNode sn && sn.isEstimatedInput.get());
             rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
+        });
+        estTimesCb.selectedProperty().addListener((obs, o, n) -> {
+            // sync() re-parses the model, which runs SkylineParameter.initAndValidate() and its
+            // strictly-increasing requirement. Normalise first so hand-entered times out of order
+            // cannot abort the sync (and with it the connector run that attaches the prior).
+            normaliseChangeTimes(sp);
+            rebuildSkylineRows(sp, epochSpinner.getValue() - 1, ctRow, valRow, agesCb, relCb);
+            setChangeTimesEstimated(doc, changeTimesParam(sp), sp.timesAreRelativeInput.get(), n);
+            sync();
         });
         agesCb.selectedProperty().addListener((obs, o, n) -> {
             sp.timesAreAgesInput.setValue(n, sp);
             rebuildSkylineRows(sp, epochSpinner.getValue() - 1, ctRow, valRow, agesCb, relCb);
-            try { sp.initAndValidate(); } catch (Exception ignored) {}
+            revalidate(sp);
         });
         relCb.selectedProperty().addListener((obs, o, n) -> {
             sp.timesAreRelativeInput.setValue(n, sp);
+            // The support changes with the scale (fractions vs absolute times), so refresh the
+            // prior and operator bounds to match.
+            if (estTimesCb.isSelected()) setChangeTimesEstimated(doc, changeTimesParam(sp), n, true);
             int nc = epochSpinner.getValue() - 1;
             ctBox.setVisible(nc > 0);
             ctBox.setManaged(nc > 0);
             rebuildSkylineRows(sp, nc, ctRow, valRow, agesCb, relCb);
             setTimeFieldValues(ctRow, evenlySpaced(nc, n));
-            try { sp.initAndValidate(); } catch (Exception ignored) {}
+            revalidate(sp);
         });
         distBtn.setOnAction(e -> {
             int nc = epochSpinner.getValue() - 1;
             setTimeFieldValues(ctRow, evenlySpaced(nc, relCb.isSelected()));
-            try { sp.initAndValidate(); } catch (Exception ignored) {}
+            revalidate(sp);
         });
         return box;
     }
@@ -511,8 +529,16 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
                 ctRow.getChildren().add(new Label(agesCb.isSelected() ? ("Age " + (i + 1) + ":") : ("t" + (i + 1) + ":")));
                 final int fi = i;
                 TextField tf = compactField(v);
+                String limits = relative ? "Relative change times must be between 0 and 1."
+                                         : "Change times must not be negative.";
                 tf.textProperty().addListener((obs, old, nw) -> {
-                    try { setChangeTime(sp, fi, Double.parseDouble(nw)); } catch (NumberFormatException ignored) {}
+                    boolean ok;
+                    try { ok = setChangeTime(sp, fi, Double.parseDouble(nw)); }
+                    catch (NumberFormatException e) { ok = false; }
+                    // Mark rather than revert: reverting fights the user mid-keystroke, and the
+                    // value is simply not committed to the parameter until it is valid.
+                    tf.setStyle(ok ? "" : "-fx-border-color: #c0392b; -fx-border-width: 1;");
+                    tf.setTooltip(ok ? null : new Tooltip(limits));
                 });
                 ctRow.getChildren().add(tf);
             }
@@ -545,16 +571,18 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
                 ct = (RealVectorParam<NonNegativeReal>) v;
             else {
                 ct = new RealVectorParam<>(evenlySpaced(nChanges, relative), NonNegativeReal.INSTANCE);
+                // StateNode's "estimate" input defaults to true, so a freshly created vector would
+                // be sampled without the user ever ticking the box — and the unticked checkbox
+                // would disagree with it. Change times are fixed unless explicitly estimated, which
+                // is why BDMM-Prime's template spells out estimate="false" on its equivalents.
+                setEstimated(ct, false);
                 if (ctId != null) { ct.setID(ctId); doc.addPlugin(ct); }
             }
             sp.changeTimesInput.setValue(ct, sp);
         }
         double[] old = toDoubles(ct);
         if (old.length == nChanges) return;  // already correct size — skip resetVector and its cascade
-        double[] defaults = evenlySpaced(nChanges, relative);
-        double[] upd = new double[nChanges];
-        for (int i = 0; i < nChanges; i++) upd[i] = i < old.length ? old[i] : defaults[i];
-        resetVector(ct, upd);
+        resetVector(ct, extendChangeTimes(old, nChanges, relative));
     }
 
     private static void setTimeFieldValues(HBox ctRow, double[] values) {
@@ -607,11 +635,89 @@ public class CalibratedBirthDeathSkylineInputEditor extends CalibratedCPPInputEd
         }
     }
 
-    private void setChangeTime(SkylineParameter sp, int idx, double val) {
+    /**
+     * Resizes a change-time vector to {@code nChanges}, preserving existing entries and continuing
+     * past the last one so the result stays strictly increasing.
+     *
+     * <p>The obvious implementation — filling new slots from {@link #evenlySpaced} — breaks as soon
+     * as the user has typed a value larger than the defaults: extending {@code [66.0]} would give
+     * {@code [66.0, 2.0]}, which {@link SkylineParameter} rejects, aborting the sync that renders
+     * the panel and connects the priors.
+     */
+    static double[] extendChangeTimes(double[] old, int nChanges, boolean relative) {
+        if (old.length == 0) return evenlySpaced(nChanges, relative);
+
+        double[] upd = new double[nChanges];
+        int keep = Math.min(old.length, nChanges);
+        System.arraycopy(old, 0, upd, 0, keep);
+        if (nChanges <= keep) return upd;
+
+        double last = upd[keep - 1];
+        int nNew = nChanges - keep;
+        // Relative times must stay inside (0, 1), so spread the new entries over what is left of
+        // the interval; absolute times continue at the existing spacing, or unit steps if there is
+        // only one entry to infer it from.
+        double step = relative
+                ? (1.0 - last) / (nNew + 1)
+                : (keep > 1 ? upd[keep - 1] - upd[keep - 2] : 1.0);
+        // Guarantee a positive step even from a degenerate stored vector (equal entries, or a
+        // relative time already at 1.0). Overshooting the relative range is preferable to emitting
+        // duplicates: SkylineParameter then reports it clearly instead of the times silently tying.
+        if (step <= 0) step = relative ? 1e-6 : 1.0;
+        for (int i = keep; i < nChanges; i++) upd[i] = last + step * (i - keep + 1);
+        return upd;
+    }
+
+    /**
+     * Sorts the change times ascending, the ordering {@link SkylineParameter} requires. Panel input
+     * is not MCMC state, so reordering it here is safe; it keeps the strictly-increasing check as a
+     * diagnostic for hand-written XML rather than something a GUI edit can trip over.
+     */
+    private void normaliseChangeTimes(SkylineParameter sp) {
         RealVectorParam<?> ct = changeTimesParam(sp);
-        if (ct == null) return;
+        if (ct == null || ct.size() < 2) return;
         double[] vals = toDoubles(ct);
-        if (idx < vals.length) { vals[idx] = val; resetVector(ct, vals); }
+        double[] sorted = vals.clone();
+        Arrays.sort(sorted);
+        if (!Arrays.equals(vals, sorted)) resetVector(ct, sorted);
+    }
+
+    /**
+     * Re-runs validation after a panel edit. Failures are reported rather than swallowed: a throw
+     * here means the panel has put the parameter into a state the model rejects, which previously
+     * stayed invisible until the next sync() failed for no apparent reason.
+     */
+    private void revalidate(SkylineParameter sp) {
+        try {
+            sp.initAndValidate();
+        } catch (Exception e) {
+            System.err.println("CalibratedCPP: " + (sp.getID() != null ? sp.getID() : "skyline parameter")
+                    + " is not in a valid state after this edit — " + e.getMessage());
+        }
+    }
+
+    /**
+     * Writes a change time, rejecting values the model would refuse.
+     *
+     * <p>Relative times are fractions of the process length and must lie in [0, 1]; note that
+     * {@link #onOriginReconnected} switches every rate to relative when an origin is set, so a
+     * panel showing an origin silently constrains these fields. Writing an out-of-range value would
+     * make {@link SkylineParameter#initAndValidate} throw during the next sync, which aborts both
+     * the panel refresh and the connector run that attaches the priors.
+     */
+    private boolean setChangeTime(SkylineParameter sp, int idx, double val) {
+        RealVectorParam<?> ct = changeTimesParam(sp);
+        if (ct == null) return false;
+        if (val < 0.0) return false;
+        if (sp.timesAreRelativeInput.get() && val > 1.0) return false;
+        double[] vals = toDoubles(ct);
+        if (idx >= vals.length) return false;
+        vals[idx] = val;
+        resetVector(ct, vals);
+        // Widen the prior if the new time has outgrown its support; otherwise the prior becomes
+        // unbuildable and silently vanishes from the Priors panel on the next sync.
+        refreshChangeTimePrior(doc, ct, sp.timesAreRelativeInput.get());
+        return true;
     }
 
     private void setEpochValue(SkylineParameter sp, int idx, double val) {
