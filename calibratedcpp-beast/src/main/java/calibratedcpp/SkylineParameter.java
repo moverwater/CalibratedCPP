@@ -45,6 +45,12 @@ public class SkylineParameter extends CalculationNode {
                 double time = (Double) times.get(i);
                 if (time < 0.0) throw new IllegalArgumentException("The time " + getID() + " must be a non-negative number.");
                 if (isRelative && time > 1.0) throw new IllegalArgumentException("When times are relative changeTimes (" + getID() + ") should be less than 1.");
+                // Strictly increasing is required: the model no longer sorts, so an out-of-order
+                // vector would otherwise be reinterpreted silently rather than reported. It is also
+                // the precondition of ChangeTimeOperator, which preserves the ordering it starts with.
+                if (i > 0 && time <= (Double) times.get(i - 1))
+                    throw new IllegalArgumentException("changeTimes of " + getID() + " must be strictly increasing, but entry "
+                            + i + " (" + time + ") is not greater than entry " + (i - 1) + " (" + times.get(i - 1) + ").");
             }
         }
     }

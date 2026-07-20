@@ -113,12 +113,16 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
         List<Double> divTimes = processSafe(diversificationRateInput, maxT);
         List<Double> tTimes = processSafe(turnoverInput, maxT);
 
-        // 2. Create Master Timeline (Union of all times)
+        // 2. Create Master Timeline (Union of all times).
+        // Only cuts falling strictly inside (0, maxT) become integration boundaries: a cut outside
+        // that range bounds an epoch that lies wholly outside the process and so contributes
+        // nothing. The per-parameter lists above deliberately retain those out-of-range cuts, since
+        // getVal() needs the full list to keep values[0] pinned to the root epoch.
         SortedSet<Double> timesSet = new TreeSet<>();
         timesSet.add(0.0);
-        timesSet.addAll(bTimes); timesSet.addAll(dTimes);
-        timesSet.addAll(rTimes); timesSet.addAll(divTimes);
-        timesSet.addAll(tTimes);
+        for (List<Double> cuts : List.of(bTimes, dTimes, rTimes, divTimes, tTimes))
+            for (double t : cuts)
+                if (t > 1e-10 && t < maxT - 1e-10) timesSet.add(t);
 
         intervalStartTimes = timesSet.stream().mapToDouble(d -> d).toArray();
         int n = intervalStartTimes.length;
@@ -182,10 +186,14 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
 
         if (timeP != null) {
             // --- Explicit Change Times ---
-            double[] vals = new double[timeP.size()];
-            for (int i = 0; i < timeP.size(); i++) vals[i] = (Double) timeP.get(i);
-            Arrays.sort(vals);
-            for (double v : vals) {
+            // No sorting: SkylineParameter.initAndValidate() requires changeTimes to be strictly
+            // increasing, and each conversion below is monotone, so the resulting ages are already
+            // ordered — ascending when reverse=TRUE, descending when reverse=FALSE (both from-root
+            // conversions negate v), which the single reverse() below corrects. Sorting instead
+            // would silently reinterpret an out-of-order parameter rather than letting it error.
+            double[] rawTimes = new double[timeP.size()];
+            for (int i = 0; i < timeP.size(); i++) rawTimes[i] = (Double) timeP.get(i);
+            for (double v : rawTimes) {
                 double tAge;
                 if (relative) {
                     // relative [0,1]
@@ -199,8 +207,16 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
                     tAge = reverse ? v : (maxTime - v);
                 }
 
-                if (tAge > 1e-10 && tAge < maxTime - 1e-10) times.add(tAge);
+                // Out-of-range cuts are deliberately retained, so that this list always has
+                // exactly rateP.size()-1 entries and getVal()'s index flip stays exact. A cut
+                // older than the root (age > maxTime) sorts to the end and leaves values[0]
+                // unused; a cut younger than the present (age < 0) sorts to the front and leaves
+                // the last value unused. Either way the epoch lies wholly outside the process and
+                // correctly contributes nothing.
+                times.add(tAge);
             }
+            // From-root conversions negate v, so the ages came out descending.
+            if (!reverse) Collections.reverse(times);
         } else {
             // --- Implicit Equidistant Times ---
             // If explicit times are missing, we assume equidistant intervals over maxTime.
@@ -212,7 +228,6 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
                 }
             }
         }
-        Collections.sort(times);
         return times;
     }
 
@@ -240,6 +255,10 @@ public class CalibratedBirthDeathSkylineModel extends CalibratedCoalescentPointP
         //
         // So, if we are at intervalIndex 0 (Present), we need the LAST rate index.
         // If we are at intervalIndex Max (Root), we need the FIRST rate index.
+        //
+        // This flip is only exact while cuts.size() == p.size()-1, which is why processInput()
+        // retains out-of-range cuts rather than discarding them: dropping one would shift every
+        // epoch's rate, not just the out-of-range epoch's.
 
         int pIdx = p.size() - 1 - intervalIndex;
 

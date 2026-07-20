@@ -33,7 +33,7 @@
           <h2>Calibrated Tree Priors</h2>
           Simply multiplying the calibration priors with tree prior with results in a marginal prior over the TMRCA of the calibration clades
           that is different from the one the user specifies. This can be problematic because now the prior used for calibrating the molecular clock into calendar time is not
-          the prior supported by prior evidence. To deal with this, we introduce a "Calibrated Tree Prior". This is the tree prior conditioned on calibration clades being monophyletic and having a specified TMRCA,
+          the prior supported by prior evidence. To deal with this, we introduce a <strong>Calibrated Tree Prior</strong>. This is the tree prior conditioned on calibration clades being monophyletic and having a specified TMRCA,
           calibration priors are then priors over these TMRCAs. This is a mathematically consistent factorisation of the priors
           and preserves the distribution specified by the user.
           <figure class="screenshot">
@@ -51,6 +51,12 @@
         <li>Individuals die at some rate $$\mu(x,t)$$ that depends on the age of the individual $$x$$ and the time $$t$$.</li>
         <li>Individuals give birth to new individuals at a rate $$\lambda(t)$$ depending only on time.</li>
       </ul>
+          <figure class="screenshot">
+              <img src="assets/screenshots/cpp.png" alt="CPP Model">
+              <figcaption>The left shows the complete tree where individuals die at a rate that depends on time and the age
+                  of the individual. Along each lifetime, new individuals arise at a rate that depends only on time.
+                  The right shows the reconstructed tree relating individuals that are alive at the present.</figcaption>
+          </figure>
       <p>
         The Calibrated CPP is a <strong>calibrated tree prior</strong> built on the CPP: it is used for molecular clock
         dating by conditioning on the existence and ages of the most recent common ancestors
@@ -83,6 +89,11 @@
         <li><strong>Values</strong> — the rate in each epoch, ordered from the root towards the present.</li>
         <li><strong>Change times</strong> — the epoch boundaries. They can be fixed by the user or estimated, and given as ages before the present, as forward times, or as fractions of the tree's total age. If omitted, the epochs are spread evenly over the age of the tree.</li>
       </ul>
+          <figure class="screenshot">
+              <img src="assets/screenshots/skylineparam.png"/>
+              <figcaption>Skyline values are ordered from root to tip (past to present). Change times can be specified either
+              as ages (time before the present) or as times since the origin/root of the tree.</figcaption>
+          </figure>
       <p>
         The process is anchored in time in one of two ways: by conditioning on the tree's
         <strong>root height</strong>, or by giving an explicit <strong>origin</strong> time (the
@@ -188,7 +199,7 @@
           This can be acheived with the <code>CalibratedCPPTreeInitialiser</code> in an <code>init</code> element after the
           <code>state</code> element where the tree is defined in the usual way. The following example assumes there is
           an <code>alignment</code> element with <code>id="alignment"</code>.
-          <pre><code>&lt;state&gt;
+          <pre><code>&lt;state id="state" spec="State" storeEvery="5000"&gt;
     &lt;tree id="tree" spec="beast.base.evolution.tree.Tree" name="stateNode"&gt;
         &lt;taxonset id="taxa" spec="TaxonSet"&gt;
             &lt;alignment idref="alignment"/&gt;
@@ -225,21 +236,18 @@
         Conditioned on the root, parameterised by a two-epoch diversification rate and a
         constant turnover:
       </p>
-      <pre><code>&lt;!-- rate values: a two-epoch diversification rate (vector), a constant turnover, and rho --&gt;
-&lt;stateNode id="diversificationValues" spec="beast.base.spec.inference.parameter.RealVectorParam"
+      <pre><code>&lt;state id="state" spec="State" storeEvery="5000"&gt;
+    &lt;!-- rate values: a two-epoch diversification rate (vector), a constant turnover --&gt;
+    &lt;stateNode id="diversificationValues" spec="beast.base.spec.inference.parameter.RealVectorParam"
            domain="PositiveReal" dimension="2"&gt;0.2 0.1&lt;/stateNode&gt;
-&lt;stateNode id="changeTimes" spec="beast.base.spec.inference.parameter.RealVectorParam"
-           domain="NonNegativeReal" dimension="1"&gt;30.0&lt;/stateNode&gt;
-&lt;stateNode id="turnoverValue" spec="beast.base.spec.inference.parameter.RealScalarParam"
+    &lt;stateNode id="turnoverValue" spec="beast.base.spec.inference.parameter.RealScalarParam"
            domain="UnitInterval" value="0.5"/&gt;
-&lt;stateNode id="rho" spec="beast.base.spec.inference.parameter.RealScalarParam"
-           domain="UnitInterval" value="1.0"/&gt;
-
+&lt;/state&gt;
 &lt;distribution id="treePrior" spec="calibratedcpp.CalibratedBirthDeathSkylineModel"
-              tree="@tree" conditionOnRoot="true" rho="@rho"&gt;
+              tree="@tree" conditionOnRoot="true" rho="0.1"&gt;
     &lt;!-- two-epoch diversification rate; one change time (as an age) splits it in two --&gt;
     &lt;diversificationRate spec="calibratedcpp.SkylineParameter"
-        values="@diversificationValues" changeTimes="@changeTimes" timesAreAges="true"/&gt;
+        values="@diversificationValues" changeTimes="30.0" timesAreAges="true"/&gt;
     &lt;!-- constant turnover: a single value, no change times --&gt;
     &lt;turnover spec="calibratedcpp.SkylineParameter" values="@turnoverValue"/&gt;
 &lt;/distribution&gt;</code></pre>
@@ -264,17 +272,16 @@
           <tr><td><code>rho</code></td><td>RealScalar</td><td>Sampling probability for each extant individual</td></tr>
         </tbody>
       </table>
-      <pre><code>&lt;stateNode id="birthRate" spec="beast.base.spec.inference.parameter.RealScalarParam"
+      <pre><code>&lt;state id="state" spec="State" storeEvery="5000"&gt;
+    &lt;stateNode id="birthRate" spec="beast.base.spec.inference.parameter.RealScalarParam"
            domain="PositiveReal" value="1.0"/&gt;
-&lt;stateNode id="rho" spec="beast.base.spec.inference.parameter.RealScalarParam"
-           domain="UnitInterval" value="1.0"/&gt;
-&lt;stateNode id="lifetimeShape" spec="beast.base.spec.inference.parameter.RealScalarParam"
+    &lt;stateNode id="lifetimeShape" spec="beast.base.spec.inference.parameter.RealScalarParam"
            domain="PositiveReal" value="2.0"/&gt;
-&lt;stateNode id="lifetimeScale" spec="beast.base.spec.inference.parameter.RealScalarParam"
+    &lt;stateNode id="lifetimeScale" spec="beast.base.spec.inference.parameter.RealScalarParam"
            domain="PositiveReal" value="1.5"/&gt;
-
+&lt;/state&gt;
 &lt;distribution id="treePrior" spec="calibratedcpp.CalibratedAgeDependentBirthDeathModel"
-              tree="@tree" conditionOnRoot="true" birthRate="@birthRate" rho="@rho"&gt;
+              tree="@tree" conditionOnRoot="true" birthRate="@birthRate" rho="0.1"&gt;
     &lt;!-- Gamma lifetimes (shape alpha, scale theta); an integer shape gives the fast Erlang case --&gt;
     &lt;lifetimeDistribution id="lifetime" spec="beast.base.spec.inference.distribution.Gamma"&gt;
         &lt;alpha idref="lifetimeShape"/&gt;
@@ -433,7 +440,7 @@
       </p>
       <figure class="screenshot">
         <img src="assets/screenshots/beauti-skylineparam.png" alt="BEAUti setting skyline parameter">
-        <figcaption>Setting diversification rate change time to 66mya at the time of the K-Pg mass extinction.</figcaption>
+        <figcaption>Setting diversification rate change time to 66 Ma at the time of the K-Pg mass extinction.</figcaption>
       </figure>
 
       <h3>Conditioning</h3>
