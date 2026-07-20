@@ -5,6 +5,7 @@ import calibratedcpp.lphy.prior.Calibration;
 import calibratedcpp.lphy.prior.CalibrationArray;
 import calibratedcpp.lphy.prior.CalibrationFunction;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
+import calibratedcpp.lphy.prior.OffsetExponentialMRCA;
 import calibratedcpp.lphy.prior.UniformMRCA;
 import calibratedcpp.lphy.prior.toCalibrationArray;
 import calibratedcpp.lphy.util.TruncatedLogNormal;
@@ -37,7 +38,7 @@ public class LBcalibratedcppImpl implements LPhyBEASTMapping {
     public List<Class<? extends Generator>> getExcludedGenerator() {
         return List.of(
                 TruncatedLogNormal.class, ConditionedMRCAPrior.class, CalibrationFunction.class,
-                UniformMRCA.class, toCalibrationArray.class
+                UniformMRCA.class, OffsetExponentialMRCA.class, toCalibrationArray.class
         );
     }
 

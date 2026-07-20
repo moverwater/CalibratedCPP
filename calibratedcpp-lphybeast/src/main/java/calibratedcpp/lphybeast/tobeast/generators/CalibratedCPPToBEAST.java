@@ -91,7 +91,7 @@ public class CalibratedCPPToBEAST implements GeneratorToBEAST<CalibratedCPPTree,
             // not ConditionedMRCAPrior's joint density
             // build one plain, independently-bounded MRCAPrior per clade instead of a CalibrationPrior.
             MRCAPriorCalibrationUtils.buildIndependentMRCAPriors(
-                    MRCAPriorCalibrationUtils.collectUniformMRCAs(calibrationsValue),
+                    MRCAPriorCalibrationUtils.collectIndependentCalibrationGenerators(calibrationsValue),
                     taxonSets, value, context);
             return model;
         }

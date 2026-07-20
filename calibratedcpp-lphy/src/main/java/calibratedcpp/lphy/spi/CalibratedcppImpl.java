@@ -2,6 +2,7 @@ package calibratedcpp.lphy.spi;
 
 import calibratedcpp.lphy.prior.CalibrationFunction;
 import calibratedcpp.lphy.prior.ConditionedMRCAPrior;
+import calibratedcpp.lphy.prior.OffsetExponentialMRCA;
 import calibratedcpp.lphy.prior.UniformMRCA;
 import calibratedcpp.lphy.prior.toCalibrationArray;
 import calibratedcpp.lphy.tree.CPPTree;
@@ -23,7 +24,7 @@ public class CalibratedcppImpl extends LPhyBaseImpl {
         return Arrays.asList(
             CPPTree.class, CalibratedCPPTree.class, CalibratedAgeDependentCPPTree.class,
                 TruncatedLogNormal.class, ConditionedMRCAPrior.class,
-                UniformMRCA.class
+                UniformMRCA.class, OffsetExponentialMRCA.class
         );
     }
 

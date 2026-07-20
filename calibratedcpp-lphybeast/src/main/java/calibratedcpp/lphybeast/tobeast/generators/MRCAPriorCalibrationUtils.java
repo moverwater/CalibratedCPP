@@ -7,6 +7,7 @@ import beast.base.spec.evolution.tree.MRCAPrior;
 import beast.base.spec.inference.distribution.Uniform;
 import beast.base.spec.inference.parameter.RealScalarParam;
 import calibratedcpp.lphy.prior.CalibrationArray;
+import calibratedcpp.lphy.prior.OffsetExponentialMRCA;
 import calibratedcpp.lphy.prior.UniformMRCA;
 import calibratedcpp.lphy.prior.toCalibrationArray;
 import lphy.core.model.Generator;
@@ -18,17 +19,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Support for calibrations built from independent per-clade {@link UniformMRCA} LPhy generators
- * (combined via {@code toArray(calibrations=[cal1, cal2, ...])}, the same array-literal syntax
- * used by {@code ConditionedMRCAPrior(calibrations=[cal1, cal2, ...])}), as opposed to the joint
- * calibration density produced by {@link calibratedcpp.lphy.prior.ConditionedMRCAPrior}.
+ * Support for calibrations built from independent per-clade {@link UniformMRCA} /
+ * {@link OffsetExponentialMRCA} LPhy generators (combined via {@code toArray(calibrations=[cal1,
+ * cal2, ...])}, the same array-literal syntax used by {@code ConditionedMRCAPrior(calibrations=
+ * [cal1, cal2, ...])}), as opposed to the joint calibration density produced by
+ * {@link calibratedcpp.lphy.prior.ConditionedMRCAPrior}. The array can freely mix both generator
+ * types -- each element owns its own age-distribution shape (Uniform vs. offset-exponential) and
+ * is dispatched to the matching converter independently.
  */
 public class MRCAPriorCalibrationUtils {
 
     /**
      * @return true if {@code calibrationsValue}'s generator is not {@code ConditionedMRCAPrior}
      *         (i.e. it was built via {@code toArray(calibrations=[...])} over independent
-     *         {@code UniformMRCA} calls instead).
+     *         {@code UniformMRCA}/{@code OffsetExponentialMRCA} calls instead).
      */
     public static boolean isIndependentMRCAPriorSource(Value<CalibrationArray> calibrationsValue) {
         return calibrationsValue.getGenerator() instanceof toCalibrationArray;
@@ -36,13 +40,14 @@ public class MRCAPriorCalibrationUtils {
 
     /**
      * Walks the {@code toArray(calibrations=[...])} array literal feeding {@code calibrationsValue}
-     * and returns the individual {@code UniformMRCA} generators in the same order their
-     * calibrations appear in the resulting {@link CalibrationArray} — so index i here lines up
-     * with index i of {@code calibrationsValue.value().getCalibrationArray()} and with any
-     * TaxonSet list built from that same array.
+     * and returns the individual per-clade calibration generators (each a {@code UniformMRCA} or
+     * {@code OffsetExponentialMRCA}) in the same order their calibrations appear in the resulting
+     * {@link CalibrationArray} — so index i here lines up with index i of
+     * {@code calibrationsValue.value().getCalibrationArray()} and with any TaxonSet list built
+     * from that same array.
      */
-    public static List<UniformMRCA> collectUniformMRCAs(Value<?> calibrationsValue) {
-        List<UniformMRCA> out = new ArrayList<>();
+    public static List<Generator<?>> collectIndependentCalibrationGenerators(Value<?> calibrationsValue) {
+        List<Generator<?>> out = new ArrayList<>();
         Generator<?> gen = calibrationsValue.getGenerator();
         if (!(gen instanceof toCalibrationArray tca)) {
             throw new IllegalArgumentException(
@@ -58,29 +63,39 @@ public class MRCAPriorCalibrationUtils {
         }
         for (Value<?> element : arrayFunction.getValues()) {
             Generator<?> elementGen = element.getGenerator();
-            if (!(elementGen instanceof UniformMRCA uniformMRCA)) {
+            if (!(elementGen instanceof UniformMRCA) && !(elementGen instanceof OffsetExponentialMRCA)) {
                 throw new IllegalArgumentException(
-                        "Expected each calibration in the array to come from UniformMRCA, got: "
+                        "Expected each calibration in the array to come from UniformMRCA or OffsetExponentialMRCA, got: "
                                 + (elementGen == null ? "constant value" : elementGen.getClass().getSimpleName()));
             }
-            out.add(uniformMRCA);
+            out.add(elementGen);
         }
         return out;
     }
 
     /**
-     * Builds one plain BEAST {@code MRCAPrior} per {@link UniformMRCA}, reusing the caller's
-     * already-built {@link TaxonSet} for each clade (index-aligned with {@code uniformMRCAs}) so
-     * the {@code taxonset} reference matches the one used in the tree model's {@code calibrations}
-     * list, rather than building a second, duplicate TaxonSet for the same clade.
+     * Builds one plain BEAST {@code MRCAPrior} per calibration generator (dispatched to
+     * {@code UniformMRCAToBEAST} or {@code OffsetExponentialMRCAToBEAST} by its actual type),
+     * reusing the caller's already-built {@link TaxonSet} for each clade (index-aligned with
+     * {@code calibrationGenerators}) so the {@code taxonset} reference matches the one used in
+     * the tree model's {@code calibrations} list, rather than building a second, duplicate
+     * TaxonSet for the same clade.
      */
     public static void buildIndependentMRCAPriors(
-            List<UniformMRCA> uniformMRCAs, List<TaxonSet> taxonSets,
+            List<Generator<?>> calibrationGenerators, List<TaxonSet> taxonSets,
             BEASTInterface treeValue, BEASTContext context) {
 
-        UniformMRCAToBEAST converter = new UniformMRCAToBEAST();
-        for (int i = 0; i < uniformMRCAs.size(); i++) {
-            converter.generatorToBEAST(uniformMRCAs.get(i), treeValue, taxonSets.get(i), context);
+        UniformMRCAToBEAST uniformConverter = new UniformMRCAToBEAST();
+        OffsetExponentialMRCAToBEAST offsetExponentialConverter = new OffsetExponentialMRCAToBEAST();
+        for (int i = 0; i < calibrationGenerators.size(); i++) {
+            Generator<?> gen = calibrationGenerators.get(i);
+            if (gen instanceof UniformMRCA uniformMRCA) {
+                uniformConverter.generatorToBEAST(uniformMRCA, treeValue, taxonSets.get(i), context);
+            } else if (gen instanceof OffsetExponentialMRCA offsetExponentialMRCA) {
+                offsetExponentialConverter.generatorToBEAST(offsetExponentialMRCA, treeValue, taxonSets.get(i), context);
+            } else {
+                throw new IllegalArgumentException("Unsupported calibration generator: " + gen.getClass().getSimpleName());
+            }
         }
     }
 
